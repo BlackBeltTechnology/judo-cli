@@ -1,0 +1,31 @@
+
+name: Build Test (Linux)
+
+on:
+  push:
+    branches:
+      - develop
+  pull_request:
+    branches:
+      - develop
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.22'
+
+    - name: Build judo-cli for Linux
+      run: go build -o judo-cli-linux judo.go
+
+    - name: Verify build artifact
+      run: |
+        ls -lh judo-cli-linux
+        file judo-cli-linux
