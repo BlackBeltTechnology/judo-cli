@@ -23,7 +23,7 @@ jobs:
         go-version: '1.22'
 
     - name: Build judo-cli for Linux
-      run: go build -o judo-cli-linux judo.go
+      run: go build -o judo-cli-linux ./cmd/judo
 
     - name: Verify build artifact
       run: |
