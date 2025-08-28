@@ -26,17 +26,17 @@ jobs:
 
       - name: Build
         run: |
-          BINARY_NAME="judo-cli-${{ matrix.os }}-${{ matrix.arch }}"
+          BINARY_NAME="judo-${{ matrix.os }}-${{ matrix.arch }}"
           if [ "${{ matrix.os }}" = "windows" ]; then
             BINARY_NAME="${BINARY_NAME}.exe"
           fi
-          GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} go build -o "$BINARY_NAME" .
+          GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} go build -o "$BINARY_NAME" ./cmd/judo
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: judo-cli-${{ matrix.os }}-${{ matrix.arch }}
-          path: judo-cli-${{ matrix.os }}-${{ matrix.arch }}*
+          name: judo-${{ matrix.os }}-${{ matrix.arch }}
+          path: judo-${{ matrix.os }}-${{ matrix.arch }}*
 
   release:
     name: Create GitHub Release
@@ -49,10 +49,29 @@ jobs:
         with:
           path: artifacts
 
+      - name: Create archives
+        run: |
+          mkdir archives
+          for dir in artifacts/*/; do
+            artifact_name=$(basename "$dir")
+            os=$(echo "$artifact_name" | cut -d'-' -f3)
+            arch=$(echo "$artifact_name" | cut -d'-' -f4)
+            
+            # Find the executable within the directory
+            executable_path=$(find "$dir" -type f -name "judo-*")
+            executable_name=$(basename "$executable_path")
+
+            if [ "$os" = "windows" ]; then
+              zip -j "archives/${executable_name}.zip" "$executable_path"
+            else
+              tar -czf "archives/${executable_name}.tar.gz" -C "$(dirname "$executable_path")" "$executable_name"
+            fi
+          done
+
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          files: artifacts/*/*
+          files: archives/*
           tag_name: ${{ github.ref_name }}
           name: Release ${{ github.ref_name }}
           draft: false

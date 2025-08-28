@@ -2,7 +2,7 @@
 
 == Project Overview
 
-This project is a command-line interface (CLI) tool named `judo-cli`, written in Go. It is designed to manage the lifecycle of JUDO applications. The tool utilizes the Cobra library for its command structure and interacts with several external tools and services:
+This project is a command-line interface (CLI) tool named `judo`, written in Go. It is designed to manage the lifecycle of JUDO applications. The tool utilizes the Cobra library for its command structure and interacts with several external tools and services:
 
 *   *Docker:* Manages Docker containers for services like PostgreSQL and Keycloak.
 *   *Maven:* Used for building the application. The tool can execute Maven commands with various flags.
@@ -12,7 +12,7 @@ The CLI reads its configuration from `judo.properties` files, with the ability t
 
 == Managing the Application
 
-Once the `judo-cli` executable is built, you can use it to manage your JUDO application. Here are some of the key commands:
+Once the `judo` executable is built, you can use it to manage your JUDO application. Here are some of the key commands:
 
 === Build the application
 
@@ -20,7 +20,7 @@ To build the application, run:
 
 [source,bash]
 ----
-./judo-cli build
+./judo build
 ----
 
 This command executes a Maven build (`mvnd clean install`). It supports various flags to customize the build process, such as `--build-parallel` (`-p`) for parallel builds and `--version` (`-v`) to specify a version number.
@@ -31,7 +31,7 @@ To start the application, run:
 
 [source,bash]
 ----
-./judo-cli start
+./judo start
 ----
 
 This command starts the application. It can start a Docker Compose environment or a local environment with Karaf, PostgreSQL, and Keycloak, depending on the configuration.
@@ -42,7 +42,7 @@ To stop the running application and associated services, run:
 
 [source,bash]
 ----
-./judo-cli stop
+./judo stop
 ----
 
 === Clean the environment
@@ -51,7 +51,7 @@ To stop and remove Docker containers, networks, and volumes associated with the 
 
 [source,bash]
 ----
-./judo-cli clean
+./judo clean
 ----
 
 === Update dependencies
@@ -60,19 +60,19 @@ To update the dependency versions in the JUDO project, run:
 
 [source,bash]
 ----
-./judo-cli update
+./judo update
 ----
 
 == Building the CLI
 
-To build the `judo-cli` executable, navigate to the project root directory and run the following command:
+To build the `judo` executable, navigate to the project root directory and run the following command:
 
 [source,bash]
 ----
 go build -o judo-cli ./cmd/judo
 ----
 
-This will create an executable named `judo-cli` in the current directory.
+This will create an executable named `judo` in the current directory.
 
 == Examples
 
