@@ -1,4 +1,4 @@
-dssdwqername: Release
+name: Release
 
 on:
   push:
