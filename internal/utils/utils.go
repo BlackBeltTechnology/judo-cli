@@ -64,15 +64,25 @@ func CheckError(err error) {
 
 // Small exec helpers
 func Run(name string, args ...string) error {
+	return RunInDir("", name, args...)
+}
+
+func RunInDir(dir, name string, args ...string) error {
 	cmd := exec.Command(name, args...)
 	cmd.Stdout, cmd.Stderr, cmd.Stdin = os.Stdout, os.Stderr, os.Stdin
+	cmd.Dir = dir
 	return cmd.Run()
 }
 
 func RunCapture(name string, args ...string) (string, error) {
+	return RunCaptureInDir("", name, args...)
+}
+
+func RunCaptureInDir(dir, name string, args ...string) (string, error) {
 	var out bytes.Buffer
 	cmd := exec.Command(name, args...)
 	cmd.Stdout, cmd.Stderr = &out, &out
+	cmd.Dir = dir
 	err := cmd.Run()
 	return strings.TrimSpace(out.String()), err
 }
@@ -114,7 +124,7 @@ func DefaultShell() (prog string, args []string) {
 	if sh == "" {
 		sh = "sh"
 	}
-	return sh, []string{" -lc"}
+	return sh, []string{"-l", "-c"}
 }
 
 // Run a small POSIX shell script on Unix (macOS/Linux).
@@ -176,7 +186,8 @@ func SdkmanRun(lines ...string) error {
 if [ -f "$HOME/.sdkman/bin/sdkman-init.sh" ]; then
   . "$HOME/.sdkman/bin/sdkman-init.sh"
   %s
-fi`, body)
+fi`,
+			body)
 		return RunWSL(script, wd)
 	}
 
@@ -187,6 +198,40 @@ fi`, body)
 		// SDKMAN not installed; skip quietly
 		return nil
 	}
-	script := fmt.Sprintf(`. %q; %s`, initScript, body)
+	script := fmt.Sprintf(`. %q; %s`,
+			initScript,
+			body)
 	return RunShell(script)
 }
+
+// FileExists checks if a file exists at the given path.
+func FileExists(filename string) bool {
+	_, err := os.Stat(filename)
+	return !os.IsNotExist(err)
+}
+
+// PromptForInput prompts the user for input and returns the trimmed string.
+func PromptForInput(prompt string) string {
+	fmt.Print(prompt)
+	reader := bufio.NewReader(os.Stdin)
+	input, _ := reader.ReadString('\n')
+	return strings.TrimSpace(input)
+}
+
+// PromptForSelection prompts the user to select from a list of options, with a default.
+func PromptForSelection(prompt string, options []string, defaultOption string) string {
+	optionsStr := strings.Join(options, "/")
+	for {
+		input := PromptForInput(fmt.Sprintf("%s (%s) [%s]: ", prompt, optionsStr, defaultOption))
+		if input == "" {
+			return defaultOption
+		}
+		for _, opt := range options {
+			if strings.EqualFold(input, opt) {
+				return opt
+			}
+		}
+		fmt.Printf("Invalid selection. Please choose from %s.\n", optionsStr)
+	}
+}
+

@@ -125,7 +125,7 @@ func CreateGenerateRootCommand() *cobra.Command {
 }
 
 func CreateStatusCommand() *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "status",
 		Short: "Print status of Karaf/Keycloak/PostgreSQL containers and resources",
 		Long:  help.StatusLongHelp(),
@@ -183,6 +183,7 @@ func CreateStatusCommand() *cobra.Command {
 			return nil
 		},
 	}
+	return cmd
 }
 
 func CreateDumpCommand() *cobra.Command {
@@ -616,4 +617,110 @@ func pruneApplication(cfg *config.Config, st *config.State) {
 		karaf.StopKaraf(cfg.KarafDir)
 	}
 	_ = utils.Run("git", "clean", "-dffx", cfg.ModelDir)
+}
+
+func CreateInitCommand() *cobra.Command {
+	var projectGroupId string
+	var modelName string
+	var projectType string
+	var pluginVersion string = "LATEST"
+
+	cmd := &cobra.Command{
+		Use:   "init",
+		Short: "Initialize a new JUDO project.",
+		Long:  "This command initializes a new JUDO project by checking for existing configuration files and, if necessary, generating a new project structure using Maven.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cwd, err := os.Getwd()
+			if err != nil {
+				return fmt.Errorf("failed to get current working directory: %w", err)
+			}
+
+			judoVersionPropsPath := filepath.Join(cwd, "judo-version.properties")
+			judoPropsPath := filepath.Join(cwd, "judo.properties")
+
+			if utils.FileExists(judoVersionPropsPath) && utils.FileExists(judoPropsPath) {
+				fmt.Println("Project already initialized. Both judo-version.properties and judo.properties exist.")
+				return nil
+			}
+
+			fmt.Println("Project not initialized. Proceeding with initialization...")
+
+			// Prompt for projectGroupId if not provided via flag
+			if projectGroupId == "" {
+				projectGroupId = utils.PromptForInput("Enter project GroupId (e.g., com.example): ")
+				if projectGroupId == "" {
+					projectGroupId = "com.example"
+				}
+			}
+
+			// Prompt for modelName if not provided via flag
+			if modelName == "" {
+				modelName = utils.PromptForInput("Enter model Name (e.g., MyProject): ")
+				if modelName == "" {
+					modelName = "MyProject"
+				}
+			}
+
+			// Determine projectType (default to ESM if not provided)
+			if projectType == "" {
+				projectType = utils.PromptForSelection("Select project type", []string{"ESM", "JSL"}, "ESM")
+			} else {
+				// Validate provided projectType
+				if !(strings.EqualFold(projectType, "ESM") || strings.EqualFold(projectType, "JSL")) {
+					return fmt.Errorf("unsupported project type: %s. Supported types are ESM and JSL.", projectType)
+				}
+			}
+
+			// Find latest plugin version
+			// The user explicitly asked to "search in maven the latest version".
+			// I will use `mvn help:evaluate` to get the latest version.
+			// This command will output the version to stdout.
+			//fmt.Println("Searching for the latest version of judo-version-updater-maven-plugin...")
+			//pluginVersion, err := utils.RunCapture("mvn",
+			//	"org.apache.maven.plugins:maven-help-plugin:3.2.0:evaluate",
+			//	"-Dexpression=hu.blackbelt.judo:judo-version-updater-maven-plugin:LATEST:version",
+			//	"-q",
+			//	"-DforceStdout",
+			//)
+			//if err != nil {
+			//	fmt.Printf("Warning: Could not determine latest plugin version, using 'LATEST'. Error: %v\n", err)
+			//	pluginVersion = "LATEST"
+			//} else {
+			//	pluginVersion = strings.TrimSpace(pluginVersion)
+			//	fmt.Printf("Found latest plugin version: %s\n", pluginVersion)
+			//}
+
+			mavenCommand := "mvn"
+			var mavenArgs []string
+
+			switch strings.ToUpper(projectType) {
+			case "ESM":
+				mavenArgs = []string{
+					fmt.Sprintf("hu.blackbelt.judo:judo-version-updater-maven-plugin:%s:create-judo-project", pluginVersion),
+					fmt.Sprintf("-DmodelName=%s", modelName),
+					fmt.Sprintf("-DprojectGroupId=%s", projectGroupId),
+					"-U",
+				}
+			case "JSL":
+				mavenArgs = []string{
+					fmt.Sprintf("hu.blackbelt.judo:judo-version-updater-maven-plugin:%s:create-jsl-judo-project", pluginVersion),
+					fmt.Sprintf("-DmodelName=%s", modelName),
+					fmt.Sprintf("-DprojectGroupId=%s", projectGroupId),
+					"-U",
+				}
+			default:
+				// This case should ideally not be reached due to the validation above, but as a safeguard.
+				return fmt.Errorf("unsupported project type: %s. Supported types are ESM and JSL.", projectType)
+			}
+
+			fmt.Printf("Executing Maven command: %s %s\n", mavenCommand, strings.Join(mavenArgs, " "))
+			return utils.Run(mavenCommand, mavenArgs...)
+		},
+	}
+
+	cmd.Flags().StringVarP(&projectGroupId, "group-id", "g", "", "Project GroupId (e.g., com.example)")
+	cmd.Flags().StringVarP(&modelName, "model-name", "n", "", "Target model name (e.g., MyProject)")
+	cmd.Flags().StringVarP(&projectType, "type", "t", "", "Type of project to create (ESM or JSL, default: ESM)")
+
+	return cmd
 }

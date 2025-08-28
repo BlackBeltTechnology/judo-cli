@@ -40,6 +40,7 @@ func main() {
 		commands.CreateStartCommand(),
 		commands.CreateStopCommand(),
 		commands.CreateStatusCommand(),
+		commands.CreateInitCommand(),
 	)
 
 	if err := rootCmd.Execute(); err != nil {

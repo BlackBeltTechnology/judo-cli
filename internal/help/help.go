@@ -255,3 +255,22 @@ Behavior:
   • Useful for quick iteration; not for reproducible CI builds.
 `
 }
+
+func InitLongHelp() string {
+	return `Initialize a new JUDO project or check if already initialized.
+
+If 'judo.versions' and 'judo.properties' files are found in the current directory,
+ the project is considered initialized and the command will exit.
+
+Otherwise, it will prompt for:
+  • Project GroupId (e.g., com.example)
+  • Model Name (e.g., myproject)
+  • Project Type (ESM or JSL, with ESM as default)
+
+It then executes the appropriate Maven command using the 'judo-version-updater-maven-plugin'
+ to create the project structure.
+
+Example:
+  judo init
+`
+}
