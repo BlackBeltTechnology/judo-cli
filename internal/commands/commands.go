@@ -131,21 +131,19 @@ func CreateStatusCommand() *cobra.Command {
 		Short: "Print status of Karaf/Keycloak/PostgreSQL containers and resources",
 		Long:  help.StatusLongHelp(),
 		RunE: func(_ *cobra.Command, _ []string) error {
-			cwd, _ := os.Getwd()
-			cfg := config.DefaultConfig(cwd)
-
-			fmt.Println("Runtime:", config.RuntimeEnv, " DB:", cfg.DBType)
+			fmt.Println("Runtime:", config.RuntimeEnv, " DB:", config.DBType)
 			if config.RuntimeEnv == "karaf" {
+				karafDir := filepath.Join(config.ModelDir, "application", ".karaf")
 				// Karaf
-				if karaf.KarafRunning(cfg.KarafDir) {
+				if karaf.KarafRunning(karafDir) {
 					fmt.Println("Karaf is running")
 				} else {
 					fmt.Println("Karaf is not running")
 				}
 
 				// Postgres (if applicable)
-				if cfg.DBType == "postgresql" {
-					pgName := "postgres-" + cfg.SchemaName
+				if config.DBType == "postgresql" {
+					pgName := "postgres-" + config.SchemaName
 					if docker.DockerInstanceRunning(pgName) {
 						fmt.Println("PostgreSQL is running")
 					} else {
@@ -155,12 +153,12 @@ func CreateStatusCommand() *cobra.Command {
 						} else {
 							fmt.Println("PostgreSQL container does not exist")
 						}
-						if docker.DockerVolumeExists(cfg.AppName + "_postgresql_db") {
+						if docker.DockerVolumeExists(config.AppName + "_postgresql_db") {
 							fmt.Println("PostgreSQL db volume exists")
 						} else {
 							fmt.Println("PostgreSQL db volume does not exist")
 						}
-						if docker.DockerVolumeExists(cfg.AppName + "_postgresql_data") {
+						if docker.DockerVolumeExists(config.AppName + "_postgresql_data") {
 							fmt.Println("PostgreSQL data volume exists")
 						} else {
 							fmt.Println("PostgreSQL data volume does not exist")
@@ -169,7 +167,7 @@ func CreateStatusCommand() *cobra.Command {
 				}
 
 				// Keycloak
-				kcName := "keycloak-" + cfg.KeycloakName
+				kcName := "keycloak-" + config.KeycloakName
 				if docker.DockerInstanceRunning(kcName) {
 					fmt.Println("Keycloak is running")
 				} else {

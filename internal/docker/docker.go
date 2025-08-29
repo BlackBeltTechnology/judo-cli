@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"judo-cli-module/internal/config"
 	"judo-cli-module/internal/utils"
@@ -185,7 +186,7 @@ func StartKeycloak() {
 			)
 		}
 		args = append(args,
-			"-it", "quay.io/keycloak/keycloak:23.0",
+			"quay.io/keycloak/keycloak:23.0",
 			"start-dev",
 			fmt.Sprintf("--http-port=%d", config.KeycloakPort),
 			"--http-relative-path", "/auth",
@@ -194,9 +195,18 @@ func StartKeycloak() {
 		output, err := cmd.CombinedOutput()
 		if err != nil {
 			log.Fatalf("Failed to start Keycloak container: %v\nOutput: %s", err, string(output))
-		} else {
-			StartContainer(name)
 		}
-		utils.WaitForPort("localhost", config.KeycloakPort, 30*utils.TimeSecond)
+
+		// Verify the container is running
+		time.Sleep(2 * time.Second) // Give it a moment to stabilize
+		if !DockerInstanceRunning(name) {
+			// If it's not running, get the logs to see why it failed.
+			logsCmd := utils.ExecuteCommand("docker", "logs", name)
+			logs, _ := logsCmd.CombinedOutput()
+			log.Fatalf("Keycloak container failed to start. Logs:\n%s", string(logs))
+		}
+	} else {
+		StartContainer(name)
 	}
+	utils.WaitForPort("localhost", config.KeycloakPort, 30*utils.TimeSecond)
 }

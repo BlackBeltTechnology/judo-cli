@@ -27,7 +27,9 @@ func KarafRunning(karafDir string) bool {
 		return false
 	}
 	out, _ := utils.RunCapture(status)
-	return strings.Contains(out, "Running")
+	// The status script outputs "Not Running ..." when stopped.
+	// A simple strings.Contains("Running") is not sufficient.
+	return strings.Contains(out, "Running") && !strings.Contains(out, "Not")
 }
 
 func StartKaraf() {
