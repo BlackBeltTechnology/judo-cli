@@ -15,6 +15,7 @@ import (
 	"judo-cli-module/internal/config"
 	"judo-cli-module/internal/utils"
 
+	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/api/types/network"
@@ -313,4 +314,42 @@ func StartKeycloak() {
 		StartContainer(name)
 	}
 	utils.WaitForPort("localhost", cfg.KeycloakPort, 30*utils.TimeSecond)
+}
+
+// IsPortUsedByKeycloak checks if a port is being used by the current Keycloak Docker container
+func IsPortUsedByKeycloak(port int) bool {
+	cfg := config.GetConfig()
+	if cfg == nil {
+		return false
+	}
+	
+	keycloakName := "keycloak-" + cfg.KeycloakName
+	
+	// List all running containers
+	containers, err := cli.ContainerList(context.Background(), container.ListOptions{})
+	if err != nil {
+		return false
+	}
+	
+	// Find the Keycloak container
+	for _, c := range containers {
+		for _, n := range c.Names {
+			if strings.TrimPrefix(n, "/") == keycloakName {
+				// Check if this container is using the specified port
+				return isContainerUsingPort(c, port)
+			}
+		}
+	}
+	
+	return false
+}
+
+// isContainerUsingPort checks if a container is using a specific host port
+func isContainerUsingPort(container types.Container, port int) bool {
+	for _, p := range container.Ports {
+		if int(p.PublicPort) == port && p.Type == "tcp" {
+			return true
+		}
+	}
+	return false
 }

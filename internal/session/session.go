@@ -12,7 +12,9 @@ import (
 	"github.com/spf13/cobra"
 	"judo-cli-module/internal/commands"
 	"judo-cli-module/internal/config"
+	"judo-cli-module/internal/docker"
 	"judo-cli-module/internal/help"
+	"judo-cli-module/internal/karaf"
 	"judo-cli-module/internal/utils"
 )
 
@@ -55,7 +57,7 @@ func StartInteractiveSession() {
 
 	// Create readline instance with tab completion
 	rl, err := readline.NewEx(&readline.Config{
-		Prompt:          "\x1b[1;34mjudo>\x1b[0m ",
+		Prompt:          getServiceStatusPrompt(),
 		HistoryFile:     getHistoryFilePath(),
 		AutoComplete:    getCompleter(),
 		InterruptPrompt: "^C",
@@ -157,6 +159,9 @@ func StartInteractiveSession() {
 
 		// Update session state after command execution
 		updateSessionStatus(state)
+		
+		// Update the prompt to reflect current service status
+		rl.SetPrompt(getServiceStatusPrompt())
 	}
 }
 
@@ -559,6 +564,51 @@ func getCompleter() readline.AutoCompleter {
 		readline.PcItem("schema-upgrade"),
 		readline.PcItem("reckless"),
 	)
+}
+
+// getServiceStatusPrompt generates a prompt with service status indicators
+func getServiceStatusPrompt() string {
+	if !config.IsProjectInitialized() {
+		return "\x1b[1;34mjudo>\x1b[0m "
+	}
+	
+	cfg := config.GetConfig()
+	var statusParts []string
+	
+	// Check Karaf status
+	karafRunning := false
+	if cfg.Runtime == "karaf" {
+		karafDir := filepath.Join(cfg.ModelDir, "application", ".karaf")
+		karafRunning = karaf.KarafRunning(karafDir)
+	}
+	statusParts = append(statusParts, fmt.Sprintf("karaf:%s", getStatusColor(karafRunning)))
+	
+	// Check Keycloak status
+	keycloakRunning := false
+	if config.Options.StartKeycloak {
+		keycloakName := "keycloak-" + cfg.KeycloakName
+		keycloakRunning = docker.DockerInstanceRunning(keycloakName)
+	}
+	statusParts = append(statusParts, fmt.Sprintf("keycloak:%s", getStatusColor(keycloakRunning)))
+	
+	// Check PostgreSQL status (if using PostgreSQL)
+	postgresRunning := false
+	if cfg.DBType == "postgresql" {
+		postgresName := "postgres-" + cfg.SchemaName
+		postgresRunning = docker.DockerInstanceRunning(postgresName)
+		statusParts = append(statusParts, fmt.Sprintf("postgres:%s", getStatusColor(postgresRunning)))
+	}
+	
+	statusStr := strings.Join(statusParts, " ")
+	return fmt.Sprintf("\x1b[1;34mjudo [%s]>\x1b[0m ", statusStr)
+}
+
+// getStatusColor returns green check for running, red x for not running
+func getStatusColor(running bool) string {
+	if running {
+		return "\x1b[32m✓\x1b[0m"
+	}
+	return "\x1b[31m✗\x1b[0m"
 }
 
 // executeCommandInSession executes a command within the session context

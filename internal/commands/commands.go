@@ -606,7 +606,12 @@ func runStart(cmd *cobra.Command, _ []string) {
 	// Port checks with enhanced error messages
 	if config.Options.StartKeycloak {
 		if !utils.IsPortAvailable(cfg.KeycloakPort) {
-			log.Fatalf("Keycloak port %d is already in use by another process.", cfg.KeycloakPort)
+			// Check if this is our own Keycloak instance using the port
+			if docker.IsPortUsedByKeycloak(cfg.KeycloakPort) {
+				log.Fatalf("Keycloak port %d is already in use by your running JUDO Keycloak instance. Run 'judo stop' first.", cfg.KeycloakPort)
+			} else {
+				log.Fatalf("Keycloak port %d is already in use by another process.", cfg.KeycloakPort)
+			}
 		}
 	}
 	if cfg.DBType == "postgresql" {
