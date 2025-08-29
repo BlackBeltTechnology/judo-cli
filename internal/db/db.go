@@ -1,12 +1,26 @@
 package db
 
 import (
+	"context"
 	"fmt"
+	"io"
+	"judo-cli-module/internal/utils"
 	"os"
 	"path/filepath"
 
-	"judo-cli-module/internal/utils"
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/client"
 )
+
+var cli *client.Client
+
+func init() {
+	var err error
+	cli, err = client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		panic(err)
+	}
+}
 
 // DumpPostgresql dumps the PostgreSQL database to a file.
 func DumpPostgresql(containerName, schema string) (string, error) {
@@ -19,13 +33,28 @@ func DumpPostgresql(containerName, schema string) (string, error) {
 	}
 	defer out.Close()
 
-	// Use pg_dump custom format (-F c), same as bash
-	cmd := utils.ExecuteCommand("docker", "exec", "-i", containerName,
-		"/bin/bash", "-c",
-		fmt.Sprintf("PGPASSWORD=%s pg_dump --username=%s -F c %s", schema, schema, schema))
-	cmd.Stdout = out
-	cmd.Stderr = os.Stderr
-	return file, cmd.Run()
+	execConfig := container.ExecOptions{
+		AttachStdout: true,
+		AttachStderr: true,
+		Cmd: []string{
+			"/bin/bash", "-c",
+			fmt.Sprintf("PGPASSWORD=%s pg_dump --username=%s -F c %s", schema, schema, schema),
+		},
+	}
+
+	resp, err := cli.ContainerExecCreate(context.Background(), containerName, execConfig)
+	if err != nil {
+		return "", err
+	}
+
+	hijackedResponse, err := cli.ContainerExecAttach(context.Background(), resp.ID, container.ExecStartOptions{})
+	if err != nil {
+		return "", err
+	}
+	defer hijackedResponse.Close()
+
+	_, err = io.Copy(out, hijackedResponse.Reader)
+	return file, err
 }
 
 // ImportPostgresql imports a PostgreSQL database dump.
@@ -36,13 +65,33 @@ func ImportPostgresql(containerName, schema, dumpFile string) error {
 	}
 	defer in.Close()
 
-	cmd := utils.ExecuteCommand("docker", "exec", "-i", containerName,
-		"/bin/bash", "-c",
-		fmt.Sprintf("PGPASSWORD=%s pg_restore -Fc --clean -U %s -d %s", schema, schema, schema))
-	cmd.Stdin = in
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
+	execConfig := container.ExecOptions{
+		AttachStdin:  true,
+		AttachStdout: true,
+		AttachStderr: true,
+		Cmd: []string{
+			"/bin/bash", "-c",
+			fmt.Sprintf("PGPASSWORD=%s pg_restore -Fc --clean -U %s -d %s", schema, schema, schema),
+		},
+	}
+
+	resp, err := cli.ContainerExecCreate(context.Background(), containerName, execConfig)
+	if err != nil {
+		return err
+	}
+
+	hijackedResponse, err := cli.ContainerExecAttach(context.Background(), resp.ID, container.ExecStartOptions{})
+	if err != nil {
+		return err
+	}
+	defer hijackedResponse.Close()
+
+	_, err = io.Copy(hijackedResponse.Conn, in)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // FindLatestDump finds the latest PostgreSQL dump file for a given schema.

@@ -1,29 +1,91 @@
 package docker
 
 import (
+	"context"
+	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"log"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"judo-cli-module/internal/config"
 	"judo-cli-module/internal/utils"
+
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/image"
+	"github.com/docker/docker/api/types/network"
+	"github.com/docker/docker/client"
+	"github.com/docker/go-connections/nat"
 )
+
+var cli *client.Client
+
+func init() {
+	var err error
+	//cli, err = client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	cli, err = newDockerClient()
+	if err != nil {
+		log.Fatalf("Failed to create Docker client: %v", err)
+	}
+}
+
+func newDockerClient() (*client.Client, error) {
+	// 1) Respect env (DOCKER_HOST etc.)
+	if cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation()); err == nil {
+		if pingOK(cli) {
+			return cli, nil
+		}
+	}
+
+	home, _ := os.UserHomeDir()
+	candidates := []string{
+		"unix:///var/run/docker.sock",                     // Linux / some Desktop setups
+		"unix://" + home + "/.docker/run/docker.sock",     // Docker Desktop macOS
+		"unix://" + home + "/.colima/default/docker.sock", // Colima
+	}
+
+	for _, h := range candidates {
+		cli, err := client.NewClientWithOpts(client.WithHost(h), client.WithAPIVersionNegotiation())
+		if err != nil {
+			continue
+		}
+		if pingOK(cli) {
+			return cli, nil
+		}
+		_ = cli.Close()
+	}
+	return nil, errors.New("could not reach Docker daemon; set DOCKER_HOST or start Docker Desktop/Colima")
+}
+
+func pingOK(cli *client.Client) bool {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	_, err := cli.Ping(ctx)
+	return err == nil
+}
+
+func pullImage(imageName string) {
+	reader, err := cli.ImagePull(context.Background(), imageName, image.PullOptions{})
+	if err != nil {
+		log.Fatalf("Failed to pull image %s: %v", imageName, err)
+	}
+	defer reader.Close()
+	io.Copy(os.Stdout, reader)
+}
 
 // IsDockerRunning checks if the Docker daemon is responsive.
 func IsDockerRunning() bool {
-	cmd := exec.Command("docker", "info")
-	err := cmd.Run()
+	_, err := cli.Ping(context.Background())
 	return err == nil
 }
 
 func GetComposeEnvs(cfg *config.Config) []string {
 	root := filepath.Join(cfg.AppDir, "docker")
-	envs := []string{}
+	var envs []string
 	_ = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil || d.IsDir() {
 			return nil
@@ -47,60 +109,57 @@ func RemoveDockerInstance(name string) error {
 	if name == "" {
 		return nil
 	}
-	cmd := utils.ExecuteCommand("docker", "rm", "-f", name)
-	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
-	_ = cmd.Run() // ignore if it doesn't exist
-	return nil
+	return cli.ContainerRemove(context.Background(), name, container.RemoveOptions{Force: true})
 }
 func CreateDockerNetwork(name string) {
-	out, _ := utils.RunCapture("docker", "network", "ls", "--format", "{{.Name}}")
-	for _, n := range strings.Split(out, "\n") {
-		if n == name {
+	networks, err := cli.NetworkList(context.Background(), network.ListOptions{})
+	if err != nil {
+		log.Fatalf("Failed to list Docker networks: %v", err)
+	}
+	for _, network := range networks {
+		if network.Name == name {
 			return
 		}
 	}
-	_ = utils.Run("docker", "network", "create", name)
+	_, err = cli.NetworkCreate(context.Background(), name, network.CreateOptions{})
+	if err != nil {
+		log.Fatalf("Failed to create Docker network: %v", err)
+	}
 }
 
 func RemoveDockerNetwork(name string) error {
 	if name == "" {
 		return nil
 	}
-	cmd := utils.ExecuteCommand("docker", "network", "rm", name)
-	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
-	_ = cmd.Run() // ignore if it doesn't exist
-	return nil
+	return cli.NetworkRemove(context.Background(), name)
 }
 
 func RemoveDockerVolume(name string) error {
 	if name == "" {
 		return nil
 	}
-	cmd := utils.ExecuteCommand("docker", "volume", "rm", name)
-	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
-	_ = cmd.Run() // ignore if it doesn't exist
-	return nil
+	return cli.VolumeRemove(context.Background(), name, true)
 }
 
 func DockerVolumeExists(name string) bool {
 	if name == "" {
 		return false
 	}
-	out, _ := utils.RunCapture("docker", "volume", "ls", "--format", "{{.Name}}")
-	for _, line := range strings.Split(out, "\n") {
-		if strings.TrimSpace(line) == name {
-			return true
-		}
-	}
-	return false
+	_, err := cli.VolumeInspect(context.Background(), name)
+	return err == nil
 }
 
 // Docker stop helper (no-op if not running)
 func DockerInstanceRunning(name string) bool {
-	out, _ := utils.RunCapture("docker", "ps", "--format", "{{.Names}}")
-	for _, n := range strings.Split(out, "\n") {
-		if n == name {
-			return true
+	containers, err := cli.ContainerList(context.Background(), container.ListOptions{})
+	if err != nil {
+		log.Fatalf("Failed to list Docker containers: %v", err)
+	}
+	for _, c := range containers {
+		for _, n := range c.Names {
+			if strings.TrimPrefix(n, "/") == name {
+				return true
+			}
 		}
 	}
 	return false
@@ -108,19 +167,30 @@ func DockerInstanceRunning(name string) bool {
 
 func StopDockerInstance(name string) error {
 	if DockerInstanceRunning(name) {
-		return utils.Run("docker", "stop", name)
+		return cli.ContainerStop(context.Background(), name, container.StopOptions{})
 	}
 	return nil
 }
 
 func ContainerExists(name string) bool {
-	cmd := utils.ExecuteCommand("docker", "ps", "-a", "-f", fmt.Sprintf("name=%s", name))
-	output, _ := cmd.Output()
-	return strings.Contains(string(output), name)
+	containers, err := cli.ContainerList(context.Background(), container.ListOptions{All: true})
+	if err != nil {
+		log.Fatalf("Failed to list Docker containers: %v", err)
+	}
+	for _, c := range containers {
+		for _, n := range c.Names {
+			if strings.TrimPrefix(n, "/") == name {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func StartContainer(name string) {
-	utils.CheckError(utils.ExecuteCommand("docker", "start", name).Run())
+	if err := cli.ContainerStart(context.Background(), name, container.StartOptions{}); err != nil {
+		log.Fatalf("Failed to start container %s: %v", name, err)
+	}
 }
 
 func StartCompose() {
@@ -134,22 +204,37 @@ func StartCompose() {
 func StartPostgres() {
 	fmt.Println("Starting PostgreSQL...")
 	name := "postgres-" + config.SchemaName
+	image := "postgres:16.2"
 
 	if !ContainerExists(name) {
+		pullImage(image)
 		CreateDockerNetwork(config.AppName)
-		cmd := utils.ExecuteCommand(
-			"docker", "run", "-d",
-			"-v", fmt.Sprintf("%s_postgresql_db:/var/lib/postgresql/pgdata", config.SchemaName),
-			"-v", fmt.Sprintf("%s_postgresql_data:/var/lib/postgresql/data", config.SchemaName),
-			"--network", config.AppName,
-			"--name", name,
-			"-e", "PGDATA=/var/lib/postgresql/pgdata",
-			"-e", fmt.Sprintf("POSTGRES_USER=%s", config.SchemaName),
-			"-e", fmt.Sprintf("POSTGRES_PASSWORD=%s", config.SchemaName),
-			"-p", fmt.Sprintf("%d:5432", config.PostgresPort),
-			"postgres:16.2",
-		)
-		if err := cmd.Run(); err != nil {
+		resp, err := cli.ContainerCreate(context.Background(), &container.Config{
+			Image: image,
+			Env: []string{
+				"PGDATA=/var/lib/postgresql/pgdata",
+				fmt.Sprintf("POSTGRES_USER=%s", config.SchemaName),
+				fmt.Sprintf("POSTGRES_PASSWORD=%s", config.SchemaName),
+			},
+		}, &container.HostConfig{
+			Binds: []string{
+				fmt.Sprintf("%s_postgresql_db:/var/lib/postgresql/pgdata", config.SchemaName),
+				fmt.Sprintf("%s_postgresql_data:/var/lib/postgresql/data", config.SchemaName),
+			},
+			NetworkMode: container.NetworkMode(config.AppName),
+			PortBindings: nat.PortMap{
+				"5432/tcp": []nat.PortBinding{
+					{
+						HostIP:   "0.0.0.0",
+						HostPort: fmt.Sprintf("%d", config.PostgresPort),
+					},
+				},
+			},
+		}, nil, nil, name)
+		if err != nil {
+			log.Fatalf("Failed to create PostgreSQL container: %v", err)
+		}
+		if err := cli.ContainerStart(context.Background(), resp.ID, container.StartOptions{}); err != nil {
 			log.Fatalf("Failed to start PostgreSQL container: %v", err)
 		}
 	} else {
@@ -161,48 +246,59 @@ func StartPostgres() {
 func StartKeycloak() {
 	fmt.Println("Starting Keycloak...")
 	name := "keycloak-" + config.KeycloakName
+	image := "quay.io/keycloak/keycloak:23.0"
 
 	if !ContainerExists(name) {
+		pullImage(image)
 		if config.DBType == "postgresql" {
 			CreateDockerNetwork(config.AppName)
 		}
-		args := []string{
-			"run", "-d",
-			"--name", name,
-			"-e", "KEYCLOAK_ADMIN=admin",
-			"-e", "KEYCLOAK_ADMIN_PASSWORD=judo",
-			"-p", fmt.Sprintf("%d:%d", config.KeycloakPort, config.KeycloakPort),
+		env := []string{
+			"KEYCLOAK_ADMIN=admin",
+			"KEYCLOAK_ADMIN_PASSWORD=judo",
 		}
-		// DB wiring like in the bash script
 		if config.DBType == "postgresql" {
-			args = append(args,
-				"--network", config.AppName,
-				"-e", "KC_DB=postgres",
-				"-e", "KC_DB_URL_HOST=postgres-"+config.SchemaName,
-				"-e", "KC_DB_URL_DATABASE="+config.SchemaName,
-				"-e", "KC_DB_PASSWORD="+config.SchemaName,
-				"-e", "KC_DB_USERNAME="+config.SchemaName,
-				"-e", "KC_DB_SCHEMA=public",
+			env = append(env,
+				"KC_DB=postgres",
+				"KC_DB_URL_HOST=postgres-"+config.SchemaName,
+				"KC_DB_URL_DATABASE="+config.SchemaName,
+				"KC_DB_PASSWORD="+config.SchemaName,
+				"KC_DB_USERNAME="+config.SchemaName,
+				"KC_DB_SCHEMA=public",
 			)
 		}
-		args = append(args,
-			"quay.io/keycloak/keycloak:23.0",
-			"start-dev",
-			fmt.Sprintf("--http-port=%d", config.KeycloakPort),
-			"--http-relative-path", "/auth",
-		)
-		cmd := utils.ExecuteCommand("docker", args...)
-		output, err := cmd.CombinedOutput()
+		resp, err := cli.ContainerCreate(context.Background(), &container.Config{
+			Image: image,
+			Env:   env,
+			Cmd: []string{
+				"start-dev",
+				fmt.Sprintf("--http-port=%d", config.KeycloakPort),
+				"--http-relative-path", "/auth",
+			},
+		}, &container.HostConfig{
+			NetworkMode: container.NetworkMode(config.AppName),
+			PortBindings: nat.PortMap{
+				nat.Port(fmt.Sprintf("%d/tcp", config.KeycloakPort)): []nat.PortBinding{
+					{HostIP: "0.0.0.0", HostPort: fmt.Sprintf("%d", config.KeycloakPort)},
+				},
+			},
+		}, nil, nil, name)
 		if err != nil {
-			log.Fatalf("Failed to start Keycloak container: %v\nOutput: %s", err, string(output))
+			log.Fatalf("Failed to create Keycloak container: %v", err)
 		}
-
+		if err := cli.ContainerStart(context.Background(), resp.ID, container.StartOptions{}); err != nil {
+			log.Fatalf("Failed to start Keycloak container: %v", err)
+		}
 		// Verify the container is running
 		time.Sleep(2 * time.Second) // Give it a moment to stabilize
 		if !DockerInstanceRunning(name) {
 			// If it's not running, get the logs to see why it failed.
-			logsCmd := utils.ExecuteCommand("docker", "logs", name)
-			logs, _ := logsCmd.CombinedOutput()
+			reader, err := cli.ContainerLogs(context.Background(), name, container.LogsOptions{ShowStdout: true, ShowStderr: true})
+			if err != nil {
+				log.Fatalf("Failed to get Keycloak container logs: %v", err)
+			}
+			defer reader.Close()
+			logs, _ := io.ReadAll(reader)
 			log.Fatalf("Keycloak container failed to start. Logs:\n%s", string(logs))
 		}
 	} else {
