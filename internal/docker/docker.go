@@ -33,6 +33,11 @@ func init() {
 	}
 }
 
+func GetDockerClient() *client.Client {
+	return cli
+}
+
+
 func newDockerClient() (*client.Client, error) {
 	// 1) Respect env (DOCKER_HOST etc.)
 	if cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation()); err == nil {
@@ -194,39 +199,41 @@ func StartContainer(name string) {
 }
 
 func StartCompose() {
+	cfg := config.GetConfig()
 	fmt.Println("Starting Docker compose environment...")
-	cmd := utils.ExecuteCommand("docker", "compose", "-f", fmt.Sprintf("%s/docker/%s/docker-compose.yml", config.ModelDir, config.ComposeEnv), "up")
+	cmd := utils.ExecuteCommand("docker", "compose", "-f", fmt.Sprintf("%s/docker/%s/docker-compose.yml", cfg.ModelDir, cfg.ComposeEnv), "up")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	utils.CheckError(cmd.Run())
 }
 
 func StartPostgres() {
+	cfg := config.GetConfig()
 	fmt.Println("Starting PostgreSQL...")
-	name := "postgres-" + config.SchemaName
+	name := "postgres-" + cfg.SchemaName
 	image := "postgres:16.2"
 
 	if !ContainerExists(name) {
 		pullImage(image)
-		CreateDockerNetwork(config.AppName)
+		CreateDockerNetwork(cfg.AppName)
 		resp, err := cli.ContainerCreate(context.Background(), &container.Config{
 			Image: image,
 			Env: []string{
 				"PGDATA=/var/lib/postgresql/pgdata",
-				fmt.Sprintf("POSTGRES_USER=%s", config.SchemaName),
-				fmt.Sprintf("POSTGRES_PASSWORD=%s", config.SchemaName),
+				fmt.Sprintf("POSTGRES_USER=%s", cfg.SchemaName),
+				fmt.Sprintf("POSTGRES_PASSWORD=%s", cfg.SchemaName),
 			},
 		}, &container.HostConfig{
 			Binds: []string{
-				fmt.Sprintf("%s_postgresql_db:/var/lib/postgresql/pgdata", config.SchemaName),
-				fmt.Sprintf("%s_postgresql_data:/var/lib/postgresql/data", config.SchemaName),
+				fmt.Sprintf("%s_postgresql_db:/var/lib/postgresql/pgdata", cfg.SchemaName),
+				fmt.Sprintf("%s_postgresql_data:/var/lib/postgresql/data", cfg.SchemaName),
 			},
-			NetworkMode: container.NetworkMode(config.AppName),
+			NetworkMode: container.NetworkMode(cfg.AppName),
 			PortBindings: nat.PortMap{
 				"5432/tcp": []nat.PortBinding{
 					{
 						HostIP:   "0.0.0.0",
-						HostPort: fmt.Sprintf("%d", config.PostgresPort),
+						HostPort: fmt.Sprintf("%d", cfg.PostgresPort),
 					},
 				},
 			},
@@ -240,30 +247,31 @@ func StartPostgres() {
 	} else {
 		StartContainer(name)
 	}
-	utils.WaitForPort("localhost", config.PostgresPort, 30*utils.TimeSecond)
+	utils.WaitForPort("localhost", cfg.PostgresPort, 30*utils.TimeSecond)
 }
 
 func StartKeycloak() {
+	cfg := config.GetConfig()
 	fmt.Println("Starting Keycloak...")
-	name := "keycloak-" + config.KeycloakName
+	name := "keycloak-" + cfg.KeycloakName
 	image := "quay.io/keycloak/keycloak:23.0"
 
 	if !ContainerExists(name) {
 		pullImage(image)
-		if config.DBType == "postgresql" {
-			CreateDockerNetwork(config.AppName)
+		if cfg.DBType == "postgresql" {
+			CreateDockerNetwork(cfg.AppName)
 		}
 		env := []string{
 			"KEYCLOAK_ADMIN=admin",
 			"KEYCLOAK_ADMIN_PASSWORD=judo",
 		}
-		if config.DBType == "postgresql" {
+		if cfg.DBType == "postgresql" {
 			env = append(env,
 				"KC_DB=postgres",
-				"KC_DB_URL_HOST=postgres-"+config.SchemaName,
-				"KC_DB_URL_DATABASE="+config.SchemaName,
-				"KC_DB_PASSWORD="+config.SchemaName,
-				"KC_DB_USERNAME="+config.SchemaName,
+				"KC_DB_URL_HOST=postgres-"+cfg.SchemaName,
+				"KC_DB_URL_DATABASE="+cfg.SchemaName,
+				"KC_DB_PASSWORD="+cfg.SchemaName,
+				"KC_DB_USERNAME="+cfg.SchemaName,
 				"KC_DB_SCHEMA=public",
 			)
 		}
@@ -272,14 +280,14 @@ func StartKeycloak() {
 			Env:   env,
 			Cmd: []string{
 				"start-dev",
-				fmt.Sprintf("--http-port=%d", config.KeycloakPort),
+				fmt.Sprintf("--http-port=%d", cfg.KeycloakPort),
 				"--http-relative-path", "/auth",
 			},
 		}, &container.HostConfig{
-			NetworkMode: container.NetworkMode(config.AppName),
+			NetworkMode: container.NetworkMode(cfg.AppName),
 			PortBindings: nat.PortMap{
-				nat.Port(fmt.Sprintf("%d/tcp", config.KeycloakPort)): []nat.PortBinding{
-					{HostIP: "0.0.0.0", HostPort: fmt.Sprintf("%d", config.KeycloakPort)},
+				nat.Port(fmt.Sprintf("%d/tcp", cfg.KeycloakPort)): []nat.PortBinding{
+					{HostIP: "0.0.0.0", HostPort: fmt.Sprintf("%d", cfg.KeycloakPort)},
 				},
 			},
 		}, nil, nil, name)
@@ -304,5 +312,5 @@ func StartKeycloak() {
 	} else {
 		StartContainer(name)
 	}
-	utils.WaitForPort("localhost", config.KeycloakPort, 30*utils.TimeSecond)
+	utils.WaitForPort("localhost", cfg.KeycloakPort, 30*utils.TimeSecond)
 }

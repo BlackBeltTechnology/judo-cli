@@ -33,30 +33,31 @@ func KarafRunning(karafDir string) bool {
 }
 
 func StartKaraf() {
+	cfg := config.GetConfig()
 	fmt.Println("Starting Karaf...")
 
 	// env like in the bash
-	os.Setenv("JUDO_PLATFORM_RDBMS_DIALECT", config.DBType)
-	if config.DBType == "postgresql" {
+	os.Setenv("JUDO_PLATFORM_RDBMS_DIALECT", cfg.DBType)
+	if cfg.DBType == "postgresql" {
 		os.Setenv("JUDO_PLATFORM_RDBMS_DB_HOST", "localhost")
-		os.Setenv("JUDO_PLATFORM_RDBMS_DB_PORT", fmt.Sprintf("%d", config.PostgresPort))
+		os.Setenv("JUDO_PLATFORM_RDBMS_DB_PORT", fmt.Sprintf("%d", cfg.PostgresPort))
 	}
-	os.Setenv("JUDO_PLATFORM_RDBMS_DB_DATABASE", config.SchemaName)
-	os.Setenv("JUDO_PLATFORM_RDBMS_DB_USER", config.SchemaName)
-	os.Setenv("JUDO_PLATFORM_RDBMS_DB_PASSWORD", config.SchemaName)
-	os.Setenv("JUDO_PLATFORM_KEYCLOAK_AUTH_SERVER_URL", fmt.Sprintf("http://localhost:%d/auth", config.KeycloakPort))
+	os.Setenv("JUDO_PLATFORM_RDBMS_DB_DATABASE", cfg.SchemaName)
+	os.Setenv("JUDO_PLATFORM_RDBMS_DB_USER", cfg.SchemaName)
+	os.Setenv("JUDO_PLATFORM_RDBMS_DB_PASSWORD", cfg.SchemaName)
+	os.Setenv("JUDO_PLATFORM_KEYCLOAK_AUTH_SERVER_URL", fmt.Sprintf("http://localhost:%d/auth", cfg.KeycloakPort))
 	if !config.Options.WatchBundles {
 		os.Setenv("JUDO_PLATFORM_BUNDLE_WATCHER", "false")
 	}
 	os.Setenv("EXTRA_JAVA_OPTS", "-Xms1024m -Xmx1024m -Dfile.encoding=UTF-8 -Dsun.jnu.encoding=UTF-8")
 
-	karafDir := filepath.Join(config.ModelDir, "application", ".karaf")
+	karafDir := filepath.Join(cfg.ModelDir, "application", ".karaf")
 	_ = os.RemoveAll(karafDir)
 	_ = os.MkdirAll(karafDir, 0o755)
 
 	ver := utils.GetProjectVersion()
-	tarPath := filepath.Join(config.ModelDir, "application", "karaf-offline", "target",
-		fmt.Sprintf("%s-application-karaf-offline-%s.tar.gz", config.AppName, ver),
+	tarPath := filepath.Join(cfg.ModelDir, "application", "karaf-offline", "target",
+		fmt.Sprintf("%s-application-karaf-offline-%s.tar.gz", cfg.AppName, ver),
 	)
 	// extract
 	if err := utils.UntarGz(tarPath, karafDir, 1); err != nil {
@@ -73,10 +74,10 @@ func StartKaraf() {
 
 	// tweak http port
 	pax := filepath.Join(karafDir, "etc", "org.ops4j.pax.web.cfg")
-	_ = utils.ReplaceInFile(pax, `org\.osgi\.service\.http\.port\s*=\s*\d+`, fmt.Sprintf("org.osgi.service.http.port = %d", config.KarafPort))
+	_ = utils.ReplaceInFile(pax, `org\.osgi\.service\.http\.port\s*=\s*\d+`, fmt.Sprintf("org.osgi.service.http.port = %d", cfg.KarafPort))
 
 	// optionally enable admin user
-	if config.KarafEnableAdminUser {
+	if cfg.KarafEnableAdminUser {
 		users := filepath.Join(karafDir, "etc", "users.properties")
 		_ = utils.ReplaceInFile(users, `#karaf\s*=\s*`, "karaf = ")
 		_ = utils.ReplaceInFile(users, `#_g_/`, "_g_/")
@@ -93,3 +94,4 @@ func StartKaraf() {
 
 	fmt.Printf("Karaf started (pid %d). Logs: %s\n", ecmd.Process.Pid, consoleOut.Name())
 }
+

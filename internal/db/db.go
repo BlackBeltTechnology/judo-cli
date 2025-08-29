@@ -4,26 +4,17 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"judo-cli-module/internal/docker"
 	"judo-cli-module/internal/utils"
 	"os"
 	"path/filepath"
 
 	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/client"
 )
-
-var cli *client.Client
-
-func init() {
-	var err error
-	cli, err = client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
-	if err != nil {
-		panic(err)
-	}
-}
 
 // DumpPostgresql dumps the PostgreSQL database to a file.
 func DumpPostgresql(containerName, schema string) (string, error) {
+	cli := docker.GetDockerClient()
 	timestamp := utils.TimeNow().Format("20060102_150405")
 	file := fmt.Sprintf("%s_dump_%s.tar.gz", schema, timestamp)
 
@@ -59,6 +50,7 @@ func DumpPostgresql(containerName, schema string) (string, error) {
 
 // ImportPostgresql imports a PostgreSQL database dump.
 func ImportPostgresql(containerName, schema, dumpFile string) error {
+	cli := docker.GetDockerClient()
 	in, err := os.Open(dumpFile)
 	if err != nil {
 		return err

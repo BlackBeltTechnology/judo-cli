@@ -1,30 +1,38 @@
 package config
 
 import (
+	"bufio"
+	"io"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
-	"os"
-	"io"
-	"bufio"
 )
 
 var (
-	Profile              string
-	AppName              string
-	ModelDir             string
-	SchemaName           string
-	KeycloakName         string
-	KarafPort            int
-	PostgresPort         int
-	KeycloakPort         int
-	RuntimeEnv           string
-	DBType               string
-	ComposeEnv           string
-	ComposeAccessIP      string
-	KarafEnableAdminUser bool
-	JavaCompiler         string
+	instance *Config
 )
+
+func GetConfig() *Config {
+	if instance == nil {
+		cwd, _ := os.Getwd()
+		instance = &Config{
+			AppName:      filepath.Base(cwd),
+			ModelDir:     cwd,
+			AppDir:       filepath.Join(cwd, "application"),
+			KarafDir:     filepath.Join(cwd, "application", ".karaf"),
+			Runtime:      "karaf",
+			DBType:       "hsqldb",
+			KarafPort:    8181,
+			PostgresPort: 5432,
+			KeycloakPort: 8080,
+		}
+		instance.SchemaName = instance.AppName
+		instance.KeycloakName = instance.AppName
+		instance.loadProperties()
+	}
+	return instance
+}
 
 type JudoOptions struct {
 	Clean             bool
@@ -67,34 +75,96 @@ type State struct {
 }
 
 type Config struct {
-	AppName      string
-	SchemaName   string
-	KeycloakName string
-	ModelDir     string
-	AppDir       string
-	KarafDir     string
-	Runtime      string // "karaf" | "compose"
-	DBType       string // "hsqldb" | "postgresql"
+	AppName              string
+	SchemaName           string
+	KeycloakName         string
+	ModelDir             string
+	AppDir               string
+	KarafDir             string
+	Runtime              string // "karaf" | "compose"
+	DBType               string // "hsqldb" | "postgresql"
+	ComposeEnv           string
+	ComposeAccessIP      string
+	KarafEnableAdminUser bool
+	JavaCompiler         string
+	KarafPort            int
+	PostgresPort         int
+	KeycloakPort         int
+	Profile              string
 }
 
 var Options JudoOptions
 
-func DefaultConfig(cwd string) *Config {
-	cfg := &Config{
-		AppName:  filepath.Base(cwd),
-		ModelDir: cwd,
-		AppDir:   filepath.Join(cwd, "application"),
-		KarafDir: filepath.Join(cwd, "application", ".karaf"),
-		Runtime:  "karaf",
-		DBType:   "hsqldb",
+func (c *Config) loadProperties() {
+	// prefer <profile>.properties, then judo.properties
+	var props map[string]string
+	candidates := []string{
+		filepath.Join(c.ModelDir, c.Profile+".properties"),
+		filepath.Join(c.ModelDir, "judo.properties"),
 	}
-	if cfg.SchemaName == "" {
-		cfg.SchemaName = cfg.AppName
+	for _, p := range candidates {
+		if _, err := os.Stat(p); err == nil {
+			props = readProperties(p)
+			break
+		}
 	}
-	if cfg.KeycloakName == "" {
-		cfg.KeycloakName = cfg.AppName
+	if props == nil {
+		return
 	}
-	return cfg
+
+	if v := props["model_dir"]; v != "" {
+		if filepath.IsAbs(v) {
+			c.ModelDir = v
+		} else {
+			c.ModelDir = filepath.Clean(filepath.Join(c.ModelDir, v))
+		}
+	}
+	if v := props["app_name"]; v != "" {
+		c.AppName = v
+	}
+	if v := props["schema_name"]; v != "" {
+		c.SchemaName = v
+	}
+	if v := props["keycloak_name"]; v != "" {
+		c.KeycloakName = v
+	}
+	if v := props["runtime"]; v != "" {
+		c.Runtime = v
+	}
+	if v := props["dbtype"]; v != "" {
+		if v == "postgres" {
+			c.DBType = "postgresql"
+		} else {
+			c.DBType = v
+		}
+	}
+	if v := props["compose_env"]; v != "" {
+		c.ComposeEnv = v
+	}
+	if v := props["compose_access_ip"]; v != "" {
+		c.ComposeAccessIP = v
+	}
+	if v := props["karaf_port"]; v != "" {
+		if n, err := strconv.Atoi(strings.TrimSpace(v)); err == nil {
+			c.KarafPort = n
+		}
+	}
+	if v := props["postgres_port"]; v != "" {
+		if n, err := strconv.Atoi(strings.TrimSpace(v)); err == nil {
+			c.PostgresPort = n
+		}
+	}
+	if v := props["keycloak_port"]; v != "" {
+		if n, err := strconv.Atoi(strings.TrimSpace(v)); err == nil {
+			c.KeycloakPort = n
+		}
+	}
+	if v := props["karaf_enable_admin_user"]; v != "" {
+		c.KarafEnableAdminUser = (v == "1" || strings.EqualFold(v, "true"))
+	}
+	if v := props["java_compiler"]; v != "" {
+		c.JavaCompiler = v
+	}
 }
 
 func readProperties(path string) map[string]string {
@@ -120,112 +190,8 @@ func readProperties(path string) map[string]string {
 	return props
 }
 
-func LoadProperties() {
-	// default MODEL_DIR = current working dir
-	wd, _ := os.Getwd()
-	ModelDir = wd
-
-	// prefer <profile>.properties, then judo.properties
-	var props map[string]string
-	candidates := []string{
-		filepath.Join(ModelDir, Profile+".properties"),
-		filepath.Join(ModelDir, "judo.properties"),
-	}
-	for _, p := range candidates {
-		if _, err := os.Stat(p); err == nil {
-			props = readProperties(p)
-			break
-		}
-	}
-	if props == nil {
-		return
-	}
-
-	if v := props["model_dir"]; v != "" {
-		if filepath.IsAbs(v) {
-			ModelDir = v
-		} else {
-			ModelDir = filepath.Clean(filepath.Join(ModelDir, v))
-		}
-	}
-	if v := props["app_name"]; v != "" {
-		AppName = v
-	}
-	if v := props["schema_name"]; v != "" {
-		SchemaName = v
-	}
-	if v := props["keycloak_name"]; v != "" {
-		KeycloakName = v
-	}
-	if v := props["runtime"]; v != "" {
-		RuntimeEnv = v
-	}
-	if v := props["dbtype"]; v != "" {
-		DBType = v
-	}
-	if v := props["compose_env"]; v != "" {
-		ComposeEnv = v
-	}
-	if v := props["compose_access_ip"]; v != "" {
-		ComposeAccessIP = v
-	}
-	if v := props["karaf_port"]; v != "" {
-		if n, err := strconv.Atoi(strings.TrimSpace(v)); err == nil {
-			KarafPort = n
-		}
-	}
-	if v := props["postgres_port"]; v != "" {
-		if n, err := strconv.Atoi(strings.TrimSpace(v)); err == nil {
-			PostgresPort = n
-		}
-	}
-	if v := props["keycloak_port"]; v != "" {
-		if n, err := strconv.Atoi(strings.TrimSpace(v)); err == nil {
-			KeycloakPort = n
-		}
-	}
-	if v := props["karaf_enable_admin_user"]; v != "" {
-		KarafEnableAdminUser = (v == "1" || strings.EqualFold(v, "true"))
-	}
-	if v := props["java_compiler"]; v != "" {
-		JavaCompiler = v
-	}
-}
-
-func SetupEnvironment() {
-	if AppName == "" {
-		AppName = filepath.Base(ModelDir)
-	}
-	if SchemaName == "" {
-		SchemaName = AppName
-	}
-	if KeycloakName == "" {
-		KeycloakName = AppName
-	}
-	if RuntimeEnv == "" {
-		RuntimeEnv = "karaf"
-	}
-	if DBType == "" {
-		DBType = "hsqldb"
-	}
-	if ComposeEnv == "" {
-		ComposeEnv = "compose-develop"
-	}
-	if KarafPort == 0 {
-		KarafPort = 8181
-	}
-	if PostgresPort == 0 {
-		PostgresPort = 5432
-	}
-	if KeycloakPort == 0 {
-		KeycloakPort = 8080
-	}
-	// sensible defaults from the bash script
-	Options.StartKeycloak = true
-	Options.WatchBundles = true
-}
-
 func ApplyInlineOptions(s string) {
+	cfg := GetConfig()
 	for _, pair := range strings.Split(s, ",") {
 		pair = strings.TrimSpace(pair)
 		if pair == "" {
@@ -239,37 +205,41 @@ func ApplyInlineOptions(s string) {
 		}
 		switch key {
 		case "runtime":
-			RuntimeEnv = val // "karaf" | "compose"
+			cfg.Runtime = val // "karaf" | "compose"
 		case "dbtype":
-			DBType = val // "hsqldb" | "postgresql"
+			if val == "postgres" {
+				cfg.DBType = "postgresql"
+			} else {
+				cfg.DBType = val
+			}
 		case "compose_env":
-			ComposeEnv = val
+			cfg.ComposeEnv = val
 		case "model_dir":
 			if val != "" {
 				if filepath.IsAbs(val) {
-					ModelDir = filepath.Clean(val)
+					cfg.ModelDir = filepath.Clean(val)
 				} else {
-					ModelDir = filepath.Clean(filepath.Join(ModelDir, val))
+					cfg.ModelDir = filepath.Clean(filepath.Join(cfg.ModelDir, val))
 				}
 			}
 		case "karaf_port":
 			if n, err := strconv.Atoi(val); err == nil {
-				KarafPort = n
+				cfg.KarafPort = n
 			}
 		case "postgres_port":
 			if n, err := strconv.Atoi(val); err == nil {
-				PostgresPort = n
+				cfg.PostgresPort = n
 			}
 		case "keycloak_port":
 			if n, err := strconv.Atoi(val); err == nil {
-				KeycloakPort = n
+				cfg.KeycloakPort = n
 			}
 		case "compose_access_ip":
-			ComposeAccessIP = val
+			cfg.ComposeAccessIP = val
 		case "karaf_enable_admin_user":
-			KarafEnableAdminUser = (val == "1" || strings.EqualFold(val, "true"))
+			cfg.KarafEnableAdminUser = (val == "1" || strings.EqualFold(val, "true"))
 		case "java_compiler":
-			JavaCompiler = val
+			cfg.JavaCompiler = val
 		}
 	}
 }

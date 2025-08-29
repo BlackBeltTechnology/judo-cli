@@ -24,8 +24,7 @@ func CreateGenerateCommand() *cobra.Command {
 		Short: "Generate application based on model in JUDO project.",
 		Long:  help.GenerateLongHelp(),
 		RunE: func(_ *cobra.Command, _ []string) error {
-			cwd, _ := os.Getwd()
-			cfg := config.DefaultConfig(cwd)
+			cfg := config.GetConfig()
 
 			// Stop mvnd daemon first (same as bash script)
 			_ = utils.Run("mvnd", "--purge", "--stop")
@@ -103,8 +102,7 @@ func CreateGenerateRootCommand() *cobra.Command {
 		Short: "Generate application root structure based on model in JUDO project.",
 		Long:  help.GenerateRootLongHelp(),
 		RunE: func(_ *cobra.Command, _ []string) error {
-			cwd, _ := os.Getwd()
-			cfg := config.DefaultConfig(cwd)
+			cfg := config.GetConfig()
 
 			_ = utils.Run("mvnd", "--purge", "--stop")
 
@@ -131,9 +129,10 @@ func CreateStatusCommand() *cobra.Command {
 		Short: "Print status of Karaf/Keycloak/PostgreSQL containers and resources",
 		Long:  help.StatusLongHelp(),
 		RunE: func(_ *cobra.Command, _ []string) error {
-			fmt.Println("Runtime:", config.RuntimeEnv, " DB:", config.DBType)
-			if config.RuntimeEnv == "karaf" {
-				karafDir := filepath.Join(config.ModelDir, "application", ".karaf")
+			cfg := config.GetConfig()
+			fmt.Println("Runtime:", cfg.Runtime, " DB:", cfg.DBType)
+			if cfg.Runtime == "karaf" {
+				karafDir := filepath.Join(cfg.ModelDir, "application", ".karaf")
 				// Karaf
 				if karaf.KarafRunning(karafDir) {
 					fmt.Println("Karaf is running")
@@ -142,8 +141,8 @@ func CreateStatusCommand() *cobra.Command {
 				}
 
 				// Postgres (if applicable)
-				if config.DBType == "postgresql" {
-					pgName := "postgres-" + config.SchemaName
+				if cfg.DBType == "postgresql" {
+					pgName := "postgres-" + cfg.SchemaName
 					if docker.DockerInstanceRunning(pgName) {
 						fmt.Println("PostgreSQL is running")
 					} else {
@@ -153,12 +152,12 @@ func CreateStatusCommand() *cobra.Command {
 						} else {
 							fmt.Println("PostgreSQL container does not exist")
 						}
-						if docker.DockerVolumeExists(config.AppName + "_postgresql_db") {
+						if docker.DockerVolumeExists(cfg.AppName + "_postgresql_db") {
 							fmt.Println("PostgreSQL db volume exists")
 						} else {
 							fmt.Println("PostgreSQL db volume does not exist")
 						}
-						if docker.DockerVolumeExists(config.AppName + "_postgresql_data") {
+						if docker.DockerVolumeExists(cfg.AppName + "_postgresql_data") {
 							fmt.Println("PostgreSQL data volume exists")
 						} else {
 							fmt.Println("PostgreSQL data volume does not exist")
@@ -167,7 +166,7 @@ func CreateStatusCommand() *cobra.Command {
 				}
 
 				// Keycloak
-				kcName := "keycloak-" + config.KeycloakName
+				kcName := "keycloak-" + cfg.KeycloakName
 				if docker.DockerInstanceRunning(kcName) {
 					fmt.Println("Keycloak is running")
 				} else {
@@ -191,8 +190,7 @@ func CreateDumpCommand() *cobra.Command {
 		Short: "Dump PostgreSQL DB data (creates <schema>_dump_YYYYMMDD_HHMMSS.tar.gz).",
 		Long:  help.DumpLongHelp(),
 		RunE: func(_ *cobra.Command, _ []string) error {
-			cwd, _ := os.Getwd()
-			cfg := config.DefaultConfig(cwd)
+			cfg := config.GetConfig()
 
 			if cfg.DBType != "postgresql" {
 				fmt.Println("Dump is only supported with PostgreSQL.")
@@ -220,8 +218,7 @@ func CreateImportCommand() *cobra.Command {
 		Short: "Import PostgreSQL DB dump (pg_restore).",
 		Long:  help.ImportLongHelp(),
 		RunE: func(_ *cobra.Command, _ []string) error {
-			cwd, _ := os.Getwd()
-			cfg := config.DefaultConfig(cwd)
+			cfg := config.GetConfig()
 
 			if cfg.DBType != "postgresql" {
 				fmt.Println("Import is only supported with PostgreSQL.")
@@ -270,8 +267,7 @@ func CreateSchemaUpgradeCommand() *cobra.Command {
 		Short: "Apply RDBMS schema upgrade using current running database (PostgreSQL only).",
 		Long:  help.SchemaUpgradeLongHelp(),
 		RunE: func(_ *cobra.Command, _ []string) error {
-			cwd, _ := os.Getwd()
-			cfg := config.DefaultConfig(cwd)
+			cfg := config.GetConfig()
 
 			if cfg.DBType != "postgresql" {
 				fmt.Println("Schema upgrade requires PostgreSQL.")
@@ -281,13 +277,13 @@ func CreateSchemaUpgradeCommand() *cobra.Command {
 			// Ensure Postgres is started and reachable
 			docker.StartPostgres()
 
-			updateModel := filepath.Join(config.ModelDir, "model", "target", "generated-resources", "model",
+			updateModel := filepath.Join(cfg.ModelDir, "model", "target", "generated-resources", "model",
 				fmt.Sprintf("%s-rdbms_postgresql.model", cfg.SchemaName))
-			schemaDir := filepath.Join(config.ModelDir, "schema")
+			schemaDir := filepath.Join(cfg.ModelDir, "schema")
 
 			args := []string{
 				"judo-rdbms-schema:apply",
-				fmt.Sprintf("-DjdbcUrl=jdbc:postgresql://127.0.0.1:%d/%s", config.PostgresPort, cfg.SchemaName),
+				fmt.Sprintf("-DjdbcUrl=jdbc:postgresql://127.0.0.1:%d/%s", cfg.PostgresPort, cfg.SchemaName),
 				"-DdbType=postgresql",
 				"-DdbUser=" + cfg.SchemaName,
 				"-DdbPassword=" + cfg.SchemaName,
@@ -307,8 +303,7 @@ func CreateCleanCommand() *cobra.Command {
 		Short: "Stop postgresql docker container and clear data.",
 		Long:  help.CleanLongHelp(),
 		RunE: func(_ *cobra.Command, args []string) error {
-			cwd, _ := os.Getwd()
-			cfg := config.DefaultConfig(cwd)
+			cfg := config.GetConfig()
 			for _, env := range docker.GetComposeEnvs(cfg) {
 				_ = docker.StopCompose(cfg, env)
 			}
@@ -340,8 +335,7 @@ func CreatePruneCommand() *cobra.Command {
 		Short: "Stop postgresql docker container and delete untracked files in this repository.",
 		Long:  help.PruneLongHelp(),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cwd, _ := os.Getwd()
-			cfg := config.DefaultConfig(cwd)
+			cfg := config.GetConfig()
 			st := &config.State{PruneFrontend: frontend, PruneConfirm: !yes}
 			pruneApplication(cfg, st)
 			return nil
@@ -359,8 +353,7 @@ func CreateUpdateCommand() *cobra.Command {
 		Short: "Update dependency versions in JUDO project.",
 		Long:  help.UpdateLongHelp(),
 		RunE: func(_ *cobra.Command, _ []string) error {
-			cwd, _ := os.Getwd()
-			cfg := config.DefaultConfig(cwd)
+			cfg := config.GetConfig()
 
 			// Run SDKMAN steps (Unix or via WSL on Windows). Safe to skip if unavailable.
 			_ = utils.SdkmanRun(
@@ -396,9 +389,8 @@ func CreateStopCommand() *cobra.Command {
 		Short: "Stop application, postgresql and keycloak (if running)",
 		Long:  help.StopLongHelp(),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cwd, _ := os.Getwd()
-			cfg := config.DefaultConfig(cwd)
-			if config.RuntimeEnv == "karaf" {
+			cfg := config.GetConfig()
+			if cfg.Runtime == "karaf" {
 				karaf.StopKaraf(cfg.KarafDir)
 				if cfg.DBType == "postgresql" {
 					_ = docker.StopDockerInstance("postgres-" + cfg.SchemaName)
@@ -432,6 +424,7 @@ func runBuild(cmd *cobra.Command, args []string) {
 		config.Options.SchemaCliBuilding = true
 	}
 
+	cfg := config.GetConfig()
 	if config.Options.Reckless {
 		// mirror bash: start local env first
 		startLocalEnvironment()
@@ -441,9 +434,6 @@ func runBuild(cmd *cobra.Command, args []string) {
 	if !config.Options.Reckless {
 		_ = utils.Run("mvnd", "--purge", "--stop")
 	}
-
-	cwd, _ := os.Getwd()
-	cfg := config.DefaultConfig(cwd)
 
 	goal := "install"
 	if config.Options.Reckless {
@@ -549,6 +539,7 @@ func CreateStartCommand() *cobra.Command {
 }
 
 func runStart(cmd *cobra.Command, _ []string) {
+	cfg := config.GetConfig()
 	// Pre-flight checks
 	if !docker.IsDockerRunning() {
 		log.Fatal("Docker daemon is not running. Please start Docker and try again.")
@@ -569,17 +560,17 @@ func runStart(cmd *cobra.Command, _ []string) {
 
 	// Port checks
 	if config.Options.StartKeycloak {
-		if !utils.IsPortAvailable(config.KeycloakPort) {
-			log.Fatalf("Keycloak port %d is already in use.", config.KeycloakPort)
+		if !utils.IsPortAvailable(cfg.KeycloakPort) {
+			log.Fatalf("Keycloak port %d is already in use.", cfg.KeycloakPort)
 		}
 	}
-	if config.DBType == "postgresql" {
-		if !utils.IsPortAvailable(config.PostgresPort) {
-			log.Fatalf("PostgreSQL port %d is already in use.", config.PostgresPort)
+	if cfg.DBType == "postgresql" {
+		if !utils.IsPortAvailable(cfg.PostgresPort) {
+			log.Fatalf("PostgreSQL port %d is already in use.", cfg.PostgresPort)
 		}
 	}
 
-	runtime := config.RuntimeEnv
+	runtime := cfg.Runtime
 	if runtime != "compose" && runtime != "karaf" {
 		fmt.Println("Unknown runtime:", runtime, " — defaulting to karaf")
 		runtime = "karaf"
@@ -587,12 +578,12 @@ func runStart(cmd *cobra.Command, _ []string) {
 
 	if runtime == "karaf" {
 		// Karaf-specific checks
-		if !utils.IsPortAvailable(config.KarafPort) {
-			log.Fatalf("Karaf port %d is already in use.", config.KarafPort)
+		if !utils.IsPortAvailable(cfg.KarafPort) {
+			log.Fatalf("Karaf port %d is already in use.", cfg.KarafPort)
 		}
 		ver := utils.GetProjectVersion()
-		tarPath := filepath.Join(config.ModelDir, "application", "karaf-offline", "target",
-			fmt.Sprintf("%s-application-karaf-offline-%s.tar.gz", config.AppName, ver),
+		tarPath := filepath.Join(cfg.ModelDir, "application", "karaf-offline", "target",
+			fmt.Sprintf("%s-application-karaf-offline-%s.tar.gz", cfg.AppName, ver),
 		)
 		if _, err := os.Stat(tarPath); os.IsNotExist(err) {
 			log.Fatalf("Karaf archive not found at %s. Please run a build first.", tarPath)
@@ -609,7 +600,8 @@ func runStart(cmd *cobra.Command, _ []string) {
 }
 
 func startLocalEnvironment() {
-	if config.DBType == "postgresql" {
+	cfg := config.GetConfig()
+	if cfg.DBType == "postgresql" {
 		docker.StartPostgres()
 	}
 
@@ -647,7 +639,7 @@ func pruneApplication(cfg *config.Config, st *config.State) {
 		_ = docker.StopDockerInstance("postgres-" + cfg.SchemaName)
 	}
 	_ = docker.StopDockerInstance("keycloak-" + cfg.KeycloakName)
-	if config.RuntimeEnv == "karaf" {
+	if cfg.Runtime == "karaf" {
 		karaf.StopKaraf(cfg.KarafDir)
 	}
 	_ = utils.Run("git", "clean", "-dffx", cfg.ModelDir)

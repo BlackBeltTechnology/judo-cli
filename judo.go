@@ -6,7 +6,6 @@ import (
 
 	"github.com/spf13/cobra"
 	"judo-cli-module/internal/commands"
-	"judo-cli-module/internal/config"
 )
 
 var (
@@ -28,8 +27,6 @@ func main() {
 }
 
 func init() {
-	cobra.OnInitialize(config.LoadProperties, config.SetupEnvironment)
-
 	rootCmd.AddCommand(commands.CreateGenerateCommand())
 	rootCmd.AddCommand(commands.CreateBuildCommand())
 	rootCmd.AddCommand(commands.CreateRecklessCommand())
