@@ -42,6 +42,7 @@ func main() {
 		commands.CreateStartCommand(),
 		commands.CreateStopCommand(),
 		commands.CreateStatusCommand(),
+		commands.CreateLogCommand(),
 		commands.CreateInitCommand(),
 		createSessionCommand(),
 	)

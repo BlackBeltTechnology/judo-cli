@@ -1,11 +1,14 @@
 package commands
 
 import (
+	"bufio"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -964,6 +967,48 @@ func requireJudoProject() error {
 	return nil
 }
 
+func CreateLogCommand() *cobra.Command {
+	var tail bool
+	var follow bool
+	var lines int
+	
+	cmd := &cobra.Command{
+		Use:   "log",
+		Short: "Display or tail Karaf console log",
+		Long:  "Display the contents of the Karaf console.out log file with optional tailing and following",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			// Check if JUDO project is initialized
+			if err := requireJudoProject(); err != nil {
+				return err
+			}
+			
+			cfg := config.GetConfig()
+			
+			if cfg.Runtime != "karaf" {
+				return fmt.Errorf("log command is only supported for karaf runtime")
+			}
+			
+			logFile := filepath.Join(cfg.KarafDir, "console.out")
+			
+			if _, err := os.Stat(logFile); os.IsNotExist(err) {
+				return fmt.Errorf("log file not found: %s", logFile)
+			}
+			
+			if tail || follow {
+				return tailLogFile(logFile, lines, follow)
+			}
+			
+			return displayLogFile(logFile, lines)
+		},
+	}
+	
+	cmd.Flags().BoolVarP(&tail, "tail", "t", false, "Show the end of the log file")
+	cmd.Flags().BoolVarP(&follow, "follow", "f", false, "Follow log output (like tail -f)")
+	cmd.Flags().IntVarP(&lines, "lines", "n", 50, "Number of lines to display")
+	
+	return cmd
+}
+
 func CreateInitCommand() *cobra.Command {
 	var projectGroupId string
 	var modelName string
@@ -1068,4 +1113,103 @@ func CreateInitCommand() *cobra.Command {
 	cmd.Flags().StringVarP(&projectType, "type", "t", "", "Type of project to create (ESM or JSL, default: ESM)")
 
 	return cmd
+}
+
+// displayLogFile displays the contents of a log file with optional line limit
+func displayLogFile(logFile string, lines int) error {
+	content, err := os.ReadFile(logFile)
+	if err != nil {
+		return fmt.Errorf("failed to read log file: %w", err)
+	}
+	
+	logContent := string(content)
+	logLines := strings.Split(logContent, "\n")
+	
+	// If lines is 0 or negative, show all lines
+	if lines <= 0 || lines >= len(logLines) {
+		fmt.Print(logContent)
+		return nil
+	}
+	
+	// Show only the last 'lines' number of lines
+	start := len(logLines) - lines
+	if start < 0 {
+		start = 0
+	}
+	
+	for i := start; i < len(logLines); i++ {
+		fmt.Println(logLines[i])
+	}
+	
+	return nil
+}
+
+// tailLogFile tails a log file with optional following
+func tailLogFile(logFile string, lines int, follow bool) error {
+	content, err := os.ReadFile(logFile)
+	if err != nil {
+		return fmt.Errorf("failed to read log file: %w", err)
+	}
+	
+	logContent := string(content)
+	logLines := strings.Split(logContent, "\n")
+	
+	// Show the last 'lines' number of lines
+	start := len(logLines) - lines
+	if start < 0 {
+		start = 0
+	}
+	
+	for i := start; i < len(logLines); i++ {
+		fmt.Println(logLines[i])
+	}
+	
+	if !follow {
+		return nil
+	}
+	
+	// Follow the log file (like tail -f)
+	fmt.Printf("\n\x1b[33mFollowing log file (Ctrl+C to stop)...\x1b[0m\n\n")
+	
+	file, err := os.Open(logFile)
+	if err != nil {
+		return fmt.Errorf("failed to open log file for following: %w", err)
+	}
+	defer file.Close()
+	
+	// Get current file size and seek to the end
+	stat, err := file.Stat()
+	if err != nil {
+		return fmt.Errorf("failed to get file stats: %w", err)
+	}
+	
+	offset := stat.Size()
+	reader := bufio.NewReader(file)
+	
+	for {
+		// Check for new content
+		newStat, err := file.Stat()
+		if err != nil {
+			return fmt.Errorf("failed to get updated file stats: %w", err)
+		}
+		
+		if newStat.Size() > offset {
+			// Read new content
+			file.Seek(offset, 0)
+			newContent, err := reader.ReadBytes('\n')
+			if err != nil && err != io.EOF {
+				return fmt.Errorf("failed to read new log content: %w", err)
+			}
+			
+			if len(newContent) > 0 {
+				fmt.Print(string(newContent))
+			}
+			
+			offset = newStat.Size()
+		}
+		
+		time.Sleep(1 * time.Second)
+	}
+	
+	return nil
 }
