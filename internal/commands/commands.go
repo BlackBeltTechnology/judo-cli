@@ -586,6 +586,10 @@ func runStart(cmd *cobra.Command, _ []string) {
 		log.Fatal("Docker daemon is not running. Please start Docker and try again.")
 	}
 
+	// Set default values
+	config.Options.StartKeycloak = true
+	config.Options.WatchBundles = true
+
 	// apply flags
 	if v, _ := cmd.Flags().GetBool("skip-keycloak"); v {
 		config.Options.StartKeycloak = false
@@ -599,15 +603,15 @@ func runStart(cmd *cobra.Command, _ []string) {
 		config.ApplyInlineOptions(raw)
 	}
 
-	// Port checks
+	// Port checks with enhanced error messages
 	if config.Options.StartKeycloak {
 		if !utils.IsPortAvailable(cfg.KeycloakPort) {
-			log.Fatalf("Keycloak port %d is already in use.", cfg.KeycloakPort)
+			log.Fatalf("Keycloak port %d is already in use by another process.", cfg.KeycloakPort)
 		}
 	}
 	if cfg.DBType == "postgresql" {
 		if !utils.IsPortAvailable(cfg.PostgresPort) {
-			log.Fatalf("PostgreSQL port %d is already in use.", cfg.PostgresPort)
+			log.Fatalf("PostgreSQL port %d is already in use by another process.", cfg.PostgresPort)
 		}
 	}
 
@@ -620,7 +624,13 @@ func runStart(cmd *cobra.Command, _ []string) {
 	if runtime == "karaf" {
 		// Karaf-specific checks
 		if !utils.IsPortAvailable(cfg.KarafPort) {
-			log.Fatalf("Karaf port %d is already in use.", cfg.KarafPort)
+			// Check if this is our own Karaf instance using the port
+			karafDir := filepath.Join(cfg.ModelDir, "application", ".karaf")
+			if utils.IsPortUsedByKaraf(cfg.KarafPort, karafDir) {
+				log.Fatalf("Karaf port %d is already in use by your running JUDO application. Run 'judo stop' first.", cfg.KarafPort)
+			} else {
+				log.Fatalf("Karaf port %d is already in use by another process.", cfg.KarafPort)
+			}
 		}
 		ver := utils.GetProjectVersion()
 		tarPath := filepath.Join(cfg.ModelDir, "application", "karaf-offline", "target",
@@ -952,9 +962,25 @@ func checkPortAvailability(port int, service string, verbose bool) {
 	if utils.IsPortAvailable(port) {
 		fmt.Printf("\x1b[32m✅ Port %d (%s): Available\x1b[0m\n", port, service)
 	} else {
-		fmt.Printf("\x1b[33m⚠️  Port %d (%s): In use\x1b[0m\n", port, service)
-		if verbose {
-			fmt.Printf("   \x1b[33mNote: This port is currently occupied, which may cause conflicts\x1b[0m\n")
+		// Check if this is a JUDO project and if Karaf is using the port
+		cfg := config.GetConfig()
+		karafUsingPort := false
+		
+		if config.IsProjectInitialized() && cfg.Runtime == "karaf" {
+			karafDir := filepath.Join(cfg.ModelDir, "application", ".karaf")
+			karafUsingPort = utils.IsPortUsedByKaraf(port, karafDir)
+		}
+		
+		if karafUsingPort {
+			fmt.Printf("\x1b[33m⚠️  Port %d (%s): In use by current Karaf instance\x1b[0m\n", port, service)
+			if verbose {
+				fmt.Printf("   \x1b[33mNote: This port is used by your running JUDO application\x1b[0m\n")
+			}
+		} else {
+			fmt.Printf("\x1b[31m❌ Port %d (%s): In use by another process\x1b[0m\n", port, service)
+			if verbose {
+				fmt.Printf("   \x1b[31mWarning: This port is occupied by another application, which will cause conflicts\x1b[0m\n")
+			}
 		}
 	}
 }
