@@ -585,10 +585,8 @@ func getServiceStatusPrompt() string {
 	
 	// Check Keycloak status
 	keycloakRunning := false
-	if config.Options.StartKeycloak {
-		keycloakName := "keycloak-" + cfg.KeycloakName
-		keycloakRunning = docker.DockerInstanceRunning(keycloakName)
-	}
+	keycloakName := "keycloak-" + cfg.KeycloakName
+	keycloakRunning = docker.DockerInstanceRunning(keycloakName)
 	statusParts = append(statusParts, fmt.Sprintf("%skeycloak:%s", getServiceEmoji("keycloak"), getStatusColor(keycloakRunning)))
 	
 	// Check PostgreSQL status (if using PostgreSQL)

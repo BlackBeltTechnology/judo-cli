@@ -8,11 +8,15 @@ import (
 
 	"judo-cli-module/internal/commands"
 	"judo-cli-module/internal/config"
+	"judo-cli-module/internal/docker"
 	"judo-cli-module/internal/help"
 	"judo-cli-module/internal/session"
 )
 
 func main() {
+	// Ensure Docker client is properly closed when the application exits
+	defer docker.CloseDockerClient()
+
 	var rootCmd = &cobra.Command{
 		Use:   "judo",
 		Short: "JUDO CLI",
@@ -46,6 +50,12 @@ func main() {
 		commands.CreateInitCommand(),
 		createSessionCommand(),
 	)
+	
+	// Debug: print all commands
+	fmt.Println("DEBUG: Registered commands:")
+	for _, cmd := range rootCmd.Commands() {
+		fmt.Printf("  %s - %s\n", cmd.Use, cmd.Short)
+	}
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
@@ -53,6 +63,7 @@ func main() {
 	}
 }
 
+// createSessionCommand creates the session command to avoid circular import issues
 func createSessionCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   "session",

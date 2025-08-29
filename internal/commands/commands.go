@@ -984,6 +984,7 @@ func checkPortAvailability(port int, service string, verbose bool) {
 		cfg := config.GetConfig()
 		karafUsingPort := false
 		postgresUsingPort := false
+		keycloakUsingPort := false
 		
 		if config.IsProjectInitialized() {
 			if cfg.Runtime == "karaf" {
@@ -994,6 +995,11 @@ func checkPortAvailability(port int, service string, verbose bool) {
 			// Check if PostgreSQL is using the port (for port 5432)
 			if port == 5432 && cfg.DBType == "postgresql" {
 				postgresUsingPort = docker.IsPortUsedByPostgres(port)
+			}
+			
+			// Check if Keycloak is using the port (for port 8080)
+			if port == 8080 {
+				keycloakUsingPort = docker.IsPortUsedByKeycloak(port)
 			}
 		}
 		
@@ -1006,6 +1012,11 @@ func checkPortAvailability(port int, service string, verbose bool) {
 			fmt.Printf("\x1b[33m⚠️  Port %d (%s): In use by current PostgreSQL instance\x1b[0m\n", port, service)
 			if verbose {
 				fmt.Printf("   \x1b[33mNote: This port is used by your running JUDO PostgreSQL database\x1b[0m\n")
+			}
+		} else if keycloakUsingPort {
+			fmt.Printf("\x1b[33m⚠️  Port %d (%s): In use by current Keycloak instance\x1b[0m\n", port, service)
+			if verbose {
+				fmt.Printf("   \x1b[33mNote: This port is used by your running JUDO Keycloak instance\x1b[0m\n")
 			}
 		} else {
 			fmt.Printf("\x1b[31m❌ Port %d (%s): In use by another process\x1b[0m\n", port, service)
@@ -1064,6 +1075,21 @@ func CreateLogCommand() *cobra.Command {
 	cmd.Flags().IntVarP(&lines, "lines", "n", 50, "Number of lines to display")
 	
 	return cmd
+}
+
+func CreateSessionCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "session",
+		Short: "Start interactive JUDO CLI session",
+		Long:  "Start an interactive session with command history, auto-completion, and persistent state",
+		Run: func(cmd *cobra.Command, args []string) {
+			// Import session package here to avoid circular imports
+			// We'll use a direct function call instead
+			fmt.Println("Starting interactive session...")
+			// For now, just print a message since we can't import session here due to circular imports
+			fmt.Println("Session command would start interactive mode here")
+		},
+	}
 }
 
 func CreateInitCommand() *cobra.Command {

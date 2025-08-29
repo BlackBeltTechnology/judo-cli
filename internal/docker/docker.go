@@ -30,12 +30,20 @@ func init() {
 	//cli, err = client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	cli, err = newDockerClient()
 	if err != nil {
-		log.Fatalf("Failed to create Docker client: %v", err)
+		// Don't fatal here - just log and continue
+		log.Printf("Warning: Failed to create Docker client: %v", err)
 	}
 }
 
 func GetDockerClient() *client.Client {
 	return cli
+}
+
+// CloseDockerClient closes the global Docker client if it exists
+func CloseDockerClient() {
+	if cli != nil {
+		cli.Close()
+	}
 }
 
 
@@ -157,9 +165,18 @@ func DockerVolumeExists(name string) bool {
 
 // Docker stop helper (no-op if not running)
 func DockerInstanceRunning(name string) bool {
-	containers, err := cli.ContainerList(context.Background(), container.ListOptions{})
+	// Create a fresh Docker client to avoid stale connections
+	client, err := newDockerClient()
 	if err != nil {
-		log.Fatalf("Failed to list Docker containers: %v", err)
+		log.Printf("Failed to create Docker client: %v", err)
+		return false
+	}
+	defer client.Close()
+	
+	containers, err := client.ContainerList(context.Background(), container.ListOptions{})
+	if err != nil {
+		log.Printf("Failed to list Docker containers: %v", err)
+		return false
 	}
 	for _, c := range containers {
 		for _, n := range c.Names {
@@ -225,6 +242,10 @@ func StartPostgres() {
 				fmt.Sprintf("POSTGRES_USER=%s", cfg.SchemaName),
 				fmt.Sprintf("POSTGRES_PASSWORD=%s", cfg.SchemaName),
 			},
+			AttachStdin:  false,
+			AttachStdout: false,
+			AttachStderr: false,
+			Tty:          false,
 		}, &container.HostConfig{
 			Binds: []string{
 				fmt.Sprintf("%s_postgresql_db:/var/lib/postgresql/pgdata", cfg.SchemaName),
@@ -242,11 +263,13 @@ func StartPostgres() {
 			RestartPolicy: container.RestartPolicy{
 				Name: "unless-stopped",
 			},
-		}, nil, nil, name)
+		}, &network.NetworkingConfig{}, nil, name)
 		if err != nil {
 			log.Fatalf("Failed to create PostgreSQL container: %v", err)
 		}
-		if err := cli.ContainerStart(context.Background(), resp.ID, container.StartOptions{}); err != nil {
+		if err := cli.ContainerStart(context.Background(), resp.ID, container.StartOptions{
+			// Ensure the container starts detached
+		}); err != nil {
 			log.Fatalf("Failed to start PostgreSQL container: %v", err)
 		}
 	} else {
@@ -288,6 +311,10 @@ func StartKeycloak() {
 				fmt.Sprintf("--http-port=%d", cfg.KeycloakPort),
 				"--http-relative-path", "/auth",
 			},
+			AttachStdin:  false,
+			AttachStdout: false,
+			AttachStderr: false,
+			Tty:          false,
 		}, &container.HostConfig{
 			NetworkMode: container.NetworkMode(cfg.AppName),
 			PortBindings: nat.PortMap{
@@ -298,11 +325,13 @@ func StartKeycloak() {
 			RestartPolicy: container.RestartPolicy{
 				Name: "unless-stopped",
 			},
-		}, nil, nil, name)
+		}, &network.NetworkingConfig{}, nil, name)
 		if err != nil {
 			log.Fatalf("Failed to create Keycloak container: %v", err)
 		}
-		if err := cli.ContainerStart(context.Background(), resp.ID, container.StartOptions{}); err != nil {
+		if err := cli.ContainerStart(context.Background(), resp.ID, container.StartOptions{
+			// Ensure the container starts detached
+		}); err != nil {
 			log.Fatalf("Failed to start Keycloak container: %v", err)
 		}
 		// Verify the container is running
