@@ -1,10 +1,25 @@
 = JUDO CLI
 
+image:https://img.shields.io/github/v/release/blackbelt-dev/judo-cli?style=for-the-badge&logo=github&label=Release[Current Release]
+image:https://img.shields.io/github/v/tag/blackbelt-dev/judo-cli?style=for-the-badge&logo=git&label=Latest%20Tag[Latest Tag]
+image:https://img.shields.io/github/actions/workflow/status/blackbelt-dev/judo-cli/build.yml?branch=develop&style=for-the-badge&logo=github-actions&label=Build%20(develop)[Build Status - Develop]
+image:https://img.shields.io/github/actions/workflow/status/blackbelt-dev/judo-cli/release.yml?branch=main&style=for-the-badge&logo=github-actions&label=Release%20(main)[Release Status - Main]
+
+image:https://img.shields.io/github/license/blackbelt-dev/judo-cli?style=for-the-badge&logo=opensourceinitiative[License]
+image:https://img.shields.io/github/issues/blackbelt-dev/judo-cli?style=for-the-badge&logo=github[GitHub Issues]
+image:https://img.shields.io/github/stars/blackbelt-dev/judo-cli?style=for-the-badge&logo=github[GitHub Stars]
+image:https://img.shields.io/github/forks/blackbelt-dev/judo-cli?style=for-the-badge&logo=github[GitHub Forks]
+
 image:https://img.shields.io/badge/Go-1.25.0-00ADD8?style=for-the-badge&logo=go&logoColor=white[Go Version]
 image:https://img.shields.io/badge/CLI-Tool-brightgreen?style=for-the-badge&logo=terminal&logoColor=white[CLI Tool]
 image:https://img.shields.io/badge/Docker-Required-2496ED?style=for-the-badge&logo=docker&logoColor=white[Docker Required]
 image:https://img.shields.io/badge/Maven-Build-C71A36?style=for-the-badge&logo=apache-maven&logoColor=white[Maven Build]
 image:https://img.shields.io/badge/JUDO-Platform-FF6B35?style=for-the-badge&logo=java&logoColor=white[JUDO Platform]
+
+image:https://img.shields.io/github/commit-activity/m/blackbelt-dev/judo-cli?style=flat-square&logo=github[Commit Activity]
+image:https://img.shields.io/github/last-commit/blackbelt-dev/judo-cli?style=flat-square&logo=github[Last Commit]
+image:https://img.shields.io/github/contributors/blackbelt-dev/judo-cli?style=flat-square&logo=github[Contributors]
+image:https://img.shields.io/github/repo-size/blackbelt-dev/judo-cli?style=flat-square&logo=github[Repo Size]
 
 image:https://img.shields.io/badge/Karaf-Runtime-FF6B35?style=flat-square&logo=apache&logoColor=white[Apache Karaf]
 image:https://img.shields.io/badge/PostgreSQL-Database-336791?style=flat-square&logo=postgresql&logoColor=white[PostgreSQL]
@@ -87,6 +102,7 @@ judo build [flags]
 ----
 
 *Flags:*
+
 - `-v, --version <version>` - Use given version as model and application version
 - `-p, --build-parallel` - Parallel maven build (log can be chaotic)
 - `-a, --build-app-module` - Build app module only
@@ -125,11 +141,13 @@ judo start [flags]
 ----
 
 *Flags:*
+
 - `--skip-keycloak` - Skip starting Keycloak
 - `--skip-watch-bundles` - Disable watching of bundle changes
 - `--options <key=value,key2=value2>` - Additional runtime options
 
 *Available Options:*
+
 - `runtime=karaf|compose` - Runtime mode
 - `dbtype=hsqldb|postgresql` - Database type
 - `compose_env=<env>` - Docker compose environment
@@ -171,6 +189,7 @@ judo log [flags]
 ----
 
 *Flags:*
+
 - `-t, --tail` - Show the end of the log file
 - `-f, --follow` - Follow log output (like tail -f)
 - `-n, --lines <number>` - Number of lines to display (default: 50)
@@ -274,6 +293,7 @@ judo prune [flags]
 ----
 
 *Flags:*
+
 - `-f, --frontend` - Clear only frontend data (application/frontend-react)
 - `-y, --yes` - Skip confirmation prompt
 
