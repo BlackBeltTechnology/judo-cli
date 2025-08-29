@@ -581,7 +581,7 @@ func getServiceStatusPrompt() string {
 		karafDir := filepath.Join(cfg.ModelDir, "application", ".karaf")
 		karafRunning = karaf.KarafRunning(karafDir)
 	}
-	statusParts = append(statusParts, fmt.Sprintf("karaf:%s", getStatusColor(karafRunning)))
+	statusParts = append(statusParts, fmt.Sprintf("%skaraf:%s", getServiceEmoji("karaf"), getStatusColor(karafRunning)))
 	
 	// Check Keycloak status
 	keycloakRunning := false
@@ -589,14 +589,14 @@ func getServiceStatusPrompt() string {
 		keycloakName := "keycloak-" + cfg.KeycloakName
 		keycloakRunning = docker.DockerInstanceRunning(keycloakName)
 	}
-	statusParts = append(statusParts, fmt.Sprintf("keycloak:%s", getStatusColor(keycloakRunning)))
+	statusParts = append(statusParts, fmt.Sprintf("%skeycloak:%s", getServiceEmoji("keycloak"), getStatusColor(keycloakRunning)))
 	
 	// Check PostgreSQL status (if using PostgreSQL)
 	postgresRunning := false
 	if cfg.DBType == "postgresql" {
 		postgresName := "postgres-" + cfg.SchemaName
 		postgresRunning = docker.DockerInstanceRunning(postgresName)
-		statusParts = append(statusParts, fmt.Sprintf("postgres:%s", getStatusColor(postgresRunning)))
+		statusParts = append(statusParts, fmt.Sprintf("%spostgres:%s", getServiceEmoji("postgres"), getStatusColor(postgresRunning)))
 	}
 	
 	statusStr := strings.Join(statusParts, " ")
@@ -609,6 +609,20 @@ func getStatusColor(running bool) string {
 		return "\x1b[32m✓\x1b[0m"
 	}
 	return "\x1b[31m✗\x1b[0m"
+}
+
+// getServiceEmoji returns emoji icons for each service type
+func getServiceEmoji(service string) string {
+	switch service {
+	case "karaf":
+		return "⚙️" // Gear for Karaf (backend server)
+	case "keycloak":
+		return "🔐" // Lock for Keycloak (security)
+	case "postgres":
+		return "🐘" // Elephant for PostgreSQL (PostgreSQL mascot)
+	default:
+		return "⚙️" // Gear for unknown services
+	}
 }
 
 // executeCommandInSession executes a command within the session context
