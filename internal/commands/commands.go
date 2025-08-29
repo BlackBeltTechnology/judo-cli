@@ -2,6 +2,7 @@ package commands
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -550,6 +551,11 @@ func CreateStartCommand() *cobra.Command {
 }
 
 func runStart(cmd *cobra.Command, _ []string) {
+	// Pre-flight checks
+	if !docker.IsDockerRunning() {
+		log.Fatal("Docker daemon is not running. Please start Docker and try again.")
+	}
+
 	// apply flags
 	if v, _ := cmd.Flags().GetBool("skip-keycloak"); v {
 		config.Options.StartKeycloak = false
@@ -563,13 +569,43 @@ func runStart(cmd *cobra.Command, _ []string) {
 		config.ApplyInlineOptions(raw)
 	}
 
-	switch config.RuntimeEnv {
+	// Port checks
+	if config.Options.StartKeycloak {
+		if !utils.IsPortAvailable(config.KeycloakPort) {
+			log.Fatalf("Keycloak port %d is already in use.", config.KeycloakPort)
+		}
+	}
+	if config.DBType == "postgresql" {
+		if !utils.IsPortAvailable(config.PostgresPort) {
+			log.Fatalf("PostgreSQL port %d is already in use.", config.PostgresPort)
+		}
+	}
+
+	runtime := config.RuntimeEnv
+	if runtime != "compose" && runtime != "karaf" {
+		fmt.Println("Unknown runtime:", runtime, " — defaulting to karaf")
+		runtime = "karaf"
+	}
+
+	if runtime == "karaf" {
+		// Karaf-specific checks
+		if !utils.IsPortAvailable(config.KarafPort) {
+			log.Fatalf("Karaf port %d is already in use.", config.KarafPort)
+		}
+		ver := utils.GetProjectVersion()
+		tarPath := filepath.Join(config.ModelDir, "application", "karaf-offline", "target",
+			fmt.Sprintf("%s-application-karaf-offline-%s.tar.gz", config.AppName, ver),
+		)
+		if _, err := os.Stat(tarPath); os.IsNotExist(err) {
+			log.Fatalf("Karaf archive not found at %s. Please run a build first.", tarPath)
+		}
+	}
+
+	// Execution
+	switch runtime {
 	case "compose":
 		docker.StartCompose()
 	case "karaf":
-		startLocalEnvironment()
-	default:
-		fmt.Println("Unknown runtime:", config.RuntimeEnv, " — defaulting to karaf")
 		startLocalEnvironment()
 	}
 }

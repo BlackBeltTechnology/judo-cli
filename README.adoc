@@ -69,7 +69,7 @@ To build the `judo` executable, navigate to the project root directory and run t
 
 [source,bash]
 ----
-go build -o judo-cli ./cmd/judo
+go build -o judo ./cmd/judo
 ----
 
 This will create an executable named `judo` in the current directory.

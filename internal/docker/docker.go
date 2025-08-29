@@ -2,14 +2,23 @@ package docker
 
 import (
 	"fmt"
+	"io/fs"
+	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
 	"judo-cli-module/internal/config"
 	"judo-cli-module/internal/utils"
-	"io/fs"
 )
+
+// IsDockerRunning checks if the Docker daemon is responsive.
+func IsDockerRunning() bool {
+	cmd := exec.Command("docker", "info")
+	err := cmd.Run()
+	return err == nil
+}
 
 func GetComposeEnvs(cfg *config.Config) []string {
 	root := filepath.Join(cfg.AppDir, "docker")
@@ -127,7 +136,7 @@ func StartPostgres() {
 
 	if !ContainerExists(name) {
 		CreateDockerNetwork(config.AppName)
-		_ = utils.ExecuteCommand(
+		cmd := utils.ExecuteCommand(
 			"docker", "run", "-d",
 			"-v", fmt.Sprintf("%s_postgresql_db:/var/lib/postgresql/pgdata", config.SchemaName),
 			"-v", fmt.Sprintf("%s_postgresql_data:/var/lib/postgresql/data", config.SchemaName),
@@ -139,6 +148,9 @@ func StartPostgres() {
 			"-p", fmt.Sprintf("%d:5432", config.PostgresPort),
 			"postgres:16.2",
 		)
+		if err := cmd.Run(); err != nil {
+			log.Fatalf("Failed to start PostgreSQL container: %v", err)
+		}
 	} else {
 		StartContainer(name)
 	}
@@ -178,9 +190,13 @@ func StartKeycloak() {
 			fmt.Sprintf("--http-port=%d", config.KeycloakPort),
 			"--http-relative-path", "/auth",
 		)
-		_ = utils.ExecuteCommand("docker", args...)
-	} else {
-		StartContainer(name)
+		cmd := utils.ExecuteCommand("docker", args...)
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			log.Fatalf("Failed to start Keycloak container: %v\nOutput: %s", err, string(output))
+		} else {
+			StartContainer(name)
+		}
+		utils.WaitForPort("localhost", config.KeycloakPort, 30*utils.TimeSecond)
 	}
-	utils.WaitForPort("localhost", config.KeycloakPort, 30*utils.TimeSecond)
 }

@@ -1,9 +1,12 @@
 package utils
 
 import (
+	"archive/tar"
 	"bufio"
 	"bytes"
+	"compress/gzip"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"os"
@@ -13,7 +16,6 @@ import (
 	"runtime"
 	"strings"
 	"time"
-	"io"
 )
 
 const TimeSecond = time.Second
@@ -235,3 +237,78 @@ func PromptForSelection(prompt string, options []string, defaultOption string) s
 	}
 }
 
+// IsPortAvailable checks if a TCP port is available by attempting to connect to it.
+func IsPortAvailable(port int) bool {
+	address := fmt.Sprintf("127.0.0.1:%d", port)
+	conn, err := net.DialTimeout("tcp", address, 1*time.Second)
+
+	if err != nil {
+		// Could not connect, so port is likely available.
+		return true
+	}
+
+	// Successfully connected, so port is in use.
+	_ = conn.Close()
+	return false
+}
+
+// UntarGz decompresses a .tar.gz file to a destination directory, stripping leading path components.
+func UntarGz(src, dest string, stripComponents int) error {
+	file, err := os.Open(src)
+	if err != nil {
+		return fmt.Errorf("failed to open archive: %w", err)
+	}
+	defer file.Close()
+
+	gzr, err := gzip.NewReader(file)
+	if err != nil {
+		return fmt.Errorf("failed to create gzip reader: %w", err)
+	}
+	defer gzr.Close()
+
+	tr := tar.NewReader(gzr)
+
+	for {
+		header, err := tr.Next()
+		if err == io.EOF {
+			return nil // End of archive
+		}
+		if err != nil {
+			return fmt.Errorf("failed to read tar header: %w", err)
+		}
+
+		// Strip leading path components
+		strippedName := ""
+		parts := strings.Split(header.Name, "/")
+		if len(parts) > stripComponents {
+			strippedName = strings.Join(parts[stripComponents:], "/")
+		}
+		if strippedName == "" {
+			continue // Skip empty paths (like the top-level directory itself)
+		}
+
+		target := filepath.Join(dest, strippedName)
+
+		switch header.Typeflag {
+		case tar.TypeDir:
+			if err := os.MkdirAll(target, os.FileMode(header.Mode)); err != nil {
+				return fmt.Errorf("failed to create directory: %w", err)
+			}
+		case tar.TypeReg:
+			if err := os.MkdirAll(filepath.Dir(target), 0755); err != nil {
+				return fmt.Errorf("failed to create parent directory for file: %w", err)
+			}
+			outFile, err := os.OpenFile(target, os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
+			if err != nil {
+				return fmt.Errorf("failed to create file: %w", err)
+			}
+			if _, err := io.Copy(outFile, tr); err != nil {
+				outFile.Close()
+				return fmt.Errorf("failed to write file content: %w", err)
+			}
+			outFile.Close()
+		default:
+			log.Printf("unsupported file type in archive: %c for %s", header.Typeflag, header.Name)
+		}
+	}
+}

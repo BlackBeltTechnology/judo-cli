@@ -2,6 +2,7 @@ package karaf
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -56,17 +57,16 @@ func StartKaraf() {
 		fmt.Sprintf("%s-application-karaf-offline-%s.tar.gz", config.AppName, ver),
 	)
 	// extract
-	_ = utils.ExecuteCommand("tar", "xzf", tarPath, "-C", karafDir)
+	if err := utils.UntarGz(tarPath, karafDir, 1); err != nil {
+		log.Fatalf("Failed to extract Karaf archive: %v", err)
+	}
 
-	// flatten top-level dir if present
-	entries, _ := os.ReadDir(karafDir)
-	if len(entries) == 1 && entries[0].IsDir() {
-		top := filepath.Join(karafDir, entries[0].Name())
-		children, _ := os.ReadDir(top)
-		for _, ch := range children {
-			_ = os.Rename(filepath.Join(top, ch.Name()), filepath.Join(karafDir, ch.Name()))
+	// Ensure karaf script is executable
+	karafScript := filepath.Join(karafDir, "bin", "karaf")
+	if _, err := os.Stat(karafScript); err == nil {
+		if err := os.Chmod(karafScript, 0755); err != nil {
+			log.Printf("Warning: could not make karaf script executable: %v", err)
 		}
-		_ = os.RemoveAll(top)
 	}
 
 	// tweak http port
@@ -82,10 +82,12 @@ func StartKaraf() {
 
 	// start in background, write logs to console.out
 	consoleOut, _ := os.Create(filepath.Join(karafDir, "console.out"))
-	ecmd := utils.ExecuteCommand(filepath.Join(karafDir, "bin", "karaf"), "debug", "run", "clean")
+	ecmd := utils.ExecuteCommand(filepath.Join(karafDir, "bin", "karaf"), "run", "clean")
 	ecmd.Stdout = consoleOut
 	ecmd.Stderr = consoleOut
-	_ = ecmd.Start()
+	if err := ecmd.Start(); err != nil {
+		log.Fatalf("Failed to start Karaf: %v", err)
+	}
 
 	fmt.Printf("Karaf started (pid %d). Logs: %s\n", ecmd.Process.Pid, consoleOut.Name())
 }

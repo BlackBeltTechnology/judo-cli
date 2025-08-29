@@ -1,0 +1,85 @@
+name: Build and Release
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - develop
+
+jobs:
+  build:
+    name: Build for ${{ matrix.os }}-${{ matrix.arch }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [windows, linux, darwin]
+        arch: [amd64, arm64]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Fetches all history for all branches and tags
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - name: Generate version number
+        id: version
+        run: echo "VERSION=$(git describe --tags --always --dirty)" >> $GITHUB_ENV
+
+      - name: Build
+        run: |
+          BINARY_NAME="judo"
+          if [ "${{ matrix.os }}" = "windows" ]; then
+            BINARY_NAME="${BINARY_NAME}.exe"
+          fi
+          GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} go build -ldflags="-X main.version=${{ env.VERSION }}" -o "$BINARY_NAME" judo.go
+
+      - name: Package artifact
+        run: |
+          PACKAGE_NAME="judo-${{ env.VERSION }}-${{ matrix.os }}-${{ matrix.arch }}"
+          BINARY_NAME="judo"
+          if [ "${{ matrix.os }}" = "windows" ]; then
+            BINARY_NAME="${BINARY_NAME}.exe"
+            zip "${PACKAGE_NAME}.zip" "${BINARY_NAME}"
+          else
+            tar -czf "${PACKAGE_NAME}.tar.gz" "$BINARY_NAME"
+          fi
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: judo-artifacts
+          path: |
+            judo-*.zip
+            judo-*.tar.gz
+
+  release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: build
+    steps:
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: judo-artifacts
+          path: artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/*
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
