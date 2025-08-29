@@ -1,5 +1,16 @@
 = JUDO CLI
 
+image:https://img.shields.io/badge/Go-1.25.0-00ADD8?style=for-the-badge&logo=go&logoColor=white[Go Version]
+image:https://img.shields.io/badge/CLI-Tool-brightgreen?style=for-the-badge&logo=terminal&logoColor=white[CLI Tool]
+image:https://img.shields.io/badge/Docker-Required-2496ED?style=for-the-badge&logo=docker&logoColor=white[Docker Required]
+image:https://img.shields.io/badge/Maven-Build-C71A36?style=for-the-badge&logo=apache-maven&logoColor=white[Maven Build]
+image:https://img.shields.io/badge/JUDO-Platform-FF6B35?style=for-the-badge&logo=java&logoColor=white[JUDO Platform]
+
+image:https://img.shields.io/badge/Karaf-Runtime-FF6B35?style=flat-square&logo=apache&logoColor=white[Apache Karaf]
+image:https://img.shields.io/badge/PostgreSQL-Database-336791?style=flat-square&logo=postgresql&logoColor=white[PostgreSQL]
+image:https://img.shields.io/badge/Keycloak-Auth-FF6B35?style=flat-square&logo=redhat&logoColor=white[Keycloak]
+image:https://img.shields.io/badge/Interactive-Session-00D4AA?style=flat-square&logo=gnubash&logoColor=white[Interactive Session]
+
 == Project Overview
 
 This project is a command-line interface (CLI) tool named `judo`, written in Go. It is designed to manage the lifecycle of JUDO applications. The tool utilizes the Cobra library for its command structure and interacts with several external tools and services:
