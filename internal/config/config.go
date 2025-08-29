@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"judo-cli-module/internal/utils"
 )
 
 var (
@@ -275,3 +277,17 @@ func SetupEnvironment() {
 
 // Profile is the global profile variable used by the CLI
 var Profile string
+
+// IsProjectInitialized checks if a JUDO project is initialized in the current directory
+func IsProjectInitialized() bool {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return false
+	}
+	
+	// Check for judo.properties or judo-version.properties
+	judoPropsPath := filepath.Join(cwd, "judo.properties")
+	judoVersionPropsPath := filepath.Join(cwd, "judo-version.properties")
+	
+	return utils.FileExists(judoPropsPath) || utils.FileExists(judoVersionPropsPath)
+}

@@ -129,6 +129,10 @@ func CreateStatusCommand() *cobra.Command {
 		Short: "Print status of Karaf/Keycloak/PostgreSQL containers and resources",
 		Long:  help.StatusLongHelp(),
 		RunE: func(_ *cobra.Command, _ []string) error {
+			// Check if JUDO project is initialized
+			if err := requireJudoProject(); err != nil {
+				return err
+			}
 			cfg := config.GetConfig()
 			fmt.Println("Runtime:", cfg.Runtime, " DB:", cfg.DBType)
 			if cfg.Runtime == "karaf" {
@@ -190,6 +194,10 @@ func CreateDumpCommand() *cobra.Command {
 		Short: "Dump PostgreSQL DB data (creates <schema>_dump_YYYYMMDD_HHMMSS.tar.gz).",
 		Long:  help.DumpLongHelp(),
 		RunE: func(_ *cobra.Command, _ []string) error {
+			// Check if JUDO project is initialized
+			if err := requireJudoProject(); err != nil {
+				return err
+			}
 			cfg := config.GetConfig()
 
 			if cfg.DBType != "postgresql" {
@@ -218,6 +226,10 @@ func CreateImportCommand() *cobra.Command {
 		Short: "Import PostgreSQL DB dump (pg_restore).",
 		Long:  help.ImportLongHelp(),
 		RunE: func(_ *cobra.Command, _ []string) error {
+			// Check if JUDO project is initialized
+			if err := requireJudoProject(); err != nil {
+				return err
+			}
 			cfg := config.GetConfig()
 
 			if cfg.DBType != "postgresql" {
@@ -267,6 +279,10 @@ func CreateSchemaUpgradeCommand() *cobra.Command {
 		Short: "Apply RDBMS schema upgrade using current running database (PostgreSQL only).",
 		Long:  help.SchemaUpgradeLongHelp(),
 		RunE: func(_ *cobra.Command, _ []string) error {
+			// Check if JUDO project is initialized
+			if err := requireJudoProject(); err != nil {
+				return err
+			}
 			cfg := config.GetConfig()
 
 			if cfg.DBType != "postgresql" {
@@ -303,6 +319,10 @@ func CreateCleanCommand() *cobra.Command {
 		Short: "Stop postgresql docker container and clear data.",
 		Long:  help.CleanLongHelp(),
 		RunE: func(_ *cobra.Command, args []string) error {
+			// Check if JUDO project is initialized
+			if err := requireJudoProject(); err != nil {
+				return err
+			}
 			cfg := config.GetConfig()
 			for _, env := range docker.GetComposeEnvs(cfg) {
 				_ = docker.StopCompose(cfg, env)
@@ -335,6 +355,10 @@ func CreatePruneCommand() *cobra.Command {
 		Short: "Stop postgresql docker container and delete untracked files in this repository.",
 		Long:  help.PruneLongHelp(),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Check if JUDO project is initialized
+			if err := requireJudoProject(); err != nil {
+				return err
+			}
 			cfg := config.GetConfig()
 			st := &config.State{PruneFrontend: frontend, PruneConfirm: !yes}
 			pruneApplication(cfg, st)
@@ -389,6 +413,10 @@ func CreateStopCommand() *cobra.Command {
 		Short: "Stop application, postgresql and keycloak (if running)",
 		Long:  help.StopLongHelp(),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Check if JUDO project is initialized
+			if err := requireJudoProject(); err != nil {
+				return err
+			}
 			cfg := config.GetConfig()
 			if cfg.Runtime == "karaf" {
 				karaf.StopKaraf(cfg.KarafDir)
@@ -404,6 +432,11 @@ func CreateStopCommand() *cobra.Command {
 }
 
 func runBuild(cmd *cobra.Command, args []string) {
+	// Check if JUDO project is initialized
+	if err := requireJudoProject(); err != nil {
+		log.Fatal(err)
+	}
+
 	// reflect skip-* flags into options
 	if v, _ := cmd.Flags().GetBool("skip-model"); v {
 		config.Options.BuildModel = false
@@ -539,6 +572,11 @@ func CreateStartCommand() *cobra.Command {
 }
 
 func runStart(cmd *cobra.Command, _ []string) {
+	// Check if JUDO project is initialized
+	if err := requireJudoProject(); err != nil {
+		log.Fatal(err)
+	}
+
 	cfg := config.GetConfig()
 	// Pre-flight checks
 	if !docker.IsDockerRunning() {
@@ -659,73 +697,145 @@ func CreateDoctorCommand() *cobra.Command {
 	return cmd
 }
 
+// doctorMessage prints colorized messages with emojis for the doctor command
+func doctorMessage(emoji, color, message string) {
+	colorCode := ""
+	switch color {
+	case "green":
+		colorCode = "\x1b[1;32m" // Bold green
+	case "red":
+		colorCode = "\x1b[1;31m" // Bold red
+	case "yellow":
+		colorCode = "\x1b[1;33m" // Bold yellow
+	case "blue":
+		colorCode = "\x1b[1;34m" // Bold blue
+	case "cyan":
+		colorCode = "\x1b[1;36m" // Bold cyan
+	default:
+		colorCode = "\x1b[0m" // Reset
+	}
+	fmt.Printf("%s%s %s\x1b[0m\n", emoji, colorCode, message)
+}
+
 func runDoctor(verbose bool) error {
-	fmt.Println("🩺 JUDO CLI Doctor - Checking system health...")
+	doctorMessage("🩺", "cyan", "JUDO CLI Doctor - Checking system health...")
 	fmt.Println()
 
 	allPassed := true
-	
+
 	// Check Go
-	if checkGo(verbose) {
-		fmt.Printf("✅ Go: Available\n")
-	} else {
-		fmt.Printf("❌ Go: Not found\n")
-		allPassed = false
-	}
+	//	if checkGo(verbose) {
+	//		fmt.Printf("✅ Go: Available\n")
+	//	} else {
+	//		fmt.Printf("❌ Go: Not found\n")
+	//		allPassed = false
+	//	}
 
 	// Check Docker
 	if checkDocker(verbose) {
-		fmt.Printf("✅ Docker: Available and running\n")
+		doctorMessage("✅", "green", "Docker: Available and running")
 	} else {
-		fmt.Printf("❌ Docker: Not available or not running\n")
+		doctorMessage("❌", "red", "Docker: Not available or not running")
 		allPassed = false
 	}
 
 	// Check Maven
 	if checkMaven(verbose) {
-		fmt.Printf("✅ Maven: Available\n")
+		doctorMessage("✅", "green", "Maven: Available")
 	} else {
-		fmt.Printf("❌ Maven: Not found\n")
+		doctorMessage("❌", "red", "Maven: Not found")
 		allPassed = false
 	}
 
 	// Check Git
 	if checkGit(verbose) {
-		fmt.Printf("✅ Git: Available\n")
+		doctorMessage("✅", "green", "Git: Available")
 	} else {
-		fmt.Printf("❌ Git: Not found\n")
+		doctorMessage("❌", "red", "Git: Not found")
 		allPassed = false
 	}
 
 	// Check Java
 	if checkJava(verbose) {
-		fmt.Printf("✅ Java: Available\n")
+		doctorMessage("✅", "green", "Java: Available")
 	} else {
-		fmt.Printf("⚠️  Java: Not found (optional for some operations)\n")
+		doctorMessage("⚠️ ", "yellow", "Java: Not found (optional for some operations)")
 	}
 
-	// Check SDKMAN (optional)
-	if checkSDKMAN(verbose) {
-		fmt.Printf("✅ SDKMAN: Available\n")
+	// Check Maven Daemon (mvnd)
+	if checkMavenDaemon(verbose) {
+		doctorMessage("✅", "green", "Maven Daemon (mvnd): Available")
 	} else {
-		fmt.Printf("⚠️  SDKMAN: Not found (optional for version management)\n")
+		doctorMessage("⚠️ ", "yellow", "Maven Daemon (mvnd): Not found")
+	}
+
+	// Check SDKMAN and install if missing
+	sdkmanAvailable := checkSDKMAN(verbose)
+	if sdkmanAvailable {
+		doctorMessage("✅", "green", "SDKMAN: Available")
+	} else {
+		doctorMessage("⚠️ ", "yellow", "SDKMAN: Not found - installing now...")
+
+		// Always install SDKMAN automatically (no prompt)
+		fmt.Printf("   \x1b[33mInstalling SDKMAN...\x1b[0m\n")
+		if err := utils.InstallSDKMAN(); err != nil {
+			fmt.Printf("   \x1b[31m❌ Failed to install SDKMAN: %v\x1b[0m\n", err)
+			if verbose {
+				if utils.HaveWSL() {
+					fmt.Printf("   \x1b[33mOn Windows, WSL is required for SDKMAN installation\x1b[0m\n")
+				}
+			}
+		} else {
+			fmt.Printf("   \x1b[32m✅ SDKMAN installed successfully\x1b[0m\n")
+			sdkmanAvailable = true
+			// SDKMAN is now available, so mark this check as passed
+			allPassed = true
+		}
 	}
 
 	// Check ports
 	fmt.Println()
-	fmt.Println("🔌 Port availability checks:")
+	doctorMessage("🔌", "blue", "Port availability checks:")
 	checkPortAvailability(8080, "Keycloak (default)", verbose)
 	checkPortAvailability(8181, "Karaf (default)", verbose)
 	checkPortAvailability(5432, "PostgreSQL (default)", verbose)
 
+	// Check if this is a JUDO project directory
+	fmt.Println()
+	isProjectInitialized := config.IsProjectInitialized()
+	if isProjectInitialized {
+		doctorMessage("✅", "green", "JUDO Project: Initialized")
+
+		// If SDKMAN is available and we're in a JUDO project, install required tools
+		if sdkmanAvailable {
+			fmt.Println()
+			fmt.Printf("\x1b[1;33m🔧 Installing required development tools via SDKMAN...\x1b[0m\n")
+			if err := utils.InstallRequiredTools(); err != nil {
+				fmt.Printf("\x1b[33m⚠️  Failed to install required tools: %v\x1b[0m\n", err)
+				if verbose {
+					fmt.Printf("   \x1b[33mYou can manually install tools using 'sdk install maven' and 'sdk install java'\x1b[0m\n")
+				}
+			} else {
+				fmt.Printf("\x1b[32m✅ Development tools installed successfully\x1b[0m\n")
+			}
+		} else if verbose {
+			fmt.Printf("   \x1b[33mSDKMAN not available - cannot auto-install Maven/Java\x1b[0m\n")
+		}
+	} else {
+		doctorMessage("ℹ️ ", "blue", "JUDO Project: Not initialized in this directory")
+		if verbose {
+			fmt.Printf("   \x1b[36mRun 'judo init' to initialize a new JUDO project\x1b[0m\n")
+		}
+	}
+
 	fmt.Println()
 	if allPassed {
-		fmt.Println("🎉 All essential tools are available! JUDO CLI should work properly.")
+		doctorMessage("🎉", "green", "All essential tools are available! JUDO CLI should work properly.")
 	} else {
-		fmt.Println("🚨 Some essential tools are missing. Please install them before using JUDO CLI.")
+		doctorMessage("🚨", "red", "Some essential tools are missing. Please install them before using JUDO CLI.")
 		return fmt.Errorf("system health check failed")
 	}
-	
+
 	return nil
 }
 
@@ -801,17 +911,34 @@ func checkJava(verbose bool) bool {
 	return err == nil
 }
 
+func checkMavenDaemon(verbose bool) bool {
+	// Check mvnd first (preferred)
+	version, err := utils.RunCapture("mvnd", "--version")
+	if err == nil {
+		if verbose {
+			fmt.Printf("   Maven Daemon (mvnd) version: %s\n", strings.Split(version, "\n")[0])
+		}
+		return true
+	}
+
+	// mvnd not found
+	if verbose {
+		fmt.Printf("   Maven Daemon (mvnd) not found\n")
+	}
+	return false
+}
+
 func checkSDKMAN(verbose bool) bool {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return false
 	}
-	
+
 	sdkmanDir := filepath.Join(home, ".sdkman")
 	if _, err := os.Stat(sdkmanDir); os.IsNotExist(err) {
 		return false
 	}
-	
+
 	if verbose {
 		fmt.Printf("   SDKMAN directory found: %s\n", sdkmanDir)
 	}
@@ -820,13 +947,21 @@ func checkSDKMAN(verbose bool) bool {
 
 func checkPortAvailability(port int, service string, verbose bool) {
 	if utils.IsPortAvailable(port) {
-		fmt.Printf("✅ Port %d (%s): Available\n", port, service)
+		fmt.Printf("\x1b[32m✅ Port %d (%s): Available\x1b[0m\n", port, service)
 	} else {
-		fmt.Printf("⚠️  Port %d (%s): In use\n", port, service)
+		fmt.Printf("\x1b[33m⚠️  Port %d (%s): In use\x1b[0m\n", port, service)
 		if verbose {
-			fmt.Printf("   Note: This port is currently occupied, which may cause conflicts\n")
+			fmt.Printf("   \x1b[33mNote: This port is currently occupied, which may cause conflicts\x1b[0m\n")
 		}
 	}
+}
+
+// requireJudoProject checks if a JUDO project is initialized and returns an error if not
+func requireJudoProject() error {
+	if !config.IsProjectInitialized() {
+		return fmt.Errorf("no JUDO project initialized in this directory\nRun 'judo init' to initialize a new JUDO project")
+	}
+	return nil
 }
 
 func CreateInitCommand() *cobra.Command {

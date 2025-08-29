@@ -9,6 +9,7 @@ import (
 	"judo-cli-module/internal/commands"
 	"judo-cli-module/internal/config"
 	"judo-cli-module/internal/help"
+	"judo-cli-module/internal/session"
 )
 
 func main() {
@@ -42,10 +43,22 @@ func main() {
 		commands.CreateStopCommand(),
 		commands.CreateStatusCommand(),
 		commands.CreateInitCommand(),
+		createSessionCommand(),
 	)
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
+	}
+}
+
+func createSessionCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "session",
+		Short: "Start interactive JUDO CLI session",
+		Long:  "Start an interactive session with command history, auto-completion, and persistent state",
+		Run: func(cmd *cobra.Command, args []string) {
+			session.StartInteractiveSession()
+		},
 	}
 }

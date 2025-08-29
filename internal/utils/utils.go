@@ -110,6 +110,15 @@ func GetProjectVersion() string {
 	return strings.TrimSpace(out.String())
 }
 
+// GetCurrentDir returns the current working directory
+func GetCurrentDir() string {
+	wd, err := os.Getwd()
+	if err != nil {
+		return "unknown"
+	}
+	return wd
+}
+
 func ReplaceInFile(path, pattern, repl string) error {
 	b, err := os.ReadFile(path)
 	if err != nil {
@@ -201,9 +210,66 @@ fi`,
 		return nil
 	}
 	script := fmt.Sprintf(`. %q; %s`,
-			initScript,
-			body)
+		initScript,
+		body)
 	return RunShell(script)
+}
+
+// InstallSDKMAN installs SDKMAN on Unix systems (macOS/Linux)
+func InstallSDKMAN() error {
+	if runtime.GOOS == "windows" {
+		if !HaveWSL() {
+			return fmt.Errorf("WSL not found — cannot install SDKMAN on Windows without WSL")
+		}
+		// Install SDKMAN inside WSL
+		script := `curl -s "https://get.sdkman.io" | bash`
+		return RunWSL(script, "")
+	}
+
+	// Unix (macOS/Linux) installation
+	fmt.Println("Installing SDKMAN...")
+
+	// Download and install SDKMAN using shell to properly handle pipes
+	script := `curl -s "https://get.sdkman.io" | bash`
+	if err := RunShell(script); err != nil {
+		return fmt.Errorf("failed to install SDKMAN: %w", err)
+	}
+
+	// Source SDKMAN to make it available in current session
+	home, _ := os.UserHomeDir()
+	initScript := filepath.Join(home, ".sdkman", "bin", "sdkman-init.sh")
+	if _, err := os.Stat(initScript); err != nil {
+		return fmt.Errorf("SDKMAN installation completed but init script not found")
+	}
+
+	// Source SDKMAN to initialize it
+	return RunShell(fmt.Sprintf(`. %q && sdk version`, initScript))
+}
+
+// InstallRequiredTools installs Maven and Java using SDKMAN in a JUDO project directory
+func InstallRequiredTools() error {
+	fmt.Println("Installing required tools via SDKMAN...")
+
+	// Install Maven
+	err := SdkmanRun("sdk install maven")
+	if err != nil {
+		return fmt.Errorf("failed to install Maven: %w", err)
+	}
+
+	// Install Java (latest LTS version)
+	err = SdkmanRun("sdk install java")
+	if err != nil {
+		return fmt.Errorf("failed to install Java: %w", err)
+	}
+
+	// Set Java as default
+	//err = SdkmanRun("sdk default java")
+	//if err != nil {
+	//	return fmt.Errorf("failed to set Java as default: %w", err)
+	//}
+
+	fmt.Println("✅ Required tools installed successfully")
+	return nil
 }
 
 // FileExists checks if a file exists at the given path.

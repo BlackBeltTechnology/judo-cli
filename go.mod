@@ -3,6 +3,7 @@ module judo-cli-module
 go 1.25.0
 
 require (
+	github.com/chzyer/readline v1.5.1
 	github.com/docker/docker v28.3.3+incompatible
 	github.com/docker/go-connections v0.5.0
 	github.com/spf13/cobra v1.9.1
