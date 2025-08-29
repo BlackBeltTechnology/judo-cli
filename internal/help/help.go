@@ -5,6 +5,8 @@ func RootHelp() string {
 
 USAGE: judo COMMANDS... [OPTIONS...]
     env <env>                               Use alternate env (custom properties file). Default judo is used.
+    doctor                                  Check system health and required dependencies.
+        -v --verbose                        Show detailed version information for all tools.
     clean                                   Stop postgresql docker container and clear data.
     prune                                   Stop postgresql docker container and delete untracked files in this repository.
         -f                                  Clear only frontend data.
@@ -253,6 +255,35 @@ Behavior:
   • Optimizes for speed: skips validations, schema/docker builds, favors 'package'.
   • Starts local environment first (Karaf runtime).
   • Useful for quick iteration; not for reproducible CI builds.
+`
+}
+
+func DoctorLongHelp() string {
+	return `Check system health and required dependencies for JUDO CLI.
+
+This command verifies that all necessary tools and dependencies are available:
+
+Essential Tools (required):
+  • Go - Programming language runtime
+  • Docker - Container platform (must be running)
+  • Maven/mvnd - Build tool (mvnd preferred)
+  • Git - Version control system
+
+Optional Tools:
+  • Java - Required for some operations
+  • SDKMAN - SDK version management
+
+Port Availability:
+  • 8080 - Keycloak default port
+  • 8181 - Karaf default port  
+  • 5432 - PostgreSQL default port
+
+Options:
+  -v, --verbose   Show detailed version information for all tools
+
+Examples:
+  judo doctor           # Quick health check
+  judo doctor -v        # Detailed health check with versions
 `
 }
 

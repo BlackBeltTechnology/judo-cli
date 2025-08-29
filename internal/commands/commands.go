@@ -645,6 +645,190 @@ func pruneApplication(cfg *config.Config, st *config.State) {
 	_ = utils.Run("git", "clean", "-dffx", cfg.ModelDir)
 }
 
+func CreateDoctorCommand() *cobra.Command {
+	var verbose bool
+	cmd := &cobra.Command{
+		Use:   "doctor",
+		Short: "Check system health and required dependencies",
+		Long:  help.DoctorLongHelp(),
+		RunE: func(_ *cobra.Command, _ []string) error {
+			return runDoctor(verbose)
+		},
+	}
+	cmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "Show detailed output for all checks")
+	return cmd
+}
+
+func runDoctor(verbose bool) error {
+	fmt.Println("🩺 JUDO CLI Doctor - Checking system health...")
+	fmt.Println()
+
+	allPassed := true
+	
+	// Check Go
+	if checkGo(verbose) {
+		fmt.Printf("✅ Go: Available\n")
+	} else {
+		fmt.Printf("❌ Go: Not found\n")
+		allPassed = false
+	}
+
+	// Check Docker
+	if checkDocker(verbose) {
+		fmt.Printf("✅ Docker: Available and running\n")
+	} else {
+		fmt.Printf("❌ Docker: Not available or not running\n")
+		allPassed = false
+	}
+
+	// Check Maven
+	if checkMaven(verbose) {
+		fmt.Printf("✅ Maven: Available\n")
+	} else {
+		fmt.Printf("❌ Maven: Not found\n")
+		allPassed = false
+	}
+
+	// Check Git
+	if checkGit(verbose) {
+		fmt.Printf("✅ Git: Available\n")
+	} else {
+		fmt.Printf("❌ Git: Not found\n")
+		allPassed = false
+	}
+
+	// Check Java
+	if checkJava(verbose) {
+		fmt.Printf("✅ Java: Available\n")
+	} else {
+		fmt.Printf("⚠️  Java: Not found (optional for some operations)\n")
+	}
+
+	// Check SDKMAN (optional)
+	if checkSDKMAN(verbose) {
+		fmt.Printf("✅ SDKMAN: Available\n")
+	} else {
+		fmt.Printf("⚠️  SDKMAN: Not found (optional for version management)\n")
+	}
+
+	// Check ports
+	fmt.Println()
+	fmt.Println("🔌 Port availability checks:")
+	checkPortAvailability(8080, "Keycloak (default)", verbose)
+	checkPortAvailability(8181, "Karaf (default)", verbose)
+	checkPortAvailability(5432, "PostgreSQL (default)", verbose)
+
+	fmt.Println()
+	if allPassed {
+		fmt.Println("🎉 All essential tools are available! JUDO CLI should work properly.")
+	} else {
+		fmt.Println("🚨 Some essential tools are missing. Please install them before using JUDO CLI.")
+		return fmt.Errorf("system health check failed")
+	}
+	
+	return nil
+}
+
+func checkGo(verbose bool) bool {
+	version, err := utils.RunCapture("go", "version")
+	if verbose && err == nil {
+		fmt.Printf("   Go version: %s\n", version)
+	}
+	return err == nil
+}
+
+func checkDocker(verbose bool) bool {
+	// Check if docker command exists
+	version, err := utils.RunCapture("docker", "--version")
+	if err != nil {
+		return false
+	}
+	if verbose {
+		fmt.Printf("   Docker version: %s\n", version)
+	}
+
+	// Check if docker daemon is running
+	_, err = utils.RunCapture("docker", "info")
+	if err != nil {
+		if verbose {
+			fmt.Printf("   Docker daemon status: Not running\n")
+		}
+		return false
+	}
+	if verbose {
+		fmt.Printf("   Docker daemon status: Running\n")
+	}
+	return true
+}
+
+func checkMaven(verbose bool) bool {
+	// Check mvnd first (preferred)
+	version, err := utils.RunCapture("mvnd", "--version")
+	if err == nil {
+		if verbose {
+			fmt.Printf("   Maven Daemon (mvnd) version: %s\n", strings.Split(version, "\n")[0])
+		}
+		return true
+	}
+
+	// Fallback to mvn
+	version, err = utils.RunCapture("mvn", "--version")
+	if err == nil {
+		if verbose {
+			fmt.Printf("   Maven version: %s\n", strings.Split(version, "\n")[0])
+		}
+		return true
+	}
+	return false
+}
+
+func checkGit(verbose bool) bool {
+	version, err := utils.RunCapture("git", "--version")
+	if verbose && err == nil {
+		fmt.Printf("   Git version: %s\n", version)
+	}
+	return err == nil
+}
+
+func checkJava(verbose bool) bool {
+	version, err := utils.RunCapture("java", "-version")
+	if verbose && err == nil {
+		lines := strings.Split(version, "\n")
+		if len(lines) > 0 {
+			fmt.Printf("   Java version: %s\n", lines[0])
+		}
+	}
+	return err == nil
+}
+
+func checkSDKMAN(verbose bool) bool {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return false
+	}
+	
+	sdkmanDir := filepath.Join(home, ".sdkman")
+	if _, err := os.Stat(sdkmanDir); os.IsNotExist(err) {
+		return false
+	}
+	
+	if verbose {
+		fmt.Printf("   SDKMAN directory found: %s\n", sdkmanDir)
+	}
+	return true
+}
+
+func checkPortAvailability(port int, service string, verbose bool) {
+	if utils.IsPortAvailable(port) {
+		fmt.Printf("✅ Port %d (%s): Available\n", port, service)
+	} else {
+		fmt.Printf("⚠️  Port %d (%s): In use\n", port, service)
+		if verbose {
+			fmt.Printf("   Note: This port is currently occupied, which may cause conflicts\n")
+		}
+	}
+}
+
 func CreateInitCommand() *cobra.Command {
 	var projectGroupId string
 	var modelName string

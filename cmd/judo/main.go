@@ -27,6 +27,7 @@ func main() {
 
 	// Add commands
 	rootCmd.AddCommand(
+		commands.CreateDoctorCommand(),
 		commands.CreateCleanCommand(),
 		commands.CreatePruneCommand(),
 		commands.CreateUpdateCommand(),

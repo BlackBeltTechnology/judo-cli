@@ -259,3 +259,19 @@ type bufioScanner struct {
 func NewScanner(r io.Reader) Scanner {
 	return &bufioScanner{bufio.NewScanner(r)}
 }
+
+// LoadProperties loads the configuration properties for the current profile
+func LoadProperties() {
+	// This function is called in PersistentPreRun to ensure config is loaded
+	// The actual loading happens in GetConfig() via loadProperties()
+	GetConfig()
+}
+
+// SetupEnvironment sets up the environment based on loaded properties
+func SetupEnvironment() {
+	// Environment setup is handled by the individual commands
+	// This function exists for compatibility with the main.go structure
+}
+
+// Profile is the global profile variable used by the CLI
+var Profile string
