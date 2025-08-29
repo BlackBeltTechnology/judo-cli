@@ -164,7 +164,8 @@ func DockerInstanceRunning(name string) bool {
 	for _, c := range containers {
 		for _, n := range c.Names {
 			if strings.TrimPrefix(n, "/") == name {
-				return true
+				// Check if container is actually running (not just exists)
+				return strings.HasPrefix(c.State, "running")
 			}
 		}
 	}
@@ -238,6 +239,9 @@ func StartPostgres() {
 					},
 				},
 			},
+			RestartPolicy: container.RestartPolicy{
+				Name: "unless-stopped",
+			},
 		}, nil, nil, name)
 		if err != nil {
 			log.Fatalf("Failed to create PostgreSQL container: %v", err)
@@ -290,6 +294,9 @@ func StartKeycloak() {
 				nat.Port(fmt.Sprintf("%d/tcp", cfg.KeycloakPort)): []nat.PortBinding{
 					{HostIP: "0.0.0.0", HostPort: fmt.Sprintf("%d", cfg.KeycloakPort)},
 				},
+			},
+			RestartPolicy: container.RestartPolicy{
+				Name: "unless-stopped",
 			},
 		}, nil, nil, name)
 		if err != nil {
