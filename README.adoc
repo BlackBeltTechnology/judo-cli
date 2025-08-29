@@ -10,58 +10,327 @@ This project is a command-line interface (CLI) tool named `judo`, written in Go.
 
 The CLI reads its configuration from `judo.properties` files, with the ability to use different environments via a `--env` or `-e` flag.
 
-== Managing the Application
+The tool operates in two main runtime modes:
+- **karaf**: Local development with Karaf runtime + Docker services
+- **compose**: Full Docker Compose environment
 
-Once the `judo` executable is built, you can use it to manage your JUDO application. Here are some of the key commands:
+== Command Reference
 
-=== Build the application
+=== Global Flags
 
-To build the application, run:
+[cols="1,3"]
+|===
+| Flag | Description
 
-[source,bash]
-----
-./judo build
-----
+| `-e, --env <environment>` | Use alternate environment profile (default: judo)
+|===
 
-This command executes a Maven build (`mvnd clean install`). It supports various flags to customize the build process, such as `--build-parallel` (`-p`) for parallel builds and `--version` (`-v`) to specify a version number.
+=== System Commands
 
-=== Start the application
-
-To start the application, run:
-
-[source,bash]
-----
-./judo start
-----
-
-This command starts the application. It can start a Docker Compose environment or a local environment with Karaf, PostgreSQL, and Keycloak, depending on the configuration.
-
-=== Stop the application
-
-To stop the running application and associated services, run:
+==== `doctor`
+Check system health and required dependencies
 
 [source,bash]
 ----
-./judo stop
+judo doctor [flags]
 ----
 
-=== Clean the environment
+*Flags:*
+- `-v, --verbose` - Show detailed version information for all tools
 
-To stop and remove Docker containers, networks, and volumes associated with the application, run:
+*Description:* Verifies that all necessary tools are available (Docker, Maven, Git, Java, SDKMAN) and checks port availability for default services.
+
+==== `init`
+Initialize a new JUDO project
 
 [source,bash]
 ----
-./judo clean
+judo init [flags]
 ----
 
-=== Update dependencies
+*Flags:*
+- `-g, --group-id <groupId>` - Project GroupId (e.g., com.example)
+- `-n, --model-name <name>` - Target model name (e.g., MyProject)
+- `-t, --type <type>` - Type of project to create (ESM or JSL, default: ESM)
 
-To update the dependency versions in the JUDO project, run:
+*Description:* Creates a new JUDO project structure using Maven archetypes. Prompts for missing information if not provided via flags.
+
+==== `session`
+Start interactive JUDO CLI session
 
 [source,bash]
 ----
-./judo update
+judo session
 ----
+
+*Description:* Launches an interactive terminal session with command history, auto-completion, and persistent state. Includes dynamic service status indicators in the prompt.
+
+=== Build Commands
+
+==== `build`
+Build project
+
+[source,bash]
+----
+judo build [flags]
+----
+
+*Flags:*
+- `-v, --version <version>` - Use given version as model and application version
+- `-p, --build-parallel` - Parallel maven build (log can be chaotic)
+- `-a, --build-app-module` - Build app module only
+- `-f, --build-frontend-module` - Build frontend module only
+- `--docker` - Build docker images
+- `--skip-model` - Skip model building
+- `--skip-backend` - Skip backend building
+- `--skip-frontend` - Skip frontend building
+- `--skip-karaf` - Skip Backend Karaf building
+- `--skip-schema` - Skip building schema migration image
+- `--build-schema-cli` - Build schema CLI standalone JAR file
+- `-m, --maven-argument <args>` - Add extra maven argument (quoted)
+- `-q, --quick` - Quick mode (cache + skip validations)
+- `-i, --ignore-checksum` - Ignore checksum errors
+
+*Description:* Executes a Maven build with configurable components. By default builds all components (model, backend, frontend, karaf).
+
+==== `reckless`
+Build & run fast (skips validations, favors speed)
+
+[source,bash]
+----
+judo reckless
+----
+
+*Description:* Optimized build and start sequence that skips validations, schema/docker builds, and favors speed over reproducibility. Automatically starts the local environment after building.
+
+=== Application Lifecycle Commands
+
+==== `start`
+Start application
+
+[source,bash]
+----
+judo start [flags]
+----
+
+*Flags:*
+- `--skip-keycloak` - Skip starting Keycloak
+- `--skip-watch-bundles` - Disable watching of bundle changes
+- `--options <key=value,key2=value2>` - Additional runtime options
+
+*Available Options:*
+- `runtime=karaf|compose` - Runtime mode
+- `dbtype=hsqldb|postgresql` - Database type
+- `compose_env=<env>` - Docker compose environment
+- `karaf_port=<port>` - Karaf port
+- `postgres_port=<port>` - PostgreSQL port
+- `keycloak_port=<port>` - Keycloak port
+- `compose_access_ip=<ip>` - Alternate IP address to access app
+- `karaf_enable_admin_user=1` - Enable Karaf admin user
+- `java_compiler=ejc|javac` - Java compiler selection
+
+*Description:* Starts the application and required services (PostgreSQL, Keycloak) based on runtime configuration. Includes port conflict detection and service status checking.
+
+==== `stop`
+Stop application, postgresql and keycloak (if running)
+
+[source,bash]
+----
+judo stop
+----
+
+*Description:* Stops all running services including Karaf, PostgreSQL container, and Keycloak container.
+
+==== `status`
+Print status of Karaf/Keycloak/PostgreSQL containers and resources
+
+[source,bash]
+----
+judo status
+----
+
+*Description:* Shows the running status of all services, container existence, and volume information.
+
+==== `log`
+Display or tail Karaf console log
+
+[source,bash]
+----
+judo log [flags]
+----
+
+*Flags:*
+- `-t, --tail` - Show the end of the log file
+- `-f, --follow` - Follow log output (like tail -f)
+- `-n, --lines <number>` - Number of lines to display (default: 50)
+
+*Description:* Display or continuously monitor the Karaf console.out log file. Only works with karaf runtime.
+
+=== Model and Code Generation Commands
+
+==== `generate`
+Generate application based on model in JUDO project
+
+[source,bash]
+----
+judo generate [flags]
+----
+
+*Flags:*
+- `-i, --ignore-checksum` - Ignore checksum errors and update checksums
+
+*Description:* Runs Maven with `-DgenerateApplication -DskipApplicationBuild` to generate application code from the model.
+
+==== `generate-root`
+Generate application root structure based on model in JUDO project
+
+[source,bash]
+----
+judo generate-root [flags]
+----
+
+*Flags:*
+- `-i, --ignore-checksum` - Ignore checksum errors and update checksums
+
+*Description:* Runs Maven with `-DgenerateRoot -DskipApplicationBuild -U` to generate the root project structure.
+
+==== `update`
+Update dependency versions in JUDO project
+
+[source,bash]
+----
+judo update [flags]
+----
+
+*Flags:*
+- `-i, --ignore-checksum` - Ignore checksum errors and update checksums
+
+*Description:* Updates JUDO dependency versions using Maven with `-DupdateJudoVersions=true`. Also runs SDKMAN updates if available.
+
+=== Database Commands
+
+==== `dump`
+Dump PostgreSQL DB data (creates <schema>_dump_YYYYMMDD_HHMMSS.tar.gz)
+
+[source,bash]
+----
+judo dump
+----
+
+*Description:* Creates a compressed database dump of the current PostgreSQL database. Only works with PostgreSQL database type.
+
+==== `import`
+Import PostgreSQL DB dump (pg_restore)
+
+[source,bash]
+----
+judo import [flags]
+----
+
+*Flags:*
+- `-n, --dump-name <filename>` - Dump filename to import (defaults to latest <schema>_dump_*.tar.gz)
+
+*Description:* Imports a database dump into a fresh PostgreSQL instance. Recreates containers and volumes for clean state.
+
+==== `schema-upgrade`
+Apply RDBMS schema upgrade using current running database (PostgreSQL only)
+
+[source,bash]
+----
+judo schema-upgrade
+----
+
+*Description:* Applies schema changes to an existing PostgreSQL database using the judo-rdbms-schema plugin. Requires a running database instance.
+
+=== Maintenance Commands
+
+==== `clean`
+Stop postgresql docker container and clear data
+
+[source,bash]
+----
+judo clean
+----
+
+*Description:* Removes all Docker containers, networks, and volumes associated with the application. Also removes Karaf directory if using karaf runtime.
+
+==== `prune`
+Stop postgresql docker container and delete untracked files in this repository
+
+[source,bash]
+----
+judo prune [flags]
+----
+
+*Flags:*
+- `-f, --frontend` - Clear only frontend data (application/frontend-react)
+- `-y, --yes` - Skip confirmation prompt
+
+*Description:* Uses `git clean -dffx` to remove all untracked files. Stops services before cleaning unless using `--frontend` flag.
+
+== Interactive Session Mode
+
+The JUDO CLI includes a powerful interactive session mode that provides:
+
+=== Features
+
+* **Command History**: Persistent command history across sessions
+* **Auto-completion**: Tab completion for commands and flags
+* **Dynamic Prompt**: Real-time service status indicators
+* **Enhanced Help**: Contextual suggestions and help
+* **Session Management**: Track session duration and command count
+
+=== Starting a Session
+
+[source,bash]
+----
+judo session
+----
+
+=== Session Commands
+
+In addition to all regular JUDO commands, the session mode provides special commands:
+
+[cols="1,3"]
+|===
+| Command | Description
+
+| `help` | Show session help with all available commands
+| `exit` or `quit` | Exit the interactive session
+| `clear` | Clear the terminal screen
+| `history` | Show command history for current session
+| `status` | Show detailed session status and project information
+| `doctor` | Run system health check with verbose output
+|===
+
+=== Service Status Indicators
+
+The interactive prompt shows real-time status of services:
+
+* ⚙️**karaf**: ✓ (running) / ✗ (stopped)
+* 🔐**keycloak**: ✓ (running) / ✗ (stopped)  
+* 🐘**postgres**: ✓ (running) / ✗ (stopped)
+
+Example prompt:
+[source]
+----
+judo [⚙️karaf:✓ 🔐keycloak:✗ 🐘postgres:✓]>
+----
+
+=== Auto-completion
+
+Press `Tab` for command and flag completion:
+
+* Command completion: `bu<Tab>` → `build`
+* Flag completion: `build --ski<Tab>` → `build --skip-`
+* History-based suggestions: Previous commands matching input
+
+=== Advanced Features
+
+* **Command Suggestions**: Type `<command>?` for detailed suggestions
+* **Execution Feedback**: Shows command duration and success/failure status
+* **Context Awareness**: Tracks project initialization status
+* **Persistent History**: Maintains last 100 commands across sessions
 
 == Building the CLI
 
@@ -74,76 +343,148 @@ go build -o judo ./cmd/judo
 
 This will create an executable named `judo` in the current directory.
 
-== Examples
+== Common Usage Examples
+
+=== Development Workflows
 
 [source,bash]
 ----
-judo prune -f
+# Initialize a new project
+judo init -g com.example -n MyProject -t ESM
+
+# Check system health
+judo doctor -v
+
+# Quick development cycle
+judo reckless                    # Fast build and start
+
+# Full development cycle
+judo prune build start           # Clean, build, and start from scratch
 ----
-Clear untracked data in application/frontend if opening modeling project freezes in designer.
+
+=== Build Variations
 
 [source,bash]
 ----
-judo build -a
+# Build specific components
+judo build -a                    # App module only (backend)
+judo build -f                    # Frontend module only
+judo build -f -q                 # Frontend in quick mode
+judo build --skip-frontend       # Build without frontend
+judo build --skip-karaf          # Build without Karaf packaging
+
+# Build with custom Maven arguments
+judo build -m "-rf :myproject-application-karaf-offline"
+
+# Parallel build (faster but chaotic logs)
+judo build -p
 ----
-Build app module only for backend. Useful for updating custom operations for running backend.
+
+=== Environment Management
 
 [source,bash]
 ----
+# Use different environment profiles
+judo -e compose-dev build start  # Use compose-dev.properties
+judo -e production status        # Check production environment status
+
+# Runtime options
+judo start --options "runtime=compose,dbtype=postgresql"
+judo start --options "karaf_port=8182,postgres_port=5433"
+----
+
+=== Database Operations
+
+[source,bash]
+----
+# Database lifecycle
+judo dump                        # Create database backup
+judo import -n mybackup.tar.gz   # Restore specific backup
+judo import                      # Restore latest backup
+judo schema-upgrade              # Apply schema changes to running DB
+----
+
+=== Maintenance
+
+[source,bash]
+----
+# Clean operations
+judo prune -f                    # Clean only frontend untracked files
+judo prune -y                    # Clean all untracked files (no confirmation)
+judo clean                       # Remove all containers and volumes
+
+# Updates
+judo update                      # Update JUDO dependencies
+judo generate                    # Regenerate application from model
+judo generate-root               # Regenerate project structure
+----
+
+=== Interactive Session Examples
+
+[source,bash]
+----
+# Start interactive session
+judo session
+
+# Within session:
+help                            # Show all commands
+build -f                        # Build frontend
+status                          # Check service status
+history                         # Show command history
+exit                            # Exit session
+----
+
+=== Monitoring and Debugging
+
+[source,bash]
+----
+# Monitor application
+judo status                      # Check all service status
+judo log -f                      # Follow Karaf logs in real-time
+judo log -t -n 100              # Show last 100 log lines
+
+# Docker Compose mode
+judo start --options "runtime=compose,compose_env=compose-postgresql-https"
+----
+
+=== Common Development Patterns
+
+[source,bash]
+----
+# Hot development cycle (backend changes)
+judo build -a && judo start --skip-keycloak
+
+# Frontend development cycle
 judo build -f -q
-----
-Build model and fronted only in quick mode. Useful when frontend changes needs to be checked.
 
-[source,bash]
-----
-judo build -F -KA
-----
-Build model and backend without frontend. Useful when custom operations need to be implemented.
+# Full clean restart
+judo stop && judo clean && judo build && judo start
 
-[source,bash]
+# Quick restart with clean database
+judo stop && judo start
 ----
-judo prune build start
-----
-Super fresh application build and start.
 
-[source,bash]
-----
-judo build clean start
-----
-Stop postgresql docker container then build and run application (including keycloak) with clean db.
+== Configuration
 
-[source,bash]
-----
-judo build start -K
-----
-Stop postgresql docker container then build and restart application.
+The JUDO CLI uses a profile-based configuration system:
 
-[source,bash]
-----
-judo build -M -F clean start
-----
-Stop postgresql docker container then rebuild app and start application with clean db.
+* **judo.properties**: Default configuration
+* **{env}.properties**: Environment-specific overrides (e.g., compose-dev.properties)
+* **judo-version.properties**: Version constraints
 
-[source,bash]
-----
-judo build -M -F start -K
-----
-Rebuild app and restart application.
+Key configuration aspects:
 
-[source,bash]
-----
-judo build -ma "-rf :${app_name}-application-karaf-offline"
-----
-Continue build from module.
+* Database type (postgresql/hsqldb)
+* Runtime mode (karaf/compose)
+* Port assignments for services
+* Schema and application names
 
-[source,bash]
-----
-judo start -o "runtime=compose,compose_env=compose-postgresql-https'"
-----
-Run application in docker compose using the compose-postgresql-https's docker-compose.yaml
+== Dependencies
 
-[source,bash]
-----
-judo env compose-dev build start
-----
-Build and run application with compose-dev env. (have to be described in compose-dev.properties)
+The application requires several external tools:
+
+* **Docker**: For PostgreSQL, Keycloak containers
+* **Maven/mvnd**: For building Java applications (mvnd preferred)
+* **SDKMAN**: For managing Java toolchain versions (auto-installed by doctor)
+* **Git**: For source control and clean operations
+* **Java**: For application runtime
