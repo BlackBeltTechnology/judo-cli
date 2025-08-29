@@ -65,6 +65,7 @@ type JudoOptions struct {
 	BuildBackend      bool
 	StartKeycloak     bool
 	WatchBundles      bool
+	StartKaraf        bool
 	VersionNumber     string
 	ExtraMavenArgs    string
 	DumpName          string

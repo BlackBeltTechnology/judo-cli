@@ -353,3 +353,35 @@ func isContainerUsingPort(container types.Container, port int) bool {
 	}
 	return false
 }
+
+// IsPortUsedByPostgres checks if a port is being used by the current PostgreSQL Docker container
+func IsPortUsedByPostgres(port int) bool {
+	cfg := config.GetConfig()
+	if cfg == nil {
+		return false
+	}
+	
+	if cfg.DBType != "postgresql" {
+		return false
+	}
+	
+	postgresName := "postgres-" + cfg.SchemaName
+	
+	// List all running containers
+	containers, err := cli.ContainerList(context.Background(), container.ListOptions{})
+	if err != nil {
+		return false
+	}
+	
+	// Find the PostgreSQL container
+	for _, c := range containers {
+		for _, n := range c.Names {
+			if strings.TrimPrefix(n, "/") == postgresName {
+				// Check if this container is using the specified port
+				return isContainerUsingPort(c, port)
+			}
+		}
+	}
+	
+	return false
+}

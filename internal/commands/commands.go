@@ -589,6 +589,7 @@ func runStart(cmd *cobra.Command, _ []string) {
 	// Set default values
 	config.Options.StartKeycloak = true
 	config.Options.WatchBundles = true
+	config.Options.StartKaraf = true
 
 	// apply flags
 	if v, _ := cmd.Flags().GetBool("skip-keycloak"); v {
@@ -603,12 +604,13 @@ func runStart(cmd *cobra.Command, _ []string) {
 		config.ApplyInlineOptions(raw)
 	}
 
-	// Port checks with enhanced error messages
+	// Port checks with warnings instead of errors
 	if config.Options.StartKeycloak {
 		if !utils.IsPortAvailable(cfg.KeycloakPort) {
 			// Check if this is our own Keycloak instance using the port
 			if docker.IsPortUsedByKeycloak(cfg.KeycloakPort) {
-				log.Fatalf("Keycloak port %d is already in use by your running JUDO Keycloak instance. Run 'judo stop' first.", cfg.KeycloakPort)
+				fmt.Printf("\x1b[33m⚠️  Keycloak port %d is already in use by your running JUDO Keycloak instance. Skipping Keycloak start.\x1b[0m\n", cfg.KeycloakPort)
+				config.Options.StartKeycloak = false // Skip Keycloak start
 			} else {
 				log.Fatalf("Keycloak port %d is already in use by another process.", cfg.KeycloakPort)
 			}
@@ -616,7 +618,13 @@ func runStart(cmd *cobra.Command, _ []string) {
 	}
 	if cfg.DBType == "postgresql" {
 		if !utils.IsPortAvailable(cfg.PostgresPort) {
-			log.Fatalf("PostgreSQL port %d is already in use by another process.", cfg.PostgresPort)
+			// Check if this is our own PostgreSQL instance using the port
+			if docker.IsPortUsedByPostgres(cfg.PostgresPort) {
+				fmt.Printf("\x1b[33m⚠️  PostgreSQL port %d is already in use by your running JUDO PostgreSQL instance. Skipping PostgreSQL start.\x1b[0m\n", cfg.PostgresPort)
+				// We'll skip PostgreSQL start by not calling docker.StartPostgres() later
+			} else {
+				log.Fatalf("PostgreSQL port %d is already in use by another process.", cfg.PostgresPort)
+			}
 		}
 	}
 
@@ -632,7 +640,10 @@ func runStart(cmd *cobra.Command, _ []string) {
 			// Check if this is our own Karaf instance using the port
 			karafDir := filepath.Join(cfg.ModelDir, "application", ".karaf")
 			if utils.IsPortUsedByKaraf(cfg.KarafPort, karafDir) {
-				log.Fatalf("Karaf port %d is already in use by your running JUDO application. Run 'judo stop' first.", cfg.KarafPort)
+				fmt.Printf("\x1b[33m⚠️  Karaf port %d is already in use by your running JUDO application. Skipping Karaf start.\x1b[0m\n", cfg.KarafPort)
+				// Skip Karaf start by not calling karaf.StartKaraf() later
+				config.Options.StartKaraf = false
+				config.Options.WatchBundles = false // Also disable bundle watching
 			} else {
 				log.Fatalf("Karaf port %d is already in use by another process.", cfg.KarafPort)
 			}
@@ -665,7 +676,9 @@ func startLocalEnvironment() {
 		docker.StartKeycloak()
 	}
 
-	karaf.StartKaraf()
+	if config.Options.StartKaraf {
+		karaf.StartKaraf()
+	}
 }
 
 func pruneApplication(cfg *config.Config, st *config.State) {
@@ -967,19 +980,32 @@ func checkPortAvailability(port int, service string, verbose bool) {
 	if utils.IsPortAvailable(port) {
 		fmt.Printf("\x1b[32m✅ Port %d (%s): Available\x1b[0m\n", port, service)
 	} else {
-		// Check if this is a JUDO project and if Karaf is using the port
+		// Check if this is a JUDO project and if our services are using the port
 		cfg := config.GetConfig()
 		karafUsingPort := false
+		postgresUsingPort := false
 		
-		if config.IsProjectInitialized() && cfg.Runtime == "karaf" {
-			karafDir := filepath.Join(cfg.ModelDir, "application", ".karaf")
-			karafUsingPort = utils.IsPortUsedByKaraf(port, karafDir)
+		if config.IsProjectInitialized() {
+			if cfg.Runtime == "karaf" {
+				karafDir := filepath.Join(cfg.ModelDir, "application", ".karaf")
+				karafUsingPort = utils.IsPortUsedByKaraf(port, karafDir)
+			}
+			
+			// Check if PostgreSQL is using the port (for port 5432)
+			if port == 5432 && cfg.DBType == "postgresql" {
+				postgresUsingPort = docker.IsPortUsedByPostgres(port)
+			}
 		}
 		
 		if karafUsingPort {
 			fmt.Printf("\x1b[33m⚠️  Port %d (%s): In use by current Karaf instance\x1b[0m\n", port, service)
 			if verbose {
 				fmt.Printf("   \x1b[33mNote: This port is used by your running JUDO application\x1b[0m\n")
+			}
+		} else if postgresUsingPort {
+			fmt.Printf("\x1b[33m⚠️  Port %d (%s): In use by current PostgreSQL instance\x1b[0m\n", port, service)
+			if verbose {
+				fmt.Printf("   \x1b[33mNote: This port is used by your running JUDO PostgreSQL database\x1b[0m\n")
 			}
 		} else {
 			fmt.Printf("\x1b[31m❌ Port %d (%s): In use by another process\x1b[0m\n", port, service)
