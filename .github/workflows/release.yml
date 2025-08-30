@@ -167,14 +167,12 @@ jobs:
           
           echo "✅ Git state is clean and ready for GoReleaser"
       
-      - name: Run GoReleaser with retry logic
-        uses: nick-fields/retry@v3
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v6
         with:
-          timeout_minutes: 30
-          max_attempts: ${{ env.MAX_RETRIES }}
-          retry_wait_seconds: ${{ env.RETRY_DELAY }}
-          command: |
-            goreleaser release --clean --timeout 30m
+          distribution: goreleaser
+          version: '~> v2'
+          args: release --clean --timeout 30m
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # Additional GoReleaser environment variables for better error reporting
