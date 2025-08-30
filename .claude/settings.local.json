@@ -20,7 +20,16 @@
       "Bash(CI=true scripts/version.sh get)",
       "Bash(CI=true scripts/version.sh set 0.1.4 --commit)",
       "Bash(grep:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(git rev-parse:*)",
+      "Bash(git tag:*)",
+      "Bash(git push:*)",
+      "Bash(git add:*)",
+      "Bash(go mod tidy:*)",
+      "Bash(go generate:*)",
+      "Bash(./serve-docs-simple.sh:*)",
+      "Bash(bundle config set:*)",
+      "Bash(bundle install:*)"
     ],
     "deny": [],
     "ask": []
