@@ -13,6 +13,14 @@ import (
 	"judo-cli-module/internal/session"
 )
 
+// Build information. Populated at build-time.
+var (
+	version = "dev"
+	commit  = "none"
+	date    = "unknown"
+	builtBy = "unknown"
+)
+
 func main() {
 	// Ensure Docker client is properly closed when the application exits
 	defer docker.CloseDockerClient()
@@ -49,6 +57,7 @@ func main() {
 		commands.CreateLogCommand(),
 		commands.CreateInitCommand(),
 		createSessionCommand(),
+		createVersionCommand(),
 	)
 	
 	// Debug: print all commands
@@ -71,6 +80,23 @@ func createSessionCommand() *cobra.Command {
 		Long:  "Start an interactive session with command history, auto-completion, and persistent state",
 		Run: func(cmd *cobra.Command, args []string) {
 			session.StartInteractiveSession()
+		},
+	}
+}
+
+// createVersionCommand creates the version command
+func createVersionCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "version",
+		Short: "Print version information",
+		Long:  "Print detailed version information including build details",
+		Run: func(cmd *cobra.Command, args []string) {
+			fmt.Printf("JUDO CLI %s\n", version)
+			fmt.Printf("  Version:    %s\n", version)
+			fmt.Printf("  Git commit: %s\n", commit)
+			fmt.Printf("  Built:      %s\n", date)
+			fmt.Printf("  Built by:   %s\n", builtBy)
+			fmt.Printf("  Go version: %s\n", "1.25.0")
 		},
 	}
 }

@@ -1,0 +1,130 @@
+version: 2
+
+project_name: judo
+
+env:
+  - CGO_ENABLED=0
+
+before:
+  hooks:
+    - go mod tidy
+    - go generate ./...
+
+builds:
+  - id: judo
+    binary: judo
+    main: ./cmd/judo
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+      - -X main.builtBy=goreleaser
+    goos:
+      - linux
+      - windows
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
+
+archives:
+  - id: judo-archive
+    format: tar.gz
+    # Use zip for windows archives
+    format_overrides:
+      - goos: windows
+        format: zip
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+      {{- if .Arm }}v{{ .Arm }}{{ end }}
+    files:
+      - README*
+      - LICENSE*
+      - CHANGELOG*
+
+checksum:
+  name_template: 'checksums.txt'
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-snapshot-{{.Timestamp}}"
+
+changelog:
+  sort: asc
+  use: github
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^ci:'
+      - '^chore:'
+      - '^build:'
+  groups:
+    - title: Features
+      regexp: '^.*?feat(\([[:word:]]+\))??!?:.+$'
+      order: 0
+    - title: 'Bug fixes'
+      regexp: '^.*?fix(\([[:word:]]+\))??!?:.+$'
+      order: 1
+    - title: 'Performance improvements'
+      regexp: '^.*?perf(\([[:word:]]+\))??!?:.+$'
+      order: 2
+    - title: Others
+      order: 999
+
+release:
+  # Repository to release to.
+  github:
+    owner: blackbelt-dev
+    name: judo-cli
+
+  # Create the release draft, so it can be edited before being published.
+  draft: false
+  prerelease: auto
+
+  # Controls whether to delete pre-existing releases with the same tag.
+  replace_existing_draft: true
+
+  # You can change the name of the release.
+  name_template: "{{.ProjectName}} v{{.Version}}"
+
+  # Release footer template.
+  footer: |
+    ## Docker Images
+    
+    **Full Changelog**: https://github.com/blackbelt-dev/judo-cli/compare/{{ .PreviousTag }}...{{ .Tag }}
+    
+    ---
+    
+    **Installation**
+    
+    Download the pre-compiled binaries from the assets below, or install using:
+    
+    ```bash
+    # Using curl (Linux/macOS)
+    curl -L https://github.com/blackbelt-dev/judo-cli/releases/latest/download/judo_Linux_x86_64.tar.gz | tar xz
+    
+    # Using wget (Linux)
+    wget https://github.com/blackbelt-dev/judo-cli/releases/latest/download/judo_Linux_x86_64.tar.gz
+    tar xzf judo_Linux_x86_64.tar.gz
+    
+    # Using PowerShell (Windows)
+    Invoke-WebRequest -Uri "https://github.com/blackbelt-dev/judo-cli/releases/latest/download/judo_Windows_x86_64.zip" -OutFile "judo.zip"
+    Expand-Archive judo.zip
+    ```
+
+# Snapshots are useful to test your release pipeline and to create releases for development versions.
+# This will create a snapshot release without publishing
+snapshot:
+  version_template: "{{ incpatch .Version }}-snapshot-{{.Timestamp}}"
+
+# Announce the release
+announce:
+  skip: '{{gt .Patch 0}}'
