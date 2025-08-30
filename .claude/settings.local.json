@@ -19,7 +19,8 @@
       "Bash(CI=true scripts/version.sh increment patch)",
       "Bash(CI=true scripts/version.sh get)",
       "Bash(CI=true scripts/version.sh set 0.1.4 --commit)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": []

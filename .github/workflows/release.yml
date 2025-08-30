@@ -5,65 +5,200 @@ on:
     tags:
       - 'v*' # Push events to tags like v1.0.0
 
+# Default environment variables for better error handling
+env:
+  CI: true
+  FAIL_FAST: false
+  MAX_RETRIES: 3
+  RETRY_DELAY: 10
+
 jobs:
   release:
     name: Create GitHub Release
     runs-on: ubuntu-latest
+    # Continue on error to allow post-release cleanup even if release fails
+    continue-on-error: true
     steps:
-      - name: Checkout code
+      - name: Checkout code with full history
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          # Fetch all tags and history for proper version validation
+          fetch-tags: true
 
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version: '1.25'
 
-      - name: Validate tag format
+      - name: Validate tag format and existence
         run: |
+          set -e
           TAG_NAME="${GITHUB_REF#refs/tags/}"
+          echo "Validating tag: $TAG_NAME"
+          
+          # Validate semantic version format
           if [[ ! "$TAG_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "Error: Tag must follow semantic versioning format (v1.2.3)"
+            echo "::error::Invalid tag format: $TAG_NAME. Must follow semantic versioning format (v1.2.3)"
             exit 1
           fi
-          echo "Valid tag format: $TAG_NAME"
+          
+          # Verify tag actually exists in the repository
+          if ! git show-ref --tags --quiet "refs/tags/$TAG_NAME"; then
+            echo "::error::Tag $TAG_NAME does not exist in the repository"
+            exit 1
+          fi
+          
+          # Verify tag points to a valid commit
+          TAG_COMMIT=$(git rev-parse "$TAG_NAME")
+          if ! git cat-file -e "$TAG_COMMIT"; then
+            echo "::error::Tag $TAG_NAME points to invalid commit: $TAG_COMMIT"
+            exit 1
+          fi
+          
+          echo "✅ Valid tag format: $TAG_NAME"
+          echo "✅ Tag exists and points to valid commit: $TAG_COMMIT"
 
-      - name: Extract version from tag
+      - name: Extract version from tag with validation
         id: tag_version
         run: |
+          set -e
           TAG_NAME="${GITHUB_REF#refs/tags/}"
           VERSION="${TAG_NAME#v}"
+          
+          # Validate version format (should be X.Y.Z)
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Invalid version format: $VERSION. Expected X.Y.Z"
+            exit 1
+          fi
+          
+          # Verify VERSION file exists and is readable
+          if [[ ! -f "VERSION" ]]; then
+            echo "::error::VERSION file not found"
+            exit 1
+          fi
+          
+          CURRENT_VERSION=$(cat VERSION | tr -d '[:space:]')
+          echo "Current VERSION file content: $CURRENT_VERSION"
+          echo "Tag version: $VERSION"
+          
+          # Warn if versions don't match (but don't fail - this might be intentional)
+          if [[ "$CURRENT_VERSION" != "$VERSION" ]]; then
+            echo "::warning::VERSION file ($CURRENT_VERSION) doesn't match tag version ($VERSION)"
+          fi
+          
           echo "tag=${TAG_NAME}" >> $GITHUB_OUTPUT
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "current_version=${CURRENT_VERSION}" >> $GITHUB_OUTPUT
 
-      - name: Update VERSION file and commit
+      - name: Update VERSION file and commit with validation
         run: |
+          set -e
+          VERSION="${{ steps.tag_version.outputs.version }}"
+          
+          echo "Updating VERSION file to: $VERSION"
+          
+          # Verify scripts/version.sh exists and is executable
+          if [[ ! -f "scripts/version.sh" ]]; then
+            echo "::error::version.sh script not found"
+            exit 1
+          fi
+          
           chmod +x scripts/version.sh
-          scripts/version.sh set ${{ steps.tag_version.outputs.version }}
+          
+          # Verify the script works
+          if ! scripts/version.sh get > /dev/null 2>&1; then
+            echo "::error::version.sh script validation failed"
+            exit 1
+          fi
+          
+          # Update version file
+          scripts/version.sh set "$VERSION"
+          
+          # Verify the update worked
+          UPDATED_VERSION=$(scripts/version.sh get)
+          if [[ "$UPDATED_VERSION" != "$VERSION" ]]; then
+            echo "::error::Failed to update VERSION file. Expected: $VERSION, Got: $UPDATED_VERSION"
+            exit 1
+          fi
           
           # Configure git
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           
-          # Commit the version change
-          git add VERSION
-          git commit -m "chore: update version to ${{ steps.tag_version.outputs.version }} for release"
+          # Check if VERSION file actually changed
+          if git diff --quiet VERSION; then
+            echo "VERSION file unchanged, skipping commit"
+          else
+            # Commit the version change
+            git add VERSION
+            git commit -m "chore: update version to $VERSION for release"
+            echo "✅ Committed version update to $VERSION"
+          fi
 
-      - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v6
+      - name: Verify clean git state before GoReleaser
+        run: |
+          set -e
+          echo "Verifying git state before GoReleaser..."
+          
+          # Check for uncommitted changes
+          if ! git diff --quiet; then
+            echo "::error::Uncommitted changes detected:"
+            git diff --name-status
+            exit 1
+          fi
+          
+          # Check for untracked files that might affect build
+          UNTRACKED=$(git ls-files --others --exclude-standard)
+          if [[ -n "$UNTRACKED" ]]; then
+            echo "::warning::Untracked files detected (may affect build):"
+            echo "$UNTRACKED"
+          fi
+          
+          # Verify tag points to current commit
+          TAG_NAME="${{ steps.tag_version.outputs.tag }}"
+          CURRENT_COMMIT=$(git rev-parse HEAD)
+          TAG_COMMIT=$(git rev-parse "$TAG_NAME")
+          
+          if [[ "$CURRENT_COMMIT" != "$TAG_COMMIT" ]]; then
+            echo "::error::Current commit ($CURRENT_COMMIT) doesn't match tag commit ($TAG_COMMIT)"
+            exit 1
+          fi
+          
+          echo "✅ Git state is clean and ready for GoReleaser"
+      
+      - name: Run GoReleaser with retry logic
+        uses: nick-fields/retry@v3
         with:
-          distribution: goreleaser
-          version: '~> v2'
-          args: release --clean
+          timeout_minutes: 30
+          max_attempts: ${{ env.MAX_RETRIES }}
+          retry_wait_seconds: ${{ env.RETRY_DELAY }}
+          command: |
+            goreleaser release --clean --timeout 30m
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Additional GoReleaser environment variables for better error reporting
+          GORELEASER_CURRENT_TAG: ${{ steps.tag_version.outputs.tag }}
+          GORELEASER_PREVIOUS_TAG: $(git describe --tags --abbrev=0 "${{ steps.tag_version.outputs.tag }}^" 2>/dev/null || echo "")
+      
+      - name: Check GoReleaser result
+        if: always()
+        run: |
+          if [[ "${{ job.status }}" == "success" ]]; then
+            echo "✅ GoReleaser completed successfully"
+            echo "release_success=true" >> $GITHUB_OUTPUT
+          else
+            echo "::error::GoReleaser failed with exit code $?"
+            echo "release_success=false" >> $GITHUB_OUTPUT
+            # Don't exit with error here to allow post-release steps to run
+          fi
 
   post-release:
     name: Post-Release Version Increment
     runs-on: ubuntu-latest
     needs: release
-    if: success()
+    # Run even if release failed to ensure version management cleanup
+    if: always()
     steps:
       - name: Checkout develop branch
         uses: actions/checkout@v4
@@ -77,32 +212,174 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
 
-      - name: Extract current version from tag
+      - name: Extract current version from tag with fallback
         id: current_version
         run: |
+          set -e
+          # Try to get version from tag first
           TAG_NAME="${GITHUB_REF#refs/tags/}"
-          VERSION="${TAG_NAME#v}"
+          if [[ -n "$TAG_NAME" ]]; then
+            VERSION="${TAG_NAME#v}"
+            echo "Using version from tag: $VERSION"
+          else
+            # Fallback to VERSION file if tag is not available
+            if [[ -f "VERSION" ]]; then
+              VERSION=$(cat VERSION | tr -d '[:space:]')
+              echo "Using version from VERSION file: $VERSION"
+            else
+              echo "::error::Cannot determine version - no tag and no VERSION file"
+              exit 1
+            fi
+          fi
+          
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
 
-      - name: Increment version for next development cycle
+      - name: Increment version for next development cycle with validation
         id: next_version
         run: |
+          set -e
+          CURRENT_VERSION="${{ steps.current_version.outputs.version }}"
+          
+          echo "Current version: $CURRENT_VERSION"
+          echo "Incrementing patch version for next development cycle..."
+          
+          # Validate version.sh script
+          if [[ ! -f "scripts/version.sh" ]]; then
+            echo "::error::version.sh script not found"
+            exit 1
+          fi
+          
           chmod +x scripts/version.sh
-          # Set the current released version first
-          scripts/version.sh set ${{ steps.current_version.outputs.version }}
-          # Then increment patch version for next development cycle
+          
+          # Set current version first
+          scripts/version.sh set "$CURRENT_VERSION"
+          
+          # Verify current version was set correctly
+          VERIFIED_VERSION=$(scripts/version.sh get)
+          if [[ "$VERIFIED_VERSION" != "$CURRENT_VERSION" ]]; then
+            echo "::error::Failed to set current version. Expected: $CURRENT_VERSION, Got: $VERIFIED_VERSION"
+            exit 1
+          fi
+          
+          # Increment patch version
           NEXT_VERSION=$(scripts/version.sh increment patch --commit)
+          
+          # Verify increment worked
+          if [[ -z "$NEXT_VERSION" ]]; then
+            echo "::error::Version increment failed - no output from version.sh"
+            exit 1
+          fi
+          
+          echo "✅ Next development version: $NEXT_VERSION"
           echo "next_version=${NEXT_VERSION}" >> $GITHUB_OUTPUT
 
-      - name: Push version increment to develop
+      - name: Push version increment to develop with validation
         run: |
-          git push origin develop
+          set -e
+          echo "Pushing version increment to develop branch..."
+          
+          # Verify we're on develop branch
+          CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+          if [[ "$CURRENT_BRANCH" != "develop" ]]; then
+            echo "::error::Expected to be on develop branch, but currently on: $CURRENT_BRANCH"
+            exit 1
+          fi
+          
+          # Verify there are changes to push
+          if git diff --quiet origin/develop..HEAD; then
+            echo "No changes to push - version already up to date"
+          else
+            # Push with retry logic
+          for i in $(seq 1 ${{ env.MAX_RETRIES }}); do
+            echo "Push attempt $i/${{ env.MAX_RETRIES }}"
+            if git push origin develop; then
+              echo "✅ Successfully pushed to develop branch"
+              break
+            else
+              echo "::warning::Push failed (attempt $i/${{ env.MAX_RETRIES }}), retrying in ${{ env.RETRY_DELAY }} seconds..."
+              if [[ $i -eq ${{ env.MAX_RETRIES }} ]]; then
+                echo "::error::Failed to push to develop branch after ${{ env.MAX_RETRIES }} attempts"
+                exit 1
+              fi
+              sleep ${{ env.RETRY_DELAY }}
+            fi
+          done
+          fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Create summary
+      - name: Create comprehensive release summary
         run: |
+          set -e
           echo "## Release Summary" >> $GITHUB_STEP_SUMMARY
-          echo "- Released version: ${{ steps.current_version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Next development version: ${{ steps.next_version.outputs.next_version }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Updated develop branch with incremented version" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [[ "${{ needs.release.result }}" == "success" ]]; then
+            echo "✅ **Release Status**: SUCCESS" >> $GITHUB_STEP_SUMMARY
+            echo "- **Released Version**: ${{ steps.current_version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+            echo "- **Release Tag**: ${{ github.ref }}" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Release Status**: FAILED" >> $GITHUB_STEP_SUMMARY
+            echo "- **Attempted Version**: ${{ steps.current_version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+            echo "- **Error**: GoReleaser execution failed" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Development Cycle" >> $GITHUB_STEP_SUMMARY
+          echo "- **Next Development Version**: ${{ steps.next_version.outputs.next_version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Branch Updated**: develop" >> $GITHUB_STEP_SUMMARY
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Workflow Details" >> $GITHUB_STEP_SUMMARY
+          echo "- **Workflow Run**: [#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_STEP_SUMMARY
+          echo "- **Triggered By**: ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit**: [${{ github.sha }}](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})" >> $GITHUB_STEP_SUMMARY
+          
+          # Add troubleshooting section if release failed
+          if [[ "${{ needs.release.result }}" != "success" ]]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Troubleshooting" >> $GITHUB_STEP_SUMMARY
+            echo "If the release failed, check the following:" >> $GITHUB_STEP_SUMMARY
+            echo "1. Verify GoReleaser configuration (.goreleaser.yaml)" >> $GITHUB_STEP_SUMMARY
+            echo "2. Check build artifacts and compilation errors" >> $GITHUB_STEP_SUMMARY
+            echo "3. Review GitHub Actions logs for detailed error messages" >> $GITHUB_STEP_SUMMARY
+            echo "4. Ensure all required secrets (GITHUB_TOKEN) are properly configured" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  # Cleanup job to handle failures and ensure proper state
+  cleanup:
+    name: Cleanup and Final Status
+    runs-on: ubuntu-latest
+    needs: [release, post-release]
+    if: always()
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Determine final workflow status
+        run: |
+          set -e
+          echo "## Final Workflow Status" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [[ "${{ needs.release.result }}" == "success" && "${{ needs.post-release.result }}" == "success" ]]; then
+            echo "🎉 **Overall Status**: COMPLETE SUCCESS" >> $GITHUB_STEP_SUMMARY
+            echo "Both release creation and version management completed successfully." >> $GITHUB_STEP_SUMMARY
+          elif [[ "${{ needs.release.result }}" == "success" ]]; then
+            echo "⚠️ **Overall Status**: PARTIAL SUCCESS" >> $GITHUB_STEP_SUMMARY
+            echo "Release created successfully but post-release version management failed." >> $GITHUB_STEP_SUMMARY
+          elif [[ "${{ needs.post-release.result }}" == "success" ]]; then
+            echo "⚠️ **Overall Status**: PARTIAL SUCCESS" >> $GITHUB_STEP_SUMMARY
+            echo "Release failed but version management completed successfully." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "💥 **Overall Status**: COMPLETE FAILURE" >> $GITHUB_STEP_SUMMARY
+            echo "Both release creation and version management failed." >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Set final exit code based on release job status
+          if [[ "${{ needs.release.result }}" != "success" ]]; then
+            echo "::error::Release workflow failed"
+            exit 1
+          fi
