@@ -55,12 +55,12 @@ jobs:
           chmod +x scripts/version.sh
           scripts/version.sh set ${{ steps.new_version.outputs.new_version }} --commit
 
-      - name: Push version update to develop
+      - name: Push version update and tag
         run: |
+          # Push the commit first
           git push origin develop
-
-      - name: Create and push tag
-        run: |
+          
+          # Create and push the tag
           git tag ${{ steps.new_version.outputs.tag_name }}
           git push origin ${{ steps.new_version.outputs.tag_name }}
 

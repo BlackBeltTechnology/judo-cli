@@ -37,10 +37,18 @@ jobs:
           echo "tag=${TAG_NAME}" >> $GITHUB_OUTPUT
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
 
-      - name: Update VERSION file
+      - name: Update VERSION file and commit
         run: |
           chmod +x scripts/version.sh
           scripts/version.sh set ${{ steps.tag_version.outputs.version }}
+          
+          # Configure git
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          
+          # Commit the version change
+          git add VERSION
+          git commit -m "chore: update version to ${{ steps.tag_version.outputs.version }} for release"
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6

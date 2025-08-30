@@ -1,122 +1,63 @@
 ---
-layout: default
-title: JUDO CLI Documentation
-nav_order: 1
-description: "Complete documentation for the JUDO CLI tool"
-permalink: /
+layout: home
+title: JUDO CLI
+subtitle: Command Line Interface for Low-Code Development
+hero_image: /assets/img/hero-placeholder.png
+show_install_tabs: true
+sections:
+  - id: features
+    title: "Core Features"
+    subtitle: "Everything you need for low-code development"
+    blocks:
+      - heading: "Interactive Session Mode"
+        text: "Command history, auto-completion, and persistent state for seamless development workflow."
+      - heading: "Multi-Runtime Support"
+        text: "Choose between Karaf and Docker Compose environments based on your needs."
+      - heading: "Database Management"
+        text: "Built-in PostgreSQL operations including dump, import, and schema migrations."
+      - heading: "Cross-platform Support"
+        text: "Works on macOS, Linux, and Windows with consistent functionality."
+  - id: commands
+    title: "Command Categories"
+    subtitle: "Organized toolset for every development phase"
+    blocks:
+      - heading: "System Commands"
+        text: "Health checks with 'judo doctor', project initialization with 'judo init', and interactive sessions."
+      - heading: "Build & Run"
+        text: "Build projects, start applications, and use 'judo reckless' for fast development cycles."
+      - heading: "Application Lifecycle"
+        text: "Start, stop, check status, and view logs for your applications and services."
+      - heading: "Database Operations"
+        text: "Backup with 'judo dump', restore with 'judo import', and manage schema upgrades."
+  - id: runtime-modes
+    title: "Runtime Environments"
+    subtitle: "Flexible deployment options"
+    blocks:
+      - heading: "Karaf Runtime"
+        text: "Local development with Apache Karaf application server plus Docker services for database and authentication."
+      - heading: "Compose Runtime"
+        text: "Full Docker Compose environment with all services containerized for consistent deployment."
+  - id: interactive-session
+    title: "Interactive Session"
+    subtitle: "Enhanced development workflow"
+    blocks:
+      - heading: "Command History"
+        text: "Persistent command history across sessions with search and navigation"
+      - heading: "Tab Completion"
+        text: "Auto-completion for commands and flags with intelligent suggestions"
+      - heading: "Real-time Status"
+        text: "Live service status indicators showing system health"
+      - heading: "Context Awareness"
+        text: "Smart suggestions based on current project state and workflow"
+  - id: configuration
+    title: "Configuration"
+    subtitle: "Profile-based configuration system"
+    blocks:
+      - heading: "Default Profile"
+        text: "Use judo.properties for default application and database settings"
+      - heading: "Environment Profiles"
+        text: "Create environment-specific files like compose-dev.properties for different setups"
+      - heading: "Version Constraints"
+        text: "Define minimum versions in judo-version.properties for compatibility"
 ---
 
-# JUDO CLI Documentation
-
-Welcome to the JUDO CLI documentation! This tool helps you manage the complete lifecycle of JUDO applications.
-
-## Quick Start
-
-### Installation
-
-#### Homebrew (Recommended for macOS/Linux)
-```bash
-brew tap blackbelttechnology/tap
-brew install judo
-```
-
-#### Manual Installation
-Download the latest release from the [GitHub releases page](https://github.com/BlackBeltTechnology/judo-cli/releases).
-
-#### Building from Source
-```bash
-go build -o judo ./cmd/judo
-```
-
-### First Steps
-
-1. **Check system requirements**:
-   ```bash
-   judo doctor
-   ```
-
-2. **Initialize a new project**:
-   ```bash
-   judo init
-   ```
-
-3. **Build and start your application**:
-   ```bash
-   judo build start
-   ```
-
-## Features
-
-- **Interactive Session Mode**: Command history, auto-completion, and persistent state
-- **Multi-Runtime Support**: Karaf and Docker Compose environments
-- **Database Management**: PostgreSQL dump/import operations
-- **Auto-update**: Self-update functionality for snapshot versions
-- **Cross-platform**: macOS, Linux, and Windows support
-
-## Command Reference
-
-### System Commands
-- [`judo doctor`](commands/doctor) - System health check
-- [`judo init`](commands/init) - Initialize new JUDO project
-- [`judo session`](commands/session) - Interactive session mode
-
-### Build Commands
-- [`judo build`](commands/build) - Build project with various options
-- [`judo reckless`](commands/reckless) - Fast build & run mode
-
-### Application Lifecycle
-- [`judo start`](commands/start) - Start application
-- [`judo stop`](commands/stop) - Stop application
-- [`judo status`](commands/status) - Check service status
-- [`judo log`](commands/log) - View application logs
-
-### Database Operations
-- [`judo dump`](commands/dump) - Database backup
-- [`judo import`](commands/import) - Database restore
-- [`judo schema-upgrade`](commands/schema-upgrade) - Schema migration
-
-### Maintenance
-- [`judo clean`](commands/clean) - Clean environment
-- [`judo prune`](commands/prune) - Remove untracked files
-- [`judo update`](commands/update) - Update dependencies
-- [`judo self-update`](commands/self-update) - Update CLI tool
-
-## Configuration
-
-The JUDO CLI uses profile-based configuration:
-
-- **Default**: `judo.properties`
-- **Environment-specific**: `{env}.properties` (e.g., `compose-dev.properties`)
-- **Version constraints**: `judo-version.properties`
-
-## Runtime Modes
-
-### Karaf Runtime
-Local development with Apache Karaf + Docker services:
-- Apache Karaf application server
-- PostgreSQL database container
-- Keycloak authentication container
-
-### Compose Runtime
-Full Docker Compose environment with all services containerized.
-
-## Interactive Session
-
-The interactive session provides:
-- Command history persistence
-- Tab completion for commands and flags
-- Real-time service status indicators
-- Context-aware suggestions
-- Session management and statistics
-
-## License
-
-This project is licensed under the [Eclipse Public License 2.0 (EPL-2.0)](https://www.eclipse.org/legal/epl-2.0/).
-
-Copyright © 2026 BlackBelt Meta Zrt.
-
-## Support
-
-- [GitHub Issues](https://github.com/BlackBeltTechnology/judo-cli/issues)
-- [Documentation](https://blackbeltechnology.github.io/judo-cli/)
-- [Releases](https://github.com/BlackBeltTechnology/judo-cli/releases)
