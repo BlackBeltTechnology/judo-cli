@@ -54,27 +54,73 @@ jobs:
         with:
           go-version: '1.25'
 
-      - name: Generate build version
-        id: version
+      - name: Get snapshot version
+        id: snapshot_version
         run: |
           chmod +x scripts/version.sh
-          BASE_VERSION=$(scripts/version.sh get)
-          echo "base_version=${BASE_VERSION}" >> $GITHUB_OUTPUT
-          echo "GORELEASER_CURRENT_TAG=v${BASE_VERSION}" >> $GITHUB_ENV
+          SNAPSHOT_VERSION=$(scripts/version.sh build)
+          echo "snapshot_version=${SNAPSHOT_VERSION}" >> $GITHUB_OUTPUT
+          echo "tag_name=v${SNAPSHOT_VERSION}" >> $GITHUB_OUTPUT
 
-      - name: Run GoReleaser (Snapshot)
+      - name: Create snapshot tag
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git tag ${{ steps.snapshot_version.outputs.tag_name }}
+          git push origin ${{ steps.snapshot_version.outputs.tag_name }}
+
+      - name: Run GoReleaser (Snapshot Release)
         uses: goreleaser/goreleaser-action@v6
         with:
           distribution: goreleaser
           version: '~> v2'
-          args: release --snapshot --clean
+          args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GORELEASER_CURRENT_TAG: ${{ steps.snapshot_version.outputs.tag_name }}
+
+      - name: Mark release as prerelease
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { owner, repo } = context.repo;
+            const tag = '${{ steps.snapshot_version.outputs.tag_name }}';
+            
+            // Get the release by tag
+            const release = await github.rest.repos.getReleaseByTag({
+              owner,
+              repo,
+              tag
+            });
+            
+            // Update release to mark as prerelease and update name
+            await github.rest.repos.updateRelease({
+              owner,
+              repo,
+              release_id: release.data.id,
+              prerelease: true,
+              name: `JUDO CLI ${tag} (Development Snapshot)`,
+              body: `**⚠️ Development Snapshot Build**
+            
+            This is an automated development build from the \`develop\` branch.
+            
+            **Build Info:**
+            - Version: ${tag}
+            - Branch: develop
+            - Commit: ${{ github.sha }}
+            - Built: ${new Date().toISOString()}
+            
+            **⚠️ This is a pre-release version intended for testing and development only.**
+            
+            **Installation:**
+            Download the appropriate binary for your platform from the assets below.`
+            });
 
       - name: Upload snapshot artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: judo-snapshot-${{ steps.version.outputs.base_version }}
+          name: judo-snapshot-${{ steps.snapshot_version.outputs.snapshot_version }}
           path: |
             dist/*.tar.gz
             dist/*.zip
@@ -96,15 +142,22 @@ jobs:
             
             // Filter snapshot releases (contain 'snapshot' in tag name)
             const snapshotReleases = releases.data.filter(release => 
-              release.tag_name.includes('snapshot') || release.prerelease
+              release.tag_name.includes('snapshot') && release.prerelease
             );
             
-            // Keep only the latest snapshot, delete the rest
-            if (snapshotReleases.length > 1) {
-              const toDelete = snapshotReleases.slice(1);
+            console.log(`Found ${snapshotReleases.length} snapshot releases`);
+            
+            // Sort by creation date (newest first)
+            snapshotReleases.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+            
+            // Keep only the latest 3 snapshots, delete the rest
+            if (snapshotReleases.length > 3) {
+              const toDelete = snapshotReleases.slice(3);
+              
+              console.log(`Keeping ${Math.min(3, snapshotReleases.length)} latest snapshots, deleting ${toDelete.length} old ones`);
               
               for (const release of toDelete) {
-                console.log(`Deleting old snapshot release: ${release.tag_name}`);
+                console.log(`Deleting old snapshot release: ${release.tag_name} (created: ${release.created_at})`);
                 try {
                   await github.rest.repos.deleteRelease({
                     owner,
@@ -118,10 +171,14 @@ jobs:
                     repo,
                     ref: `tags/${release.tag_name}`
                   });
+                  
+                  console.log(`Successfully deleted: ${release.tag_name}`);
                 } catch (error) {
                   console.log(`Failed to delete release ${release.tag_name}: ${error.message}`);
                 }
               }
+            } else {
+              console.log(`Only ${snapshotReleases.length} snapshot releases found, no cleanup needed`);
             }
 
   build-main:
