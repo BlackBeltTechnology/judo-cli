@@ -46,9 +46,8 @@ archives:
       {{- else }}{{ .Arch }}{{ end }}
       {{- if .Arm }}v{{ .Arm }}{{ end }}
     files:
-      - README*
-      - LICENSE*
-      - CHANGELOG*
+      - README.adoc
+      - LICENSE
 
 checksum:
   name_template: 'checksums.txt'
@@ -126,31 +125,32 @@ release:
     Expand-Archive judo.zip
     ```
 
-brews:
-  - name: judo
-    repository:
-      owner: BlackBeltTechnology
-      name: homebrew-tap
-      branch: main
-      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
-    url_template: "https://github.com/BlackBeltTechnology/judo-cli/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
-    commit_author:
-      name: blackbelt-bot
-      email: bot@blackbelt.hu
-    commit_msg_template: "Brew formula update for {{ .ProjectName }} version {{ .Tag }}"
-    homepage: "https://github.com/BlackBeltTechnology/judo-cli"
-    description: "JUDO CLI - A command-line tool for managing the lifecycle of JUDO applications"
-    license: "EPL-2.0"
-    skip_upload: auto
-    dependencies:
-      - name: docker
-        type: optional
-      - name: maven
-        type: optional
-    install: |
-      bin.install "judo"
-    test: |
-      system "#{bin}/judo", "version"
+# Homebrew integration disabled for now
+# brews:
+#   - name: judo
+#     repository:
+#       owner: BlackBeltTechnology
+#       name: homebrew-tap
+#       branch: main
+#       token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+#     url_template: "https://github.com/BlackBeltTechnology/judo-cli/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
+#     commit_author:
+#       name: blackbelt-bot
+#       email: bot@blackbelt.hu
+#     commit_msg_template: "Brew formula update for {{ .ProjectName }} version {{ .Tag }}"
+#     homepage: "https://github.com/BlackBeltTechnology/judo-cli"
+#     description: "JUDO CLI - A command-line tool for managing the lifecycle of JUDO applications"
+#     license: "EPL-2.0"
+#     skip_upload: auto
+#     dependencies:
+#       - name: docker
+#         type: optional
+#       - name: maven
+#         type: optional
+#     install: |
+#       bin.install "judo"
+#     test: |
+#       system "#{bin}/judo", "version"
 
 # Announce the release
 announce:
