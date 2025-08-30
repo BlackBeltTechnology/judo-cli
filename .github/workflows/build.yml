@@ -54,59 +54,52 @@ jobs:
         with:
           go-version: '1.25'
 
-      - name: Get snapshot version
-        id: snapshot_version
+      - name: Get base version
+        id: version
         run: |
           chmod +x scripts/version.sh
-          SNAPSHOT_VERSION=$(scripts/version.sh build)
-          echo "snapshot_version=${SNAPSHOT_VERSION}" >> $GITHUB_OUTPUT
-          echo "tag_name=v${SNAPSHOT_VERSION}" >> $GITHUB_OUTPUT
-
-      - name: Create snapshot tag
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git tag ${{ steps.snapshot_version.outputs.tag_name }}
-          git push origin ${{ steps.snapshot_version.outputs.tag_name }}
+          BASE_VERSION=$(scripts/version.sh get)
+          echo "base_version=${BASE_VERSION}" >> $GITHUB_OUTPUT
+          echo "GORELEASER_CURRENT_TAG=v${BASE_VERSION}" >> $GITHUB_ENV
 
       - name: Run GoReleaser (Snapshot Release)
         uses: goreleaser/goreleaser-action@v6
         with:
           distribution: goreleaser
           version: '~> v2'
-          args: release --clean
+          args: release --snapshot --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GORELEASER_CURRENT_TAG: ${{ steps.snapshot_version.outputs.tag_name }}
 
-      - name: Mark release as prerelease
+      - name: Get snapshot version and create release
+        id: create-release
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const { owner, repo } = context.repo;
-            const tag = '${{ steps.snapshot_version.outputs.tag_name }}';
+            const fs = require('fs');
             
-            // Get the release by tag
-            const release = await github.rest.repos.getReleaseByTag({
+            // Generate snapshot version
+            const baseVersion = '${{ steps.version.outputs.base_version }}';
+            const timestamp = new Date().toISOString().replace(/[-:T]/g, '').substring(0, 14);
+            const snapshotVersion = `${baseVersion}-snapshot-${timestamp}`;
+            const tagName = `v${snapshotVersion}`;
+            
+            console.log(`Creating snapshot release: ${tagName}`);
+            
+            // Create the tag and release
+            const release = await github.rest.repos.createRelease({
               owner,
               repo,
-              tag
-            });
-            
-            // Update release to mark as prerelease and update name
-            await github.rest.repos.updateRelease({
-              owner,
-              repo,
-              release_id: release.data.id,
-              prerelease: true,
-              name: `JUDO CLI ${tag} (Development Snapshot)`,
+              tag_name: tagName,
+              name: `JUDO CLI ${tagName} (Development Snapshot)`,
               body: `**⚠️ Development Snapshot Build**
             
             This is an automated development build from the \`develop\` branch.
             
             **Build Info:**
-            - Version: ${tag}
+            - Version: ${tagName}
             - Branch: develop
             - Commit: ${{ github.sha }}
             - Built: ${new Date().toISOString()}
@@ -114,13 +107,53 @@ jobs:
             **⚠️ This is a pre-release version intended for testing and development only.**
             
             **Installation:**
-            Download the appropriate binary for your platform from the assets below.`
+            Download the appropriate binary for your platform from the assets below.`,
+              draft: false,
+              prerelease: true
             });
+            
+            // Store release info for later steps
+            core.setOutput('release_id', release.data.id);
+            core.setOutput('tag_name', tagName);
+            core.setOutput('snapshot_version', snapshotVersion);
+
+      - name: Upload binaries to release
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { owner, repo } = context.repo;
+            const fs = require('fs');
+            const path = require('path');
+            const releaseId = '${{ steps.create-release.outputs.release_id }}';
+            
+            // Find all files in dist directory
+            const distDir = './dist';
+            const files = fs.readdirSync(distDir);
+            
+            for (const file of files) {
+              if (file.endsWith('.tar.gz') || file.endsWith('.zip') || file === 'checksums.txt') {
+                const filePath = path.join(distDir, file);
+                const fileContent = fs.readFileSync(filePath);
+                
+                console.log(`Uploading ${file}...`);
+                
+                await github.rest.repos.uploadReleaseAsset({
+                  owner,
+                  repo,
+                  release_id: releaseId,
+                  name: file,
+                  data: fileContent
+                });
+                
+                console.log(`✓ Uploaded ${file}`);
+              }
+            }
 
       - name: Upload snapshot artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: judo-snapshot-${{ steps.snapshot_version.outputs.snapshot_version }}
+          name: judo-snapshot-${{ steps.create-release.outputs.snapshot_version }}
           path: |
             dist/*.tar.gz
             dist/*.zip
