@@ -12,7 +12,10 @@
       "Bash(go build:*)",
       "Bash(./judo:*)",
       "Bash(JUDO_VERSION=1.0.0-SNAPSHOT go build -o judo-snapshot ./cmd/judo)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(else echo \"All files are properly formatted\")",
+      "Bash(fi:*)",
+      "Bash(curl:*)"
     ],
     "deny": [],
     "ask": []

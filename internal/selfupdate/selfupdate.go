@@ -17,9 +17,9 @@ import (
 )
 
 const (
-	githubAPIBase    = "https://api.github.com/repos/BlackBeltTechnology/judo-cli"
-	downloadTimeout  = 30 * time.Second
-	maxDownloadSize  = 100 * 1024 * 1024 // 100MB
+	githubAPIBase   = "https://api.github.com/repos/BlackBeltTechnology/judo-cli"
+	downloadTimeout = 30 * time.Second
+	maxDownloadSize = 100 * 1024 * 1024 // 100MB
 )
 
 // Release represents a GitHub release
