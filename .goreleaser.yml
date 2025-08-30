@@ -54,7 +54,7 @@ checksum:
   name_template: 'checksums.txt'
 
 snapshot:
-  version_template: "{{ incpatch .Version }}-snapshot-{{.Timestamp}}"
+  version_template: "{{ .Version }}-snapshot-{{ .Timestamp }}"
 
 changelog:
   sort: asc
@@ -119,11 +119,6 @@ release:
     Invoke-WebRequest -Uri "https://github.com/blackbelt-dev/judo-cli/releases/latest/download/judo_Windows_x86_64.zip" -OutFile "judo.zip"
     Expand-Archive judo.zip
     ```
-
-# Snapshots are useful to test your release pipeline and to create releases for development versions.
-# This will create a snapshot release without publishing
-snapshot:
-  version_template: "{{ incpatch .Version }}-snapshot-{{.Timestamp}}"
 
 # Announce the release
 announce:
