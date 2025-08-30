@@ -230,6 +230,7 @@ func printSessionHelp() {
 	fmt.Printf("\x1b[32m  update\x1b[0m    - Update dependency versions\n")
 	fmt.Printf("\x1b[32m  prune\x1b[0m     - Clean untracked files\n")
 	fmt.Printf("\x1b[32m  reckless\x1b[0m  - Fast build & run mode\n")
+	fmt.Printf("\x1b[32m  self-update\x1b[0m - Update CLI to latest version\n")
 	fmt.Println()
 	fmt.Printf("\x1b[33m💡 Type any JUDO command directly to execute it\x1b[0m\n")
 	fmt.Printf("\x1b[33m💡 Press TAB for auto-completion of commands and flags\x1b[0m\n")
@@ -255,7 +256,7 @@ func getCommandSuggestions(input string) []string {
 		"help", "exit", "quit", "clear", "history", "status", "doctor",
 		"init", "build", "start", "stop", "clean", "prune", "update",
 		"generate", "generate-root", "dump", "import", "schema-upgrade",
-		"reckless",
+		"reckless", "self-update",
 	}
 
 	var suggestions []string
@@ -563,6 +564,10 @@ func getCompleter() readline.AutoCompleter {
 		),
 		readline.PcItem("schema-upgrade"),
 		readline.PcItem("reckless"),
+		readline.PcItem("self-update",
+			readline.PcItem("--check", readline.PcItem("-c")),
+			readline.PcItem("--force", readline.PcItem("-f")),
+		),
 	)
 }
 

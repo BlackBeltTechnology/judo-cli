@@ -61,11 +61,6 @@ func main() {
 		createVersionCommand(),
 	)
 
-	// Debug: print all commands
-	fmt.Println("DEBUG: Registered commands:")
-	for _, cmd := range rootCmd.Commands() {
-		fmt.Printf("  %s - %s\n", cmd.Use, cmd.Short)
-	}
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
