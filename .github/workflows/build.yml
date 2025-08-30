@@ -3,7 +3,7 @@ name: Build and Test
 on:
   push:
     branches:
-      - main
+      - master
       - develop
   pull_request:
     branches:
@@ -214,10 +214,10 @@ jobs:
               console.log(`Only ${snapshotReleases.length} snapshot releases found, no cleanup needed`);
             }
 
-  build-main:
-    name: Build Main Branch
+  build-master:
+    name: Build Master Branch
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/master'
     needs: test
     steps:
       - name: Checkout code

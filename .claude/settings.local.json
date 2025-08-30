@@ -18,7 +18,8 @@
       "Bash(curl:*)",
       "Bash(CI=true scripts/version.sh increment patch)",
       "Bash(CI=true scripts/version.sh get)",
-      "Bash(CI=true scripts/version.sh set 0.1.4 --commit)"
+      "Bash(CI=true scripts/version.sh set 0.1.4 --commit)",
+      "Bash(grep:*)"
     ],
     "deny": [],
     "ask": []
