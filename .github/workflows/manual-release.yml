@@ -1,0 +1,73 @@
+name: Manual Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_type:
+        description: 'Version increment type'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+      custom_version:
+        description: 'Custom version (optional, overrides version_type)'
+        required: false
+        type: string
+
+jobs:
+  create-release:
+    name: Create Manual Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout develop branch
+        uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure Git
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+
+      - name: Determine new version
+        id: new_version
+        run: |
+          chmod +x scripts/version.sh
+          
+          if [[ -n "${{ github.event.inputs.custom_version }}" ]]; then
+            NEW_VERSION="${{ github.event.inputs.custom_version }}"
+            echo "Using custom version: $NEW_VERSION"
+          else
+            NEW_VERSION=$(scripts/version.sh increment ${{ github.event.inputs.version_type }})
+            echo "Incremented ${{ github.event.inputs.version_type }} version: $NEW_VERSION"
+          fi
+          
+          echo "new_version=${NEW_VERSION}" >> $GITHUB_OUTPUT
+          echo "tag_name=v${NEW_VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Update VERSION file and commit
+        run: |
+          chmod +x scripts/version.sh
+          scripts/version.sh set ${{ steps.new_version.outputs.new_version }} --commit
+
+      - name: Push version update to develop
+        run: |
+          git push origin develop
+
+      - name: Create and push tag
+        run: |
+          git tag ${{ steps.new_version.outputs.tag_name }}
+          git push origin ${{ steps.new_version.outputs.tag_name }}
+
+      - name: Create summary
+        run: |
+          echo "## Manual Release Created" >> $GITHUB_STEP_SUMMARY
+          echo "- Version Type: ${{ github.event.inputs.version_type }}" >> $GITHUB_STEP_SUMMARY
+          echo "- New Version: ${{ steps.new_version.outputs.new_version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Tag Created: ${{ steps.new_version.outputs.tag_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Release workflow will be triggered automatically" >> $GITHUB_STEP_SUMMARY
