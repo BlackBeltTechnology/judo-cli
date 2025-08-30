@@ -15,7 +15,9 @@
       "Bash(cat:*)",
       "Bash(else echo \"All files are properly formatted\")",
       "Bash(fi:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(CI=true scripts/version.sh increment patch)",
+      "Bash(CI=true scripts/version.sh get)"
     ],
     "deny": [],
     "ask": []

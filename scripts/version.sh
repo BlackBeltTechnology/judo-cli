@@ -9,28 +9,55 @@ VERSION_FILE="VERSION"
 CURRENT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$CURRENT_DIR")"
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+# Check if running in CI environment (GitHub Actions)
+if [[ -n "$CI" || -n "$GITHUB_ACTIONS" ]]; then
+    # CI mode - no colors, minimal output
+    CI_MODE=true
+else
+    # Interactive mode - with colors
+    CI_MODE=false
+fi
+
+# Colors for output (only in interactive mode)
+if [ "$CI_MODE" = false ]; then
+    RED='\033[0;31m'
+    GREEN='\033[0;32m'
+    YELLOW='\033[1;33m'
+    BLUE='\033[0;34m'
+    NC='\033[0m' # No Color
+fi
 
 # Logging functions
 log_info() {
-    echo -e "${BLUE}[INFO]${NC} $1"
+    if [ "$CI_MODE" = true ]; then
+        echo "[INFO] $1"
+    else
+        echo -e "${BLUE}[INFO]${NC} $1"
+    fi
 }
 
 log_success() {
-    echo -e "${GREEN}[SUCCESS]${NC} $1"
+    if [ "$CI_MODE" = true ]; then
+        echo "$1"  # Clean output for GitHub Actions
+    else
+        echo -e "${GREEN}[SUCCESS]${NC} $1"
+    fi
 }
 
 log_warning() {
-    echo -e "${YELLOW}[WARNING]${NC} $1"
+    if [ "$CI_MODE" = true ]; then
+        echo "[WARNING] $1" >&2
+    else
+        echo -e "${YELLOW}[WARNING]${NC} $1" >&2
+    fi
 }
 
 log_error() {
-    echo -e "${RED}[ERROR]${NC} $1"
+    if [ "$CI_MODE" = true ]; then
+        echo "[ERROR] $1" >&2
+    else
+        echo -e "${RED}[ERROR]${NC} $1" >&2
+    fi
 }
 
 # Check if VERSION file exists, create if not
@@ -86,7 +113,11 @@ generate_snapshot_version() {
 update_version_file() {
     local new_version="$1"
     echo "$new_version" > "$PROJECT_ROOT/$VERSION_FILE"
-    log_success "Updated VERSION file to: $new_version"
+    if [ "$CI_MODE" = true ]; then
+        echo "$new_version"  # Clean output for GitHub Actions
+    else
+        log_success "Updated VERSION file to: $new_version"
+    fi
 }
 
 # Commit version change
@@ -150,13 +181,17 @@ main() {
             new_version=$(increment_version "$current_version" "$part")
             
             log_info "Incrementing $part version: $current_version -> $new_version"
-            update_version_file "$new_version"
+            
+            if [ "$CI_MODE" = true ]; then
+                echo "$new_version" > "$PROJECT_ROOT/$VERSION_FILE"
+                echo "$new_version"  # Clean output for GitHub Actions
+            else
+                update_version_file "$new_version"
+            fi
             
             if [[ "${3:-}" == "--commit" ]]; then
                 commit_version_change "$new_version"
             fi
-            
-            echo "$new_version"
             ;;
         "set")
             local new_version="$2"
@@ -166,13 +201,17 @@ main() {
             fi
             
             log_info "Setting version to: $new_version"
-            update_version_file "$new_version"
+            
+            if [ "$CI_MODE" = true ]; then
+                echo "$new_version" > "$PROJECT_ROOT/$VERSION_FILE"
+                echo "$new_version"  # Clean output for GitHub Actions
+            else
+                update_version_file "$new_version"
+            fi
             
             if [[ "${3:-}" == "--commit" ]]; then
                 commit_version_change "$new_version"
             fi
-            
-            echo "$new_version"
             ;;
         "snapshot")
             local current_version
