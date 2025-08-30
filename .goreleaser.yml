@@ -90,6 +90,9 @@ release:
 
   # Controls whether to delete pre-existing releases with the same tag.
   replace_existing_draft: true
+  
+  # Allow overwriting existing releases and assets
+  mode: replace
 
   # You can change the name of the release.
   name_template: "{{.ProjectName}} v{{.Version}}"
