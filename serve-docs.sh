@@ -87,7 +87,17 @@ install_dependencies() {
     
     if ! bundle check &> /dev/null; then
         log_info "Installing gems..."
-        bundle install
+        if ! bundle install --path vendor/bundle 2>/dev/null; then
+            log_error "Failed to install Jekyll dependencies!"
+            log_error "This is likely due to Ruby environment or native compilation issues."
+            log_warning "The documentation is available online at: https://judo.technology/"
+            log_info "For local development, you may need to:"
+            log_info "  1. Install a proper Ruby version manager (rbenv, rvm, or asdf)"
+            log_info "  2. Install a newer Ruby version (3.0+)"
+            log_info "  3. Ensure Xcode command line tools are properly configured"
+            log_info "  4. Or use the online documentation instead"
+            exit 1
+        fi
         log_success "Dependencies installed successfully"
     else
         log_success "All dependencies are already installed"

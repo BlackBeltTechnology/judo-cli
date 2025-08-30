@@ -25,7 +25,18 @@ rm -rf _site .jekyll-cache
 # Install dependencies if needed
 if [[ -f "Gemfile" ]] && ! bundle check &> /dev/null; then
     echo "Installing dependencies..."
-    bundle install
+    if ! bundle install --path vendor/bundle 2>/dev/null; then
+        echo "Error: Failed to install Jekyll dependencies!"
+        echo "This is likely due to Ruby environment issues."
+        echo ""
+        echo "The documentation is available online at: https://judo.technology/"
+        echo ""
+        echo "For local development, consider:"
+        echo "  1. Installing a proper Ruby version manager (rbenv, rvm, or asdf)"
+        echo "  2. Installing a newer Ruby version (3.0+)"
+        echo "  3. Using the online documentation instead"
+        exit 1
+    fi
 fi
 
 # Start Jekyll server

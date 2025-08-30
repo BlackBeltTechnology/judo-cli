@@ -133,7 +133,13 @@ bundle install
 bundle exec jekyll serve --livereload
 ```
 
-**Note**: Local Jekyll development may require proper Ruby environment setup with development tools. The documentation is automatically deployed to https://judo.technology/ via GitHub Actions, so local development is optional for most use cases.
+**Important**: Local Jekyll development requires a proper Ruby environment and may fail on systems with system Ruby (macOS default). The documentation is automatically deployed to **https://judo.technology/** via GitHub Actions.
+
+**For local development issues:**
+- Use the online documentation at https://judo.technology/ 
+- Install a Ruby version manager (rbenv, rvm, or asdf) and Ruby 3.0+
+- Ensure Xcode command line tools are properly configured
+- The serve scripts will provide detailed error messages and fallback options
 
 ### Documentation Structure
 - **Main docs**: `docs/` directory with Jekyll configuration
