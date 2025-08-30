@@ -1359,7 +1359,9 @@ func checkForUpdate(currentVersion string) error {
 
 	if !info.IsSnapshot {
 		fmt.Printf("You are running a stable version. Self-update is only available for snapshot versions.\n")
-		fmt.Printf("Please download the latest version manually from: https://github.com/BlackBeltTechnology/judo-cli/releases\n")
+		fmt.Printf("For stable versions, please update using one of these methods:\n")
+		fmt.Printf("  • Homebrew: brew upgrade blackbelttechnology/tap/judo\n")
+		fmt.Printf("  • Manual: https://github.com/BlackBeltTechnology/judo-cli/releases\n")
 		return nil
 	}
 

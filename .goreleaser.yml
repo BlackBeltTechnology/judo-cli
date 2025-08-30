@@ -82,7 +82,7 @@ changelog:
 release:
   # Repository to release to.
   github:
-    owner: blackbelt-dev
+    owner: BlackBeltTechnology
     name: judo-cli
 
   # Create the release draft, so it can be edited before being published.
@@ -99,26 +99,58 @@ release:
   footer: |
     ## Docker Images
     
-    **Full Changelog**: https://github.com/blackbelt-dev/judo-cli/compare/{{ .PreviousTag }}...{{ .Tag }}
+    **Full Changelog**: https://github.com/BlackBeltTechnology/judo-cli/compare/{{ .PreviousTag }}...{{ .Tag }}
     
     ---
     
     **Installation**
     
+    ### Homebrew (macOS/Linux)
+    ```bash
+    brew install blackbelttechnology/tap/judo
+    ```
+    
+    ### Manual Installation
     Download the pre-compiled binaries from the assets below, or install using:
     
     ```bash
     # Using curl (Linux/macOS)
-    curl -L https://github.com/blackbelt-dev/judo-cli/releases/latest/download/judo_Linux_x86_64.tar.gz | tar xz
+    curl -L https://github.com/BlackBeltTechnology/judo-cli/releases/latest/download/judo_Linux_x86_64.tar.gz | tar xz
     
     # Using wget (Linux)
-    wget https://github.com/blackbelt-dev/judo-cli/releases/latest/download/judo_Linux_x86_64.tar.gz
+    wget https://github.com/BlackBeltTechnology/judo-cli/releases/latest/download/judo_Linux_x86_64.tar.gz
     tar xzf judo_Linux_x86_64.tar.gz
     
     # Using PowerShell (Windows)
-    Invoke-WebRequest -Uri "https://github.com/blackbelt-dev/judo-cli/releases/latest/download/judo_Windows_x86_64.zip" -OutFile "judo.zip"
+    Invoke-WebRequest -Uri "https://github.com/BlackBeltTechnology/judo-cli/releases/latest/download/judo_Windows_x86_64.zip" -OutFile "judo.zip"
     Expand-Archive judo.zip
     ```
+
+brews:
+  - name: judo
+    repository:
+      owner: BlackBeltTechnology
+      name: homebrew-tap
+      branch: main
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+    url_template: "https://github.com/BlackBeltTechnology/judo-cli/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
+    commit_author:
+      name: blackbelt-bot
+      email: bot@blackbelt.hu
+    commit_msg_template: "Brew formula update for {{ .ProjectName }} version {{ .Tag }}"
+    homepage: "https://github.com/BlackBeltTechnology/judo-cli"
+    description: "JUDO CLI - A command-line tool for managing the lifecycle of JUDO applications"
+    license: "EPL-2.0"
+    skip_upload: auto
+    dependencies:
+      - name: docker
+        type: optional
+      - name: maven
+        type: optional
+    install: |
+      bin.install "judo"
+    test: |
+      system "#{bin}/judo", "version"
 
 # Announce the release
 announce:

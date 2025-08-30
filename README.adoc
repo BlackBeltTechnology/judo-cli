@@ -25,6 +25,7 @@ image:https://img.shields.io/badge/Karaf-Runtime-FF6B35?style=flat-square&logo=a
 image:https://img.shields.io/badge/PostgreSQL-Database-336791?style=flat-square&logo=postgresql&logoColor=white[PostgreSQL]
 image:https://img.shields.io/badge/Keycloak-Auth-FF6B35?style=flat-square&logo=redhat&logoColor=white[Keycloak]
 image:https://img.shields.io/badge/Interactive-Session-00D4AA?style=flat-square&logo=gnubash&logoColor=white[Interactive Session]
+image:https://img.shields.io/badge/Homebrew-Available-orange?style=flat-square&logo=homebrew&logoColor=white[Homebrew]
 
 == Project Overview
 
@@ -378,9 +379,46 @@ Press `Tab` for command and flag completion:
 * **Context Awareness**: Tracks project initialization status
 * **Persistent History**: Maintains last 100 commands across sessions
 
-== Building the CLI
+== Installation
 
-To build the `judo` executable, navigate to the project root directory and run the following command:
+=== Homebrew (macOS/Linux) - Recommended
+
+The easiest way to install JUDO CLI on macOS and Linux is using Homebrew:
+
+[source,bash]
+----
+# Add the BlackBelt Technology tap
+brew tap blackbelttechnology/tap
+
+# Install JUDO CLI
+brew install judo
+
+# Or install directly
+brew install blackbelttechnology/tap/judo
+----
+
+=== Manual Installation
+
+Download the latest release from the https://github.com/BlackBeltTechnology/judo-cli/releases[GitHub releases page]:
+
+[source,bash]
+----
+# Linux x86_64
+curl -L https://github.com/BlackBeltTechnology/judo-cli/releases/latest/download/judo_Linux_x86_64.tar.gz | tar xz
+
+# macOS x86_64 (Intel)
+curl -L https://github.com/BlackBeltTechnology/judo-cli/releases/latest/download/judo_Darwin_x86_64.tar.gz | tar xz
+
+# macOS arm64 (Apple Silicon)
+curl -L https://github.com/BlackBeltTechnology/judo-cli/releases/latest/download/judo_Darwin_arm64.tar.gz | tar xz
+
+# Windows x86_64
+# Download and extract judo_Windows_x86_64.zip from releases page
+----
+
+=== Building from Source
+
+To build the `judo` executable from source, navigate to the project root directory and run:
 
 [source,bash]
 ----
