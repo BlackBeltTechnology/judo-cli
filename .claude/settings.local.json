@@ -5,9 +5,20 @@
       "Bash(gofmt:*)",
       "Bash(chmod:*)",
       "Bash(scripts/version.sh:*)",
-      "Bash(yamllint:*)"
+      "Bash(yamllint:*)",
+      "WebFetch(domain:github.com)",
+      "mcp__github-server__list_pull_requests",
+      "mcp__github-server__search_repositories",
+      "Bash(go build:*)",
+      "Bash(./judo:*)",
+      "Bash(JUDO_VERSION=1.0.0-SNAPSHOT go build -o judo-snapshot ./cmd/judo)",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": []
-  }
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "github-server"
+  ]
 }

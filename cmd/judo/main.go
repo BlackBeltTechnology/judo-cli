@@ -56,6 +56,7 @@ func main() {
 		commands.CreateStatusCommand(),
 		commands.CreateLogCommand(),
 		commands.CreateInitCommand(),
+		commands.CreateSelfUpdateCommand(version),
 		createSessionCommand(),
 		createVersionCommand(),
 	)

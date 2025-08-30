@@ -17,6 +17,7 @@ import (
 	"judo-cli-module/internal/docker"
 	"judo-cli-module/internal/help"
 	"judo-cli-module/internal/karaf"
+	"judo-cli-module/internal/selfupdate"
 	"judo-cli-module/internal/utils"
 )
 
@@ -1293,4 +1294,110 @@ func tailLogFile(logFile string, lines int, follow bool) error {
 
 		time.Sleep(1 * time.Second)
 	}
+}
+
+// CreateSelfUpdateCommand creates the self-update command
+func CreateSelfUpdateCommand(currentVersion string) *cobra.Command {
+	var force bool
+	var check bool
+
+	cmd := &cobra.Command{
+		Use:   "self-update",
+		Short: "Update judo CLI to the latest version",
+		Long: `Update judo CLI to the latest version.
+
+This command only works for snapshot versions and will update to the latest
+prerelease version from GitHub releases. For stable versions, please download
+the new version manually.
+
+The update process:
+1. Downloads the latest binary for your platform
+2. Replaces the current binary with the new version
+3. Restarts the CLI with the same arguments`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if check {
+				return checkForUpdate(currentVersion)
+			}
+			return performSelfUpdate(currentVersion, force)
+		},
+	}
+
+	cmd.Flags().BoolVarP(&force, "force", "f", false, "Force update even if already up to date")
+	cmd.Flags().BoolVarP(&check, "check", "c", false, "Check for updates without installing")
+
+	return cmd
+}
+
+// checkForUpdate checks and displays update information
+func checkForUpdate(currentVersion string) error {
+	fmt.Printf("Checking for updates...\n")
+	fmt.Printf("Current version: %s\n", currentVersion)
+
+	info, err := selfupdate.CheckForUpdate(currentVersion)
+	if err != nil {
+		if strings.Contains(err.Error(), "no releases found") {
+			fmt.Printf("ℹ️  No releases found or repository not accessible\n")
+			fmt.Printf("This could mean:\n")
+			fmt.Printf("  • No releases have been published yet\n")
+			fmt.Printf("  • The repository is private and requires authentication\n")
+			fmt.Printf("  • Network connectivity issues\n")
+			fmt.Printf("\nPlease check: https://github.com/BlackBeltTechnology/judo-cli/releases\n")
+			return nil
+		}
+		return fmt.Errorf("failed to check for updates: %w", err)
+	}
+
+	if !info.IsSnapshot {
+		fmt.Printf("You are running a stable version. Self-update is only available for snapshot versions.\n")
+		fmt.Printf("Please download the latest version manually from: https://github.com/BlackBeltTechnology/judo-cli/releases\n")
+		return nil
+	}
+
+	fmt.Printf("Latest version: %s\n", info.LatestVersion)
+
+	if !info.NeedsUpdate {
+		fmt.Printf("✅ You are already running the latest version!\n")
+		return nil
+	}
+
+	fmt.Printf("🆕 Update available!\n")
+	fmt.Printf("Run 'judo self-update' to install the latest version.\n")
+	return nil
+}
+
+// performSelfUpdate performs the actual update
+func performSelfUpdate(currentVersion string, force bool) error {
+	fmt.Printf("Checking for updates...\n")
+
+	info, err := selfupdate.CheckForUpdate(currentVersion)
+	if err != nil {
+		if strings.Contains(err.Error(), "no releases found") {
+			return fmt.Errorf("no releases found or repository not accessible - please check https://github.com/BlackBeltTechnology/judo-cli/releases")
+		}
+		return fmt.Errorf("failed to check for updates: %w", err)
+	}
+
+	if !info.IsSnapshot {
+		return fmt.Errorf("self-update is only available for snapshot versions")
+	}
+
+	if !info.NeedsUpdate && !force {
+		fmt.Printf("✅ You are already running the latest version (%s)!\n", info.LatestVersion)
+		return nil
+	}
+
+	if info.NeedsUpdate {
+		fmt.Printf("🆕 Updating from %s to %s...\n", info.CurrentVersion, info.LatestVersion)
+	} else {
+		fmt.Printf("🔄 Force updating %s...\n", info.CurrentVersion)
+	}
+
+	fmt.Printf("Downloading update...\n")
+	if err := selfupdate.PerformUpdate(info.DownloadURL); err != nil {
+		return fmt.Errorf("failed to perform update: %w", err)
+	}
+
+	// This should not be reached as PerformUpdate calls os.Exit()
+	fmt.Printf("✅ Update completed!\n")
+	return nil
 }
