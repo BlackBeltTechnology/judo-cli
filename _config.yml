@@ -1,0 +1,90 @@
+# Site settings
+title: "JUDO CLI"
+description: "Command-line tool for managing the lifecycle of JUDO applications"
+baseurl: "/judo-cli"
+url: "https://blackbelttechnology.github.io"
+
+# Repository information
+repository: "BlackBeltTechnology/judo-cli"
+github_username: BlackBeltTechnology
+
+# Theme configuration
+remote_theme: BlackBeltTechnology/jekyll-theme-judo@develop
+
+# Jekyll configuration
+markdown: kramdown
+highlighter: rouge
+permalink: pretty
+
+# Plugins
+plugins:
+  - jekyll-feed
+  - jekyll-sitemap
+  - jekyll-seo-tag
+  - jekyll-remote-theme
+
+# Collections
+collections:
+  docs:
+    output: true
+    permalink: /:collection/:name/
+
+# Navigation
+navigation:
+  - title: "Home"
+    url: "/"
+  - title: "Getting Started"
+    url: "/docs/getting-started/"
+  - title: "Commands"
+    url: "/docs/commands/"
+  - title: "Configuration"
+    url: "/docs/configuration/"
+  - title: "Examples"
+    url: "/docs/examples/"
+  - title: "API Reference"
+    url: "/docs/api/"
+
+# Site metadata
+author:
+  name: "BlackBelt Technology"
+  email: "info@blackbelt.hu"
+  url: "https://blackbelt.hu"
+
+# Social links
+social:
+  github: "BlackBeltTechnology"
+  twitter: "blackbelttech"
+
+# SEO
+logo: "/assets/images/judo-cli-logo.png"
+twitter:
+  username: blackbelttech
+  card: summary
+
+# Build settings
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - node_modules
+  - vendor/
+  - .bundle/
+  - .sass-cache/
+  - .jekyll-cache/
+  - gemfiles/
+  - README.md
+  - LICENSE
+  - CHANGELOG.md
+  - scripts/
+  - internal/
+  - cmd/
+  - "*.go"
+  - go.mod
+  - go.sum
+  - .goreleaser.yml
+  - VERSION
+  - .github/
+  - dist/
+
+# Include
+include:
+  - _pages

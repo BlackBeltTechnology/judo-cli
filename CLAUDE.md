@@ -122,16 +122,18 @@ The project includes Jekyll-based documentation with automated GitHub Pages depl
 
 ### Local Documentation Server
 ```bash
-# Enhanced server with livereload and error handling
+# Enhanced server with livereload and error handling (requires working Ruby environment)
 ./serve-docs.sh
 
-# Simple server for compatibility
+# Simple server for compatibility (requires working Ruby environment)
 ./serve-docs-simple.sh
 
-# Manual Jekyll commands
+# Manual Jekyll commands (if Ruby environment is properly configured)
 bundle install
 bundle exec jekyll serve --livereload
 ```
+
+**Note**: Local Jekyll development may require proper Ruby environment setup with development tools. The documentation is automatically deployed to https://judo.technology/ via GitHub Actions, so local development is optional for most use cases.
 
 ### Documentation Structure
 - **Main docs**: `docs/` directory with Jekyll configuration

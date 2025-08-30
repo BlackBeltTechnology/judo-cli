@@ -29,7 +29,12 @@
       "Bash(go generate:*)",
       "Bash(./serve-docs-simple.sh:*)",
       "Bash(bundle config set:*)",
-      "Bash(bundle install:*)"
+      "Bash(bundle install:*)",
+      "Bash(xcode-select:*)",
+      "Bash(gcc:*)",
+      "Bash(bundle config:*)",
+      "WebFetch(domain:blackbelttechnology.github.io)",
+      "WebFetch(domain:judo.technology)"
     ],
     "deny": [],
     "ask": []
