@@ -1,0 +1,44 @@
+title: "JUDO CLI Documentation"
+description: "Complete documentation for the JUDO CLI tool"
+baseurl: "/judo-cli"
+url: "https://blackbelttechnology.github.io"
+
+# Build settings
+markdown: kramdown
+highlighter: rouge
+theme: jekyll-theme-cayman
+
+# Plugin configuration
+plugins:
+  - jekyll-feed
+  - jekyll-sitemap
+  - jekyll-seo-tag
+
+# Navigation
+navigation:
+  - title: "Home"
+    url: /
+  - title: "Commands"
+    url: /commands/
+  - title: "Installation"
+    url: /installation/
+  - title: "Interactive Session"
+    url: /session/
+
+# SEO
+lang: en_US
+repository: BlackBeltTechnology/judo-cli
+author: BlackBelt Meta Zrt.
+
+# Social links
+github_username: BlackBeltTechnology
+
+# Exclude from processing
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - node_modules
+  - vendor/bundle/
+  - vendor/cache/
+  - vendor/gems/
+  - vendor/ruby/
