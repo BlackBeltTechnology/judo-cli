@@ -1293,6 +1293,4 @@ func tailLogFile(logFile string, lines int, follow bool) error {
 		
 		time.Sleep(1 * time.Second)
 	}
-	
-	return nil
 }
