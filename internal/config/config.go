@@ -285,10 +285,10 @@ func IsProjectInitialized() bool {
 	if err != nil {
 		return false
 	}
-	
+
 	// Check for judo.properties or judo-version.properties
 	judoPropsPath := filepath.Join(cwd, "judo.properties")
 	judoVersionPropsPath := filepath.Join(cwd, "judo-version.properties")
-	
+
 	return utils.FileExists(judoPropsPath) || utils.FileExists(judoVersionPropsPath)
 }

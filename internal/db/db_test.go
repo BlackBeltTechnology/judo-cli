@@ -40,10 +40,10 @@ func TestFindLatestDump(t *testing.T) {
 	}()
 
 	schema := "testschema"
-	
+
 	// Create dummy dump files with different timestamps
 	now := time.Now()
-	
+
 	// Oldest dump
 	oldTime := now.Add(-24 * time.Hour)
 	oldDumpName := fmt.Sprintf("%s_dump_%s.tar.gz", schema, oldTime.Format("20060102_150405"))
@@ -71,7 +71,7 @@ func TestFindLatestDump(t *testing.T) {
 	os.Remove(oldDumpName)
 	os.Remove(middleDumpName)
 	os.Remove(latestDumpName)
-	
+
 	_, err = FindLatestDump(schema)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "no dump files found")

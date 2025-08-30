@@ -94,4 +94,3 @@ func StartKaraf() {
 
 	fmt.Printf("Karaf started (pid %d). Logs: %s\n", ecmd.Process.Pid, consoleOut.Name())
 }
-

@@ -11,9 +11,9 @@ import (
 var (
 	version string
 	rootCmd = &cobra.Command{
-		Use:   "judo",
-		Short: "judo-cli is a command line tool for managing JUDO applications.",
-		Long:  `judo-cli is a command line tool for managing the lifecycle of JUDO applications.`,
+		Use:     "judo",
+		Short:   "judo-cli is a command line tool for managing JUDO applications.",
+		Long:    `judo-cli is a command line tool for managing the lifecycle of JUDO applications.`,
 		Version: version,
 	}
 )

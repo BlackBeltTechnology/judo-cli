@@ -323,25 +323,25 @@ func IsPortUsedByKaraf(port int, karafDir string) bool {
 	if karafDir == "" {
 		return false
 	}
-	
+
 	// Check if Karaf is running using bin/status command
 	statusCmd := filepath.Join(karafDir, "bin", "status")
 	if _, err := os.Stat(statusCmd); err != nil {
 		return false
 	}
-	
+
 	// Execute status command to check if Karaf is running
 	out, err := RunCapture(statusCmd)
 	if err != nil {
 		return false
 	}
-	
+
 	// Check if Karaf is running and using the specified port
 	karafRunning := strings.Contains(out, "Running") && !strings.Contains(out, "Not")
 	if !karafRunning {
 		return false
 	}
-	
+
 	// Check if Karaf is configured to use this port
 	paxConfig := filepath.Join(karafDir, "etc", "org.ops4j.pax.web.cfg")
 	if _, err := os.Stat(paxConfig); err == nil {
@@ -351,10 +351,9 @@ func IsPortUsedByKaraf(port int, karafDir string) bool {
 			return strings.Contains(string(content), portConfig)
 		}
 	}
-	
+
 	return false
 }
-
 
 // UntarGz decompresses a .tar.gz file to a destination directory, stripping leading path components.
 func UntarGz(src, dest string, stripComponents int) error {

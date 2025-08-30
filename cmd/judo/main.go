@@ -59,7 +59,7 @@ func main() {
 		createSessionCommand(),
 		createVersionCommand(),
 	)
-	
+
 	// Debug: print all commands
 	fmt.Println("DEBUG: Registered commands:")
 	for _, cmd := range rootCmd.Commands() {

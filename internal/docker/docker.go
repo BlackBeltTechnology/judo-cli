@@ -46,7 +46,6 @@ func CloseDockerClient() {
 	}
 }
 
-
 func newDockerClient() (*client.Client, error) {
 	// 1) Respect env (DOCKER_HOST etc.)
 	if cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation()); err == nil {
@@ -172,7 +171,7 @@ func DockerInstanceRunning(name string) bool {
 		return false
 	}
 	defer client.Close()
-	
+
 	containers, err := client.ContainerList(context.Background(), container.ListOptions{})
 	if err != nil {
 		log.Printf("Failed to list Docker containers: %v", err)
@@ -358,15 +357,15 @@ func IsPortUsedByKeycloak(port int) bool {
 	if cfg == nil {
 		return false
 	}
-	
+
 	keycloakName := "keycloak-" + cfg.KeycloakName
-	
+
 	// List all running containers
 	containers, err := cli.ContainerList(context.Background(), container.ListOptions{})
 	if err != nil {
 		return false
 	}
-	
+
 	// Find the Keycloak container
 	for _, c := range containers {
 		for _, n := range c.Names {
@@ -376,7 +375,7 @@ func IsPortUsedByKeycloak(port int) bool {
 			}
 		}
 	}
-	
+
 	return false
 }
 
@@ -396,19 +395,19 @@ func IsPortUsedByPostgres(port int) bool {
 	if cfg == nil {
 		return false
 	}
-	
+
 	if cfg.DBType != "postgresql" {
 		return false
 	}
-	
+
 	postgresName := "postgres-" + cfg.SchemaName
-	
+
 	// List all running containers
 	containers, err := cli.ContainerList(context.Background(), container.ListOptions{})
 	if err != nil {
 		return false
 	}
-	
+
 	// Find the PostgreSQL container
 	for _, c := range containers {
 		for _, n := range c.Names {
@@ -418,6 +417,6 @@ func IsPortUsedByPostgres(port int) bool {
 			}
 		}
 	}
-	
+
 	return false
 }

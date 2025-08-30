@@ -19,29 +19,29 @@ import (
 )
 
 type SessionState struct {
-	CurrentDir     string
+	CurrentDir         string
 	ProjectInitialized bool
-	CommandHistory []string
-	StartTime      time.Time
-	Verbose        bool
+	CommandHistory     []string
+	StartTime          time.Time
+	Verbose            bool
 }
 
 func StartInteractiveSession() {
 	// Load previous session history
 	previousHistory := loadSessionHistory()
-	
+
 	state := &SessionState{
-		CurrentDir:     utils.GetCurrentDir(),
+		CurrentDir:         utils.GetCurrentDir(),
 		ProjectInitialized: config.IsProjectInitialized(),
-		StartTime:      time.Now(),
-		CommandHistory: previousHistory,
+		StartTime:          time.Now(),
+		CommandHistory:     previousHistory,
 	}
 
 	// Display JUDO banner
 	judobanner := "\u001B[0m\u001B[38;5;16m        \u001B[38;5;167m█\u001B[38;5;209m███\u001B[38;5;232m█\u001B[38;5;16m                                               \n\u001B[38;5;16m       \u001B[38;5;209m██████\u001B[38;5;16m                                               \n\u001B[38;5;16m       \u001B[38;5;238m█\u001B[38;5;209m████\u001B[38;5;131m█\u001B[38;5;16m                                               \n\u001B[38;5;16m       \u001B[38;5;232m█\u001B[38;5;242m█\u001B[38;5;239m█\u001B[38;5;238m█\u001B[38;5;241m█\u001B[38;5;238m█\u001B[38;5;240m█\u001B[38;5;242m████\u001B[38;5;16m     \u001B[38;5;238m█\u001B[38;5;242m████\u001B[38;5;233m█\u001B[38;5;242m███████\u001B[38;5;241m█\u001B[38;5;238m█\u001B[38;5;234m█\u001B[38;5;16m         \u001B[38;5;234m█\u001B[38;5;244m█\u001B[38;5;253m█\u001B[38;5;231m█\u001B[38;5;255m█\u001B[38;5;251m█\u001B[38;5;59m█\u001B[38;5;233m█\u001B[38;5;16m    \n\u001B[38;5;16m       \u001B[38;5;233m█\u001B[38;5;231m████\u001B[38;5;248m█\u001B[38;5;252m█\u001B[38;5;231m████\u001B[38;5;232m█\u001B[38;5;16m    \u001B[38;5;247m█\u001B[38;5;231m████\u001B[38;5;235m█\u001B[38;5;231m████████████\u001B[38;5;239m█\u001B[38;5;16m   \u001B[38;5;234m█\u001B[38;5;231m███████████\u001B[38;5;254m█\u001B[38;5;16m  \n\u001B[38;5;16m       \u001B[38;5;233m█\u001B[38;5;231m████\u001B[38;5;248m█\u001B[38;5;252m█\u001B[38;5;231m████\u001B[38;5;232m█\u001B[38;5;16m    \u001B[38;5;247m█\u001B[38;5;231m████\u001B[38;5;235m█\u001B[38;5;231m████\u001B[38;5;255m█\u001B[38;5;234m█\u001B[38;5;235m█\u001B[38;5;244m█\u001B[38;5;231m█████\u001B[38;5;250m█\u001B[38;5;16m \u001B[38;5;242m█\u001B[38;5;231m█████\u001B[38;5;239m█\u001B[38;5;233m██\u001B[38;5;246m█\u001B[38;5;231m█████\u001B[38;5;16m \n\u001B[38;5;16m       \u001B[38;5;233m█\u001B[38;5;231m████\u001B[38;5;248m█\u001B[38;5;252m█\u001B[38;5;231m████\u001B[38;5;232m█\u001B[38;5;16m    \u001B[38;5;247m█\u001B[38;5;231m████\u001B[38;5;235m█\u001B[38;5;231m████\u001B[38;5;255m█\u001B[38;5;16m    \u001B[38;5;255m█\u001B[38;5;231m████\u001B[38;5;16m \u001B[38;5;231m████\u001B[38;5;255m█\u001B[38;5;16m      \u001B[38;5;231m████\u001B[38;5;255m█\n\u001B[38;5;16m       \u001B[38;5;233m█\u001B[38;5;231m████\u001B[38;5;248m█\u001B[38;5;252m█\u001B[38;5;231m████\u001B[38;5;232m█\u001B[38;5;16m    \u001B[38;5;247m█\u001B[38;5;231m████\u001B[38;5;235m█\u001B[38;5;231m████\u001B[38;5;255m█\u001B[38;5;16m    \u001B[38;5;249m█\u001B[38;5;231m████\u001B[38;5;16m \u001B[38;5;231m████\u001B[38;5;251m█\u001B[38;5;16m      \u001B[38;5;255m█\u001B[38;5;231m████\n\u001B[38;5;16m       \u001B[38;5;233m█\u001B[38;5;231m████\u001B[38;5;248m█\u001B[38;5;252m█\u001B[38;5;231m████\u001B[38;5;232m█\u001B[38;5;16m    \u001B[38;5;247m█\u001B[38;5;231m████\u001B[38;5;235m█\u001B[38;5;231m████\u001B[38;5;255m█\u001B[38;5;16m    \u001B[38;5;254m█\u001B[38;5;231m████\u001B[38;5;16m \u001B[38;5;231m████\u001B[38;5;255m█\u001B[38;5;16m      \u001B[38;5;231m█████\n\u001B[38;5;255m█\u001B[38;5;231m███\u001B[38;5;255m█\u001B[38;5;16m  \u001B[38;5;243m█\u001B[38;5;231m████\u001B[38;5;241m█\u001B[38;5;243m█\u001B[38;5;231m████\u001B[38;5;248m█\u001B[38;5;16m   \u001B[38;5;232m█\u001B[38;5;231m█████\u001B[38;5;16m \u001B[38;5;231m████\u001B[38;5;255m█\u001B[38;5;16m   \u001B[38;5;237m█\u001B[38;5;231m████\u001B[38;5;255m█\u001B[38;5;16m \u001B[38;5;253m█\u001B[38;5;231m████\u001B[38;5;244m█\u001B[38;5;16m    \u001B[38;5;255m█\u001B[38;5;231m████\u001B[38;5;242m█\n\u001B[38;5;234m█\u001B[38;5;231m███████████\u001B[38;5;16m  \u001B[38;5;252m█\u001B[38;5;231m████████████\u001B[38;5;233m█\u001B[38;5;16m \u001B[38;5;231m████████████\u001B[38;5;255m█\u001B[38;5;16m   \u001B[38;5;250m█\u001B[38;5;231m████████████\u001B[38;5;242m█\u001B[38;5;16m \n\u001B[38;5;16m  \u001B[38;5;244m█\u001B[38;5;231m██████\u001B[38;5;255m█\u001B[38;5;233m█\u001B[38;5;16m     \u001B[38;5;249m█\u001B[38;5;231m████████\u001B[38;5;237m█\u001B[38;5;16m   \u001B[38;5;231m██████████\u001B[38;5;242m█\u001B[38;5;16m       \u001B[38;5;239m█\u001B[38;5;231m████████\u001B[38;5;236m█\u001B[38;5;16m   \n\u001B[0m"
 	fmt.Print(judobanner)
 	fmt.Println()
-	
+
 	fmt.Printf("\x1b[1;36m🚀 JUDO CLI Interactive Session\x1b[0m\n")
 	fmt.Printf("\x1b[33mType 'help' for available commands, 'exit' to quit\x1b[0m\n\n")
 
@@ -138,7 +138,7 @@ func StartInteractiveSession() {
 			fmt.Printf("\x1b[33mType 'help' for available commands or '%s?' for suggestions\x1b[0m\n", args[0])
 			continue
 		}
-		
+
 		if cmd.Use == "session" {
 			fmt.Printf("\x1b[33m⚠️  Warning: Cannot execute session command within session\x1b[0m\n")
 			continue
@@ -147,7 +147,7 @@ func StartInteractiveSession() {
 		// Show command execution feedback
 		fmt.Printf("\x1b[36m⚡ Executing: %s\x1b[0m\n", input)
 		startTime := time.Now()
-		
+
 		// Execute the command directly without going through the full Execute() flow
 		// This avoids command parsing conflicts within the session context
 		err = executeCommandInSession(cmd, foundArgs)
@@ -159,7 +159,7 @@ func StartInteractiveSession() {
 
 		// Update session state after command execution
 		updateSessionStatus(state)
-		
+
 		// Update the prompt to reflect current service status
 		rl.SetPrompt(getServiceStatusPrompt())
 	}
@@ -207,7 +207,7 @@ func printSessionHelp() {
 	judobanner := "\u001B[0m\u001B[38;5;16m        \u001B[38;5;167m█\u001B[38;5;209m███\u001B[38;5;232m█\u001B[38;5;16m                                               \n\u001B[38;5;16m       \u001B[38;5;209m██████\u001B[38;5;16m                                               \n\u001B[38;5;16m       \u001B[38;5;238m█\u001B[38;5;209m████\u001B[38;5;131m█\u001B[38;5;16m                                               \n\u001B[38;5;16m       \u001B[38;5;232m█\u001B[38;5;242m█\u001B[38;5;239m█\u001B[38;5;238m█\u001B[38;5;241m█\u001B[38;5;238m█\u001B[38;5;240m█\u001B[38;5;242m████\u001B[38;5;16m     \u001B[38;5;238m█\u001B[38;5;242m████\u001B[38;5;233m█\u001B[38;5;242m███████\u001B[38;5;241m█\u001B[38;5;238m█\u001B[38;5;234m█\u001B[38;5;16m         \u001B[38;5;234m█\u001B[38;5;244m█\u001B[38;5;253m█\u001B[38;5;231m█\u001B[38;5;255m█\u001B[38;5;251m█\u001B[38;5;59m█\u001B[38;5;233m█\u001B[38;5;16m    \n\u001B[38;5;16m       \u001B[38;5;233m█\u001B[38;5;231m████\u001B[38;5;248m█\u001B[38;5;252m█\u001B[38;5;231m████\u001B[38;5;232m█\u001B[38;5;16m    \u001B[38;5;247m█\u001B[38;5;231m████\u001B[38;5;235m█\u001B[38;5;231m████████████\u001B[38;5;239m█\u001B[38;5;16m   \u001B[38;5;234m█\u001B[38;5;231m███████████\u001B[38;5;254m█\u001B[38;5;16m  \n\u001B[38;5;16m       \u001B[38;5;233m█\u001B[38;5;231m████\u001B[38;5;248m█\u001B[38;5;252m█\u001B[38;5;231m████\u001B[38;5;232m█\u001B[38;5;16m    \u001B[38;5;247m█\u001B[38;5;231m████\u001B[38;5;235m█\u001B[38;5;231m████\u001B[38;5;255m█\u001B[38;5;234m█\u001B[38;5;235m█\u001B[38;5;244m█\u001B[38;5;231m█████\u001B[38;5;250m█\u001B[38;5;16m \u001B[38;5;242m█\u001B[38;5;231m█████\u001B[38;5;239m█\u001B[38;5;233m██\u001B[38;5;246m█\u001B[38;5;231m█████\u001B[38;5;16m \n\u001B[38;5;16m       \u001B[38;5;233m█\u001B[38;5;231m████\u001B[38;5;248m█\u001B[38;5;252m█\u001B[38;5;231m████\u001B[38;5;232m█\u001B[38;5;16m    \u001B[38;5;247m█\u001B[38;5;231m████\u001B[38;5;235m█\u001B[38;5;231m████\u001B[38;5;255m█\u001B[38;5;16m    \u001B[38;5;255m█\u001B[38;5;231m████\u001B[38;5;16m \u001B[38;5;231m████\u001B[38;5;255m█\u001B[38;5;16m      \u001B[38;5;231m████\u001B[38;5;255m█\n\u001B[38;5;16m       \u001B[38;5;233m█\u001B[38;5;231m████\u001B[38;5;248m█\u001B[38;5;252m█\u001B[38;5;231m████\u001B[38;5;232m█\u001B[38;5;16m    \u001B[38;5;247m█\u001B[38;5;231m████\u001B[38;5;235m█\u001B[38;5;231m████\u001B[38;5;255m█\u001B[38;5;16m    \u001B[38;5;249m█\u001B[38;5;231m████\u001B[38;5;16m \u001B[38;5;231m████\u001B[38;5;251m█\u001B[38;5;16m      \u001B[38;5;255m█\u001B[38;5;231m████\n\u001B[38;5;16m       \u001B[38;5;233m█\u001B[38;5;231m████\u001B[38;5;248m█\u001B[38;5;252m█\u001B[38;5;231m████\u001B[38;5;232m█\u001B[38;5;16m    \u001B[38;5;247m█\u001B[38;5;231m████\u001B[38;5;235m█\u001B[38;5;231m████\u001B[38;5;255m█\u001B[38;5;16m    \u001B[38;5;254m█\u001B[38;5;231m████\u001B[38;5;16m \u001B[38;5;231m████\u001B[38;5;255m█\u001B[38;5;16m      \u001B[38;5;231m█████\n\u001B[38;5;255m█\u001B[38;5;231m███\u001B[38;5;255m█\u001B[38;5;16m  \u001B[38;5;243m█\u001B[38;5;231m████\u001B[38;5;241m█\u001B[38;5;243m█\u001B[38;5;231m████\u001B[38;5;248m█\u001B[38;5;16m   \u001B[38;5;232m█\u001B[38;5;231m█████\u001B[38;5;16m \u001B[38;5;231m████\u001B[38;5;255m█\u001B[38;5;16m   \u001B[38;5;237m█\u001B[38;5;231m████\u001B[38;5;255m█\u001B[38;5;16m \u001B[38;5;253m█\u001B[38;5;231m████\u001B[38;5;244m█\u001B[38;5;16m    \u001B[38;5;255m█\u001B[38;5;231m████\u001B[38;5;242m█\n\u001B[38;5;234m█\u001B[38;5;231m███████████\u001B[38;5;16m  \u001B[38;5;252m█\u001B[38;5;231m████████████\u001B[38;5;233m█\u001B[38;5;16m \u001B[38;5;231m████████████\u001B[38;5;255m█\u001B[38;5;16m   \u001B[38;5;250m█\u001B[38;5;231m████████████\u001B[38;5;242m█\u001B[38;5;16m \n\u001B[38;5;16m  \u001B[38;5;244m█\u001B[38;5;231m██████\u001B[38;5;255m█\u001B[38;5;233m█\u001B[38;5;16m     \u001B[38;5;249m█\u001B[38;5;231m████████\u001B[38;5;237m█\u001B[38;5;16m   \u001B[38;5;231m██████████\u001B[38;5;242m█\u001B[38;5;16m       \u001B[38;5;239m█\u001B[38;5;231m████████\u001B[38;5;236m█\u001B[38;5;16m   \n\u001B[0m"
 	fmt.Print(judobanner)
 	fmt.Println()
-	
+
 	fmt.Printf("\x1b[1;36m📋 JUDO CLI Session Commands:\x1b[0m\n")
 	fmt.Printf("\x1b[32m  help\x1b[0m      - Show this help message\n")
 	fmt.Printf("\x1b[32m  exit\x1b[0m      - Exit the interactive session\n")
@@ -274,18 +274,18 @@ func getArgumentSuggestions(commandLine string) []string {
 	if len(parts) == 0 {
 		return []string{}
 	}
-	
+
 	command := parts[0]
-	
+
 	switch command {
 	case "build":
 		return []string{
 			"--build-parallel", "-p",
-			"--build-app-module", "-a", 
+			"--build-app-module", "-a",
 			"--build-frontend-module", "-f",
 			"--docker",
 			"--skip-model",
-			"--skip-backend", 
+			"--skip-backend",
 			"--skip-frontend",
 			"--skip-karaf",
 			"--skip-schema",
@@ -333,7 +333,7 @@ func getArgumentSuggestions(commandLine string) []string {
 func getHistoryBasedSuggestions(input string, history []string) []string {
 	var suggestions []string
 	seen := make(map[string]bool)
-	
+
 	// Go through history in reverse order (most recent first)
 	for i := len(history) - 1; i >= 0; i-- {
 		cmd := history[i]
@@ -346,7 +346,7 @@ func getHistoryBasedSuggestions(input string, history []string) []string {
 			}
 		}
 	}
-	
+
 	return suggestions
 }
 
@@ -370,24 +370,24 @@ func showEnhancedSuggestions(input string, history []string) {
 	cmdSuggestions := getCommandSuggestions(input)
 	historySuggestions := getHistoryBasedSuggestions(input, history)
 	argSuggestions := getArgumentSuggestions(input)
-	
+
 	if len(cmdSuggestions) > 0 || len(historySuggestions) > 0 || len(argSuggestions) > 0 {
 		fmt.Printf("\n\x1b[36m💡 Suggestions for '%s':\x1b[0m\n", input)
-		
+
 		if len(cmdSuggestions) > 0 {
 			fmt.Printf("\x1b[1;36m📝 Commands:\x1b[0m\n")
 			for _, suggestion := range cmdSuggestions {
 				fmt.Printf("  \x1b[32m%s\x1b[0m\n", suggestion)
 			}
 		}
-		
+
 		if len(argSuggestions) > 0 {
 			fmt.Printf("\x1b[1;36m⚙️  Arguments:\x1b[0m\n")
 			for _, suggestion := range argSuggestions {
 				fmt.Printf("  \x1b[34m%s\x1b[0m\n", suggestion)
 			}
 		}
-		
+
 		if len(historySuggestions) > 0 {
 			fmt.Printf("\x1b[1;36m📜 From History:\x1b[0m\n")
 			for _, suggestion := range historySuggestions {
@@ -412,10 +412,10 @@ func printSessionStatus(state *SessionState) {
 	fmt.Printf("\x1b[32m  Session Duration:\x1b[0m %s\n", time.Since(state.StartTime).Round(time.Second))
 	fmt.Printf("\x1b[32m  Commands Executed:\x1b[0m %d\n", len(state.CommandHistory))
 	fmt.Printf("\x1b[32m  Current Directory:\x1b[0m %s\n", state.CurrentDir)
-	
+
 	if state.ProjectInitialized {
 		fmt.Printf("\x1b[32m  JUDO Project:\x1b[0m ✅ Initialized\n")
-		
+
 		// Show project info if available
 		if cfg := config.GetConfig(); cfg != nil {
 			fmt.Printf("\x1b[32m  App Name:\x1b[0m %s\n", cfg.AppName)
@@ -425,12 +425,12 @@ func printSessionStatus(state *SessionState) {
 	} else {
 		fmt.Printf("\x1b[33m  JUDO Project:\x1b[0m ⚠️  Not initialized (run 'init' to create)\n")
 	}
-	
+
 	if len(state.CommandHistory) > 0 {
 		lastCmd := state.CommandHistory[len(state.CommandHistory)-1]
 		fmt.Printf("\x1b[32m  Last Command:\x1b[0m %s\n", lastCmd)
 	}
-	
+
 	if state.Verbose {
 		fmt.Printf("\x1b[32m  Verbose Mode:\x1b[0m Enabled\n")
 	}
@@ -571,10 +571,10 @@ func getServiceStatusPrompt() string {
 	if !config.IsProjectInitialized() {
 		return "\x1b[1;34mjudo>\x1b[0m "
 	}
-	
+
 	cfg := config.GetConfig()
 	var statusParts []string
-	
+
 	// Check Karaf status
 	karafRunning := false
 	if cfg.Runtime == "karaf" {
@@ -582,13 +582,13 @@ func getServiceStatusPrompt() string {
 		karafRunning = karaf.KarafRunning(karafDir)
 	}
 	statusParts = append(statusParts, fmt.Sprintf("%skaraf:%s", getServiceEmoji("karaf"), getStatusColor(karafRunning)))
-	
+
 	// Check Keycloak status
 	keycloakRunning := false
 	keycloakName := "keycloak-" + cfg.KeycloakName
 	keycloakRunning = docker.DockerInstanceRunning(keycloakName)
 	statusParts = append(statusParts, fmt.Sprintf("%skeycloak:%s", getServiceEmoji("keycloak"), getStatusColor(keycloakRunning)))
-	
+
 	// Check PostgreSQL status (if using PostgreSQL)
 	postgresRunning := false
 	if cfg.DBType == "postgresql" {
@@ -596,7 +596,7 @@ func getServiceStatusPrompt() string {
 		postgresRunning = docker.DockerInstanceRunning(postgresName)
 		statusParts = append(statusParts, fmt.Sprintf("%spostgres:%s", getServiceEmoji("postgres"), getStatusColor(postgresRunning)))
 	}
-	
+
 	statusStr := strings.Join(statusParts, " ")
 	return fmt.Sprintf("\x1b[1;34mjudo [%s]>\x1b[0m ", statusStr)
 }
@@ -630,7 +630,7 @@ func executeCommandInSession(cmd *cobra.Command, args []string) error {
 	if err := cmd.ParseFlags(args); err != nil {
 		return fmt.Errorf("failed to parse flags: %w", err)
 	}
-	
+
 	// Run the persistent pre-run hooks if they exist
 	if cmd.PersistentPreRun != nil {
 		cmd.PersistentPreRun(cmd, args)
@@ -638,7 +638,7 @@ func executeCommandInSession(cmd *cobra.Command, args []string) error {
 	if cmd.PreRun != nil {
 		cmd.PreRun(cmd, args)
 	}
-	
+
 	// Execute the main command function
 	if cmd.RunE != nil {
 		return cmd.RunE(cmd, args)
@@ -646,6 +646,6 @@ func executeCommandInSession(cmd *cobra.Command, args []string) error {
 		cmd.Run(cmd, args)
 		return nil
 	}
-	
+
 	return fmt.Errorf("command has no run function")
 }
