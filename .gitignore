@@ -68,3 +68,5 @@ gha-creds-*.json
 
 judo
 judo-cli
+judo-stable
+judo-snapshot
