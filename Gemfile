@@ -7,8 +7,8 @@ source "https://rubygems.org"
 ruby ">= 2.6.0"
 
 # Jekyll with compatible version for CI and Ruby 3.3+
-gem "jekyll", "~> 4.3.0"
-gem "webrick", "~> 1.7"
+gem "jekyll", "~> 4.3"
+gem "webrick"
 
 # Theme dependencies
 gem "kramdown-parser-gfm"

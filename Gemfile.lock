@@ -169,7 +169,7 @@ DEPENDENCIES
   base64
   bigdecimal
   csv
-  jekyll (~> 4.3.0)
+  jekyll (~> 4.3)
   jekyll-feed
   jekyll-remote-theme
   jekyll-seo-tag
@@ -177,7 +177,7 @@ DEPENDENCIES
   jekyll-watch (~> 2.2)
   kramdown-parser-gfm
   rouge (~> 4.0)
-  webrick (~> 1.7)
+  webrick
 
 RUBY VERSION
    ruby 3.3.4p94
