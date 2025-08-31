@@ -62,6 +62,9 @@ twitter:
   card: summary
 
 # Build settings
+sass:
+  sass_dir: _sass
+
 exclude:
   - Gemfile
   - Gemfile.lock
