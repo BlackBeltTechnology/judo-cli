@@ -56,30 +56,30 @@ go build -o judo ./cmd/judo
 ## Command Reference
 
 ### System Commands
-- [`judo doctor`](commands/doctor) - System health check
-- [`judo init`](commands/init) - Initialize new JUDO project
-- [`judo session`](commands/session) - Interactive session mode
+- [`judo doctor`](/docs/commands/doctor/) - System health check
+- [`judo init`](/docs/commands/init/) - Initialize new JUDO project
+- [`judo session`](/docs/commands/session/) - Interactive session mode
 
 ### Build Commands
-- [`judo build`](commands/build) - Build project with various options
-- [`judo reckless`](commands/reckless) - Fast build & run mode
+- [`judo build`](/docs/commands/build/) - Build project with various options
+- [`judo reckless`](/docs/commands/reckless/) - Fast build & run mode
 
 ### Application Lifecycle
-- [`judo start`](commands/start) - Start application
-- [`judo stop`](commands/stop) - Stop application
-- [`judo status`](commands/status) - Check service status
-- [`judo log`](commands/log) - View application logs
+- [`judo start`](/docs/commands/start/) - Start application
+- [`judo stop`](/docs/commands/stop/) - Stop application
+- [`judo status`](/docs/commands/status/) - Check service status
+- [`judo log`](/docs/commands/log/) - View application logs
 
 ### Database Operations
-- [`judo dump`](commands/dump) - Database backup
-- [`judo import`](commands/import) - Database restore
-- [`judo schema-upgrade`](commands/schema-upgrade) - Schema migration
+- [`judo dump`](/docs/commands/dump/) - Database backup
+- [`judo import`](/docs/commands/import/) - Database restore
+- [`judo schema-upgrade`](/docs/commands/schema-upgrade/) - Schema migration
 
 ### Maintenance
-- [`judo clean`](commands/clean) - Clean environment
-- [`judo prune`](commands/prune) - Remove untracked files
-- [`judo update`](commands/update) - Update dependencies
-- [`judo self-update`](commands/self-update) - Update CLI tool
+- [`judo clean`](/docs/commands/clean/) - Clean environment
+- [`judo prune`](/docs/commands/prune/) - Remove untracked files
+- [`judo update`](/docs/commands/update/) - Update dependencies
+- [`judo self-update`](/docs/commands/self-update/) - Update CLI tool
 
 ## Configuration
 
