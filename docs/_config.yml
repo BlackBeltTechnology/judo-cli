@@ -64,6 +64,8 @@ twitter:
 # Build settings
 sass:
   sass_dir: _sass
+  load_paths:
+    - _sass
 
 exclude:
   - Gemfile
