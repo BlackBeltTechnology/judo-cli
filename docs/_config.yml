@@ -1,8 +1,8 @@
 # Site settings
 title: "JUDO CLI"
 description: "Command-line tool for managing the lifecycle of JUDO applications"
-baseurl: "/judo-cli"
-url: "https://blackbelttechnology.github.io"
+baseurl: ""
+url: "https://judo.technology"
 
 # Repository information
 repository: "BlackBeltTechnology/judo-cli"
@@ -27,18 +27,18 @@ plugins:
 collections:
   docs:
     output: true
-    permalink: /:collection/:name/
+    permalink: /:name/
 
 # Navigation
 nav:
   - title: "Home"
-    url: "/docs"
+    url: "/"
   - title: "Commands"
-    url: "/docs/commands/"
+    url: "/commands/"
   - title: "Configuration"
-    url: "/docs/configuration/"
+    url: "/configuration/"
   - title: "API"
-    url: "/docs/api/"
+    url: "/api/"
 
 # Site metadata
 author:

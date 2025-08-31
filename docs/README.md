@@ -144,7 +144,7 @@ Each documentation page should include front matter:
 ```yaml
 ---
 title: "Page Title"
-permalink: /docs/page-name/
+permalink: /page-name/
 excerpt: "Brief description for SEO and navigation"
 ---
 ```

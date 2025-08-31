@@ -1,6 +1,6 @@
 ---
 title: "API Reference"
-permalink: /docs/api/
+permalink: /api/
 excerpt: "Technical reference for JUDO CLI internals and extension points"
 ---
 

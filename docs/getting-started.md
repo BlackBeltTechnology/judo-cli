@@ -1,6 +1,6 @@
 ---
 title: "Getting Started"
-permalink: /docs/getting-started/
+permalink: /getting-started/
 excerpt: "Installation and first steps with JUDO CLI"
 ---
 

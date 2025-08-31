@@ -1,6 +1,6 @@
 ---
 title: "Configuration"
-permalink: /docs/configuration/
+permalink: /configuration/
 excerpt: "Environment and profile configuration for JUDO CLI"
 ---
 

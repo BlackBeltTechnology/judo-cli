@@ -3,7 +3,7 @@ layout: default
 title: "JUDO CLI Overview"
 description: "Overview of the JUDO CLI tool features and capabilities"
 nav_order: 2
-permalink: /docs/overview/
+permalink: /overview/
 ---
 
 # JUDO CLI

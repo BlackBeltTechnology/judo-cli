@@ -1,6 +1,6 @@
 ---
 title: "Examples"
-permalink: /docs/examples/
+permalink: /examples/
 excerpt: "Common usage patterns and workflows with JUDO CLI"
 ---
 

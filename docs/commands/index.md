@@ -4,7 +4,7 @@ title: Command Reference
 nav_order: 2
 has_children: true
 description: "Complete reference for all JUDO CLI commands"
-permalink: /docs/commands/
+permalink: /commands/
 ---
 
 # Command Reference
