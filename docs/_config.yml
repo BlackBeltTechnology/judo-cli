@@ -39,6 +39,10 @@ nav:
     url: "/configuration/"
   - title: "API"
     url: "/api/"
+  - title: "Examples"
+    url: "/examples/"
+  - title: "Session"
+    url: "/session/"
 
 # Site metadata
 author:

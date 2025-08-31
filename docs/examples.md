@@ -1,7 +1,9 @@
 ---
+layout: default
 title: "Examples"
 permalink: /examples/
-excerpt: "Common usage patterns and workflows with JUDO CLI"
+nav_order: 6
+description: "Common usage patterns and workflows with JUDO CLI"
 ---
 
 # Examples
