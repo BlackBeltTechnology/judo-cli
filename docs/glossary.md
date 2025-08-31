@@ -3,7 +3,7 @@ layout: default
 title: JUDO CLI Documentation
 nav_order: 1
 description: "Complete documentation for the JUDO CLI tool"
-permalink: /
+permalink: /glossary/
 show_os_selector: true
 ---
 

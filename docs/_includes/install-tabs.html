@@ -33,12 +33,12 @@
       <div class="command-box">
         <div class="command-header">
           <span class="command-title">cURL</span>
-          <button class="copy-btn" data-copy="curl -fsSL https://get.judo.codes/install.sh | bash">
+          <button class="copy-btn" data-copy="curl -fsSL https://judo.technology/install.sh | bash">
             <span class="copy-icon mdi mdi-content-copy"></span>
             Copy
           </button>
         </div>
-        <code class="command-text">curl -fsSL https://get.judo.codes/install.sh | bash</code>
+        <code class="command-text">curl -fsSL https://judo.technology/install.sh | bash</code>
       </div>
     </div>
     
@@ -46,12 +46,12 @@
       <div class="command-box">
         <div class="command-header">
           <span class="command-title">cURL</span>
-          <button class="copy-btn" data-copy="curl -fsSL https://get.judo.codes/install.sh | bash">
+          <button class="copy-btn" data-copy="curl -fsSL https://judo.technology/install.sh | bash">
             <span class="copy-icon mdi mdi-content-copy"></span>
             Copy
           </button>
         </div>
-        <code class="command-text">curl -fsSL https://get.judo.codes/install.sh | bash</code>
+        <code class="command-text">curl -fsSL https://judo.technology/install.sh | bash</code>
       </div>
     </div>
     
@@ -59,12 +59,12 @@
       <div class="command-box">
         <div class="command-header">
           <span class="command-title">PowerShell</span>
-          <button class="copy-btn" data-copy="iwr -useb https://get.judo.codes/install.ps1 | iex">
+          <button class="copy-btn" data-copy="iwr -useb https://judo.technology/install.ps1 | iex">
             <span class="copy-icon mdi mdi-content-copy"></span>
             Copy
           </button>
         </div>
-        <code class="command-text">iwr -useb https://get.judo.codes/install.ps1 | iex</code>
+        <code class="command-text">iwr -useb https://judo.technology/install.ps1 | iex</code>
       </div>
     </div>
   </div>
@@ -75,77 +75,49 @@
 (function() {
   const userAgent = navigator.userAgent.toLowerCase();
   let detectedOS = 'macos'; // default
-  
-  if (userAgent.indexOf('win') !== -1) {
+
+  if (userAgent.includes('win')) {
     detectedOS = 'windows';
-  } else if (userAgent.indexOf('linux') !== -1) {
+  } else if (userAgent.includes('linux')) {
     detectedOS = 'linux';
-  } else if (userAgent.indexOf('mac') !== -1) {
-    detectedOS = 'macos';
   }
+
+  // Auto-select the detected OS tab
+  const tabButton = document.querySelector(`[data-tab="${detectedOS}"]`);
+  const tabPanel = document.getElementById(detectedOS);
   
-  // Tab switching functionality
-  const tabButtons = document.querySelectorAll('.tab-button');
-  const tabPanels = document.querySelectorAll('.tab-panel');
-  
-  function switchTab(targetTab) {
-    // Remove active class from all buttons and panels
-    tabButtons.forEach(btn => btn.classList.remove('active'));
-    tabPanels.forEach(panel => panel.classList.remove('active'));
+  if (tabButton && tabPanel) {
+    document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.remove('active'));
     
-    // Add active class to selected button and panel
-    document.querySelector(`[data-tab="${targetTab}"]`).classList.add('active');
-    document.getElementById(targetTab).classList.add('active');
+    tabButton.classList.add('active');
+    tabPanel.classList.add('active');
   }
-  
-  // Set detected OS as active
-  switchTab(detectedOS);
-  
-  // Add click event listeners
-  tabButtons.forEach(button => {
+
+  // Tab switching functionality
+  document.querySelectorAll('.tab-button').forEach(button => {
     button.addEventListener('click', () => {
-      const targetTab = button.getAttribute('data-tab');
-      switchTab(targetTab);
+      const tab = button.getAttribute('data-tab');
+      
+      document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.remove('active'));
+      
+      button.classList.add('active');
+      document.getElementById(tab).classList.add('active');
     });
   });
-  
-  // Copy functionality
-  const copyButtons = document.querySelectorAll('.copy-btn');
-  copyButtons.forEach(button => {
-    button.addEventListener('click', async () => {
-      const textToCopy = button.getAttribute('data-copy');
-      
-      try {
-        await navigator.clipboard.writeText(textToCopy);
-        
-        // Visual feedback
+
+  // Copy button functionality
+  document.querySelectorAll('.copy-btn').forEach(button => {
+    button.addEventListener('click', () => {
+      const command = button.getAttribute('data-copy');
+      navigator.clipboard.writeText(command).then(() => {
         const originalText = button.innerHTML;
-        button.innerHTML = '<span class="copy-icon">✅</span>Copied!';
-        button.classList.add('copied');
-        
+        button.innerHTML = '<span class="copy-icon mdi mdi-check"></span> Copied!';
         setTimeout(() => {
           button.innerHTML = originalText;
-          button.classList.remove('copied');
         }, 2000);
-      } catch (err) {
-        // Fallback for older browsers
-        const textArea = document.createElement('textarea');
-        textArea.value = textToCopy;
-        document.body.appendChild(textArea);
-        textArea.select();
-        document.execCommand('copy');
-        document.body.removeChild(textArea);
-        
-        // Visual feedback
-        const originalText = button.innerHTML;
-        button.innerHTML = '<span class="copy-icon">✅</span>Copied!';
-        button.classList.add('copied');
-        
-        setTimeout(() => {
-          button.innerHTML = originalText;
-          button.classList.remove('copied');
-        }, 2000);
-      }
+      });
     });
   });
 })();
