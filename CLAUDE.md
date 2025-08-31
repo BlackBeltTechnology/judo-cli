@@ -4,219 +4,96 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a Go-based CLI tool called `judo` for managing the lifecycle of JUDO applications. The tool orchestrates Docker containers, Maven builds, and Apache Karaf runtime environments for Java-based enterprise applications.
+Go-based CLI tool (`judo`) for managing JUDO application lifecycle. Orchestrates Docker containers, Maven builds, and Apache Karaf runtime environments.
 
 ## Core Architecture
 
-The CLI is built using the Cobra library and follows this structure:
-
-- **cmd/judo/main.go**: Entry point that sets up the root command and registers all subcommands
-- **internal/commands/commands.go**: Core command implementations (build, start, stop, clean, etc.)
-- **internal/config/config.go**: Configuration management for judo.properties files and environment profiles
-- **internal/docker/docker.go**: Docker container management (PostgreSQL, Keycloak)
-- **internal/karaf/karaf.go**: Apache Karaf runtime management
-- **internal/db/db.go**: Database operations (dump/import for PostgreSQL)
-- **internal/utils/utils.go**: Common utilities for command execution and system checks
-
-The tool operates in two main runtime modes:
-- **karaf**: Local development with Karaf runtime + Docker services
-- **compose**: Full Docker Compose environment
+- **Cobra-based CLI** with modular internal packages
+- **Two runtime modes**: karaf (local dev + Docker services) and compose (full Docker Compose)
+- **Profile-based configuration**: judo.properties, {env}.properties, judo-version.properties
 
 ## Essential Commands
 
-### Building the CLI
+### Building & Testing
 ```bash
-go build -o judo ./cmd/judo
+go build -o judo ./cmd/judo           # Build CLI
+go test ./internal/...               # Run tests (limited coverage)
+go vet ./...                         # Vet code
+go fmt ./...                         # Format code
+go mod tidy                          # Clean modules
 ```
 
-### Running Tests
+### Core CLI Operations
 ```bash
-go test ./...
+./judo build                         # Build application (Maven mvnd clean install)
+./judo start                         # Start services
+./judo stop                          # Stop services  
+./judo status                        # Check service status
+./judo clean                         # Clean environment
+./judo -e compose-dev build start    # Use environment profile
 ```
 
-### Core Application Management
-- `./judo build` - Build the JUDO application using Maven (mvnd clean install)
-- `./judo start` - Start the application and required services
-- `./judo stop` - Stop all running services
-- `./judo clean` - Clean environment (remove containers/volumes)
-- `./judo status` - Check status of all services
-
-### Build Variations
-- `./judo build -a` - Build app module only
-- `./judo build -f` - Build frontend only
-- `./judo build -q` - Quick mode (skip validations, use cache)
-- `./judo reckless` - Ultra-fast build and start
-
-### Environment Management
-- `./judo -e compose-dev build start` - Use alternate environment profile
-- `./judo prune` - Remove untracked files and reset state
-- `./judo update` - Update JUDO dependency versions
-
-## Configuration System
-
-The tool uses a profile-based configuration system:
-- **judo.properties**: Default configuration
-- **{env}.properties**: Environment-specific overrides (e.g., compose-dev.properties)
-- **judo-version.properties**: Version constraints
-
-Key configuration aspects:
-- Database type (postgresql/hsqldb)
-- Runtime mode (karaf/compose)
-- Port assignments for services
-- Schema and application names
-
-## Development Dependencies
-
-The application requires several external tools:
-- **Docker**: For PostgreSQL, Keycloak containers
-- **Maven/mvnd**: For building Java applications
-- **SDKMAN**: For managing Java toolchain versions
-- **Git**: For source control and clean operations
-
-## Test Framework
-
-Uses testify for Go unit tests. Current test coverage is limited, with most tests being integration-style or requiring external dependencies (Docker, file system).
-
-Run tests with: `go test ./internal/...`
+### Development Workflows
+```bash
+./judo build -a                      # Build app module only
+./judo build -f                      # Build frontend only  
+./judo build -q                      # Quick mode (skip validations)
+./judo reckless                      # Ultra-fast build and start
+./judo session                       # Interactive session mode
+```
 
 ## Release Management
 
-The project uses GoReleaser for automated releases with GitHub Actions:
-
-### Version Management
+### Version Control
 ```bash
-# Get current version
-CI=true scripts/version.sh get
-
-# Increment version (patch/minor/major)
-CI=true scripts/version.sh increment patch
-
-# Set specific version with commit
-CI=true scripts/version.sh set 0.1.4 --commit
+CI=true scripts/version.sh get               # Get current version
+CI=true scripts/version.sh increment patch   # Increment version
+CI=true scripts/version.sh set 0.1.4 --commit # Set version with commit
 ```
 
-### Release Workflow
-- **Manual releases**: `.github/workflows/manual-release.yml` for on-demand releases
-- **Automated releases**: `.github/workflows/release.yml` triggered by version tags
-- **Build verification**: `.github/workflows/build.yml` for continuous integration
-- **GoReleaser config**: `.goreleaser.yml` defines cross-platform builds and Homebrew tap
-
-### Release Artifacts
-- Multi-platform binaries (Linux, macOS, Windows)
-- Homebrew formula auto-update
-- GitHub release with changelog
-- Checksum verification
-
-### Building Releases Locally
+### Local Release Builds
 ```bash
-# Build snapshot (no tag required)
+# Snapshot build (no tag required)
 JUDO_VERSION=1.0.0-SNAPSHOT go build -o judo-snapshot ./cmd/judo
 
-# Build with version info (requires git tag)
+# Versioned build (requires git tag)
 go build -ldflags "-X main.version=$(git describe --tags)" -o judo ./cmd/judo
 ```
 
-## Documentation Development
+### GitHub Actions
+- **build.yml**: CI testing and snapshot releases from develop branch
+- **release.yml**: Full releases from main branch with GoReleaser
+- **docs.yml**: Documentation deployment to GitHub Pages
 
-The project includes Jekyll-based documentation with automated GitHub Pages deployment:
+## Documentation
 
-### Local Documentation Server
+### Local Development
 ```bash
-# Enhanced server with livereload and error handling (requires working Ruby environment)
-./serve-docs.sh
-
-# Simple server for compatibility (requires working Ruby environment)
-./serve-docs-simple.sh
-
-# Manual Jekyll commands (if Ruby environment is properly configured)
-bundle install
-bundle exec jekyll serve --livereload
+cd docs && ./serve-docs.sh           # Enhanced server with livereload
+cd docs && ./serve-docs-simple.sh    # Simple server
 ```
 
-**Important**: Local Jekyll development requires a proper Ruby environment and may fail on systems with system Ruby (macOS default). The documentation is automatically deployed to **https://judo.technology/** via GitHub Actions.
+**Note**: Ruby environment required for local Jekyll. Docs auto-deployed to https://judo.technology/
 
-**For local development issues:**
-- Use the online documentation at https://judo.technology/ 
-- Install a Ruby version manager (rbenv, rvm, or asdf) and Ruby 3.0+
-- Ensure Xcode command line tools are properly configured
-- The serve scripts will provide detailed error messages and fallback options
+## Dependencies
 
-### Documentation Structure
-- **Main docs**: `docs/` directory with Jekyll configuration
-- **Content**: `_docs/` directory for documentation pages
-- **Auto-deployment**: `.github/workflows/docs.yml` publishes to GitHub Pages
-- **Local setup**: Ruby/Jekyll environment with Gemfile dependencies
+- **External tools**: Docker, Maven/mvnd, SDKMAN, Git, Java
+- **Go modules**: Cobra, testify, Docker client
+- **Runtime**: PostgreSQL, Keycloak, Apache Karaf containers
 
-## Interactive Session Mode
+## Module Structure
 
-The CLI includes an advanced interactive session with enhanced features:
-
-### Session Features
-- **Real-time status**: Service indicators in prompt (⚙️karaf:✓ 🔐keycloak:✗ 🐘postgres:✓)
-- **Command history**: Persistent across sessions
-- **Auto-completion**: Tab completion for commands and flags
-- **Context awareness**: Tracks project state and provides relevant suggestions
-
-### Session Commands
-```bash
-# Start interactive mode
-judo session
-
-# Within session
-help              # Show all available commands
-status            # Show detailed session and service status
-history           # Display command history
-clear             # Clear terminal
-exit/quit         # Exit session
-```
-
-## Advanced Development Workflows
-
-### Code Generation and Linting
-```bash
-# Go code generation (if applicable)
-go generate ./...
-
-# Code formatting
-go fmt ./...
-gofmt -s -w .
-
-# Go modules maintenance
-go mod tidy
-
-# Vet code for issues
-go vet ./...
-```
-
-### Docker Integration Testing
-```bash
-# The CLI manages Docker containers for:
-# - PostgreSQL database (judo-postgres)
-# - Keycloak authentication (judo-keycloak)
-# - Schema migration utilities
-
-# Test Docker connectivity
-docker ps
-docker system info
-```
-
-## Module Architecture Details
-
-The codebase uses internal Go modules with clear separation:
-
-- **cmd/judo**: Main CLI entry point with Cobra command registration
-- **internal/commands**: Command implementations with business logic
-- **internal/config**: Profile-based configuration management
-- **internal/docker**: Docker client wrapper and container management
-- **internal/karaf**: Apache Karaf runtime control
+- **cmd/judo**: CLI entry point with Cobra setup
+- **internal/commands**: Core command implementations
+- **internal/config**: Configuration management (properties files)
+- **internal/docker**: Docker container operations
+- **internal/karaf**: Karaf runtime management
 - **internal/db**: PostgreSQL database operations
-- **internal/utils**: Shared utilities for command execution
-- **internal/session**: Interactive session mode implementation
-- **internal/selfupdate**: Self-update functionality for snapshot versions
-- **internal/help**: Command help text and documentation
+- **internal/utils**: Common utilities
+- **internal/session**: Interactive session mode
+- **internal/selfupdate**: Self-update functionality
 
 # important-instruction-reminders
 Do what has been asked; nothing more, nothing less.
 NEVER create files unless they're absolutely necessary for achieving your goal.
 ALWAYS prefer editing an existing file to creating a new one.
-NEVER proactively create documentation files (*.md) or README files. Only create documentation files if explicitly requested by the User.
