@@ -8,7 +8,8 @@ This directory contains the documentation for JUDO CLI, built with Jekyll and th
 docs/
 ├── README.md           # This file
 ├── _config.yml         # Jekyll configuration
-├── index.md           # Home page
+├── index.md           # Documentation home page
+├── glossary.md        # Command glossary
 ├── Gemfile            # Ruby dependencies
 ├── _docs/             # Documentation pages
 │   ├── getting-started.md

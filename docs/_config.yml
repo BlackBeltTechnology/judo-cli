@@ -18,6 +18,10 @@ plugins:
 navigation:
   - title: "Home"
     url: /
+  - title: "Overview"
+    url: /docs/overview/
+  - title: "Features"
+    url: /docs/features/
   - title: "Commands"
     url: /commands/
   - title: "Installation"

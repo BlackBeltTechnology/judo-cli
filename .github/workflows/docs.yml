@@ -9,7 +9,7 @@ on:
       - 'docs/**'
       - '_docs/**'
       - '_config.yml'
-      - 'index.md'
+      - 'docs/index.md'
       - '.github/workflows/docs.yml'
   workflow_dispatch:
 
