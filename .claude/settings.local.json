@@ -11,14 +11,12 @@
       "mcp__github-server__search_repositories",
       "Bash(go build:*)",
       "Bash(./judo:*)",
-      "Bash(JUDO_VERSION=1.0.0-SNAPSHOT go build -o judo-snapshot ./cmd/judo)",
       "Bash(cat:*)",
       "Bash(else echo \"All files are properly formatted\")",
       "Bash(fi:*)",
       "Bash(curl:*)",
       "Bash(CI=true scripts/version.sh increment patch)",
       "Bash(CI=true scripts/version.sh get)",
-      "Bash(CI=true scripts/version.sh set 0.1.4 --commit)",
       "Bash(grep:*)",
       "Bash(git commit:*)",
       "Bash(git rev-parse:*)",
@@ -43,7 +41,11 @@
       "Bash(pkill:*)",
       "Bash(gem install:*)",
       "Bash(mv:*)",
-      "Bash(./serve-docs.sh:*)"
+      "Bash(./serve-docs.sh:*)",
+      "Bash(git clone:*)",
+      "Read(/private/tmp/jekyll-theme-judo/**)",
+      "Read(/private/tmp/jekyll-theme-judo/_includes/**)",
+      "Bash(bundle exec jekyll build:*)"
     ],
     "deny": [],
     "ask": []

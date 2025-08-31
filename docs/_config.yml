@@ -8,8 +8,8 @@ url: "https://judo.technology"
 repository: "BlackBeltTechnology/judo-cli"
 github_username: BlackBeltTechnology
 
-# Theme configuration
-remote_theme: BlackBeltTechnology/jekyll-theme-judo@develop
+# Theme configuration (using local assets)
+# remote_theme: BlackBeltTechnology/jekyll-theme-judo@develop
 
 # Jekyll configuration
 markdown: kramdown
@@ -21,7 +21,7 @@ plugins:
   - jekyll-feed
   - jekyll-sitemap
   - jekyll-seo-tag
-  - jekyll-remote-theme
+  # - jekyll-remote-theme
 
 # Collections
 collections:
