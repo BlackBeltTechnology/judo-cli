@@ -18,7 +18,8 @@
       <div class="container header-inner">
         <a class="brand" href="{{ '/' | relative_url }}">
           {% if site.logo %}
-            <img src="{{ site.logo | relative_url }}" alt="{{ site.title }} logo" />
+            <img src="{{ site.logo | relative_url }}" alt="{{ site.title }} logo" class="logo-light" />
+            <img src="/assets/img/logo-dark.svg" alt="{{ site.title }} logo" class="logo-dark" />
           {% else %}
             {{ site.title }}
           {% endif %}
