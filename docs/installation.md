@@ -1,5 +1,5 @@
 ---
-layout: default
+layout: page
 title: Installation
 nav_order: 3
 description: "How to install JUDO CLI on your system"

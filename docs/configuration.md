@@ -1,4 +1,5 @@
 ---
+layout: page
 title: "Configuration"
 permalink: /configuration/
 excerpt: "Environment and profile configuration for JUDO CLI"

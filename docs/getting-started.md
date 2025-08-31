@@ -1,4 +1,5 @@
 ---
+layout: page
 title: "Getting Started"
 permalink: /getting-started/
 excerpt: "Installation and first steps with JUDO CLI"

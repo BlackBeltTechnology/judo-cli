@@ -1,5 +1,5 @@
 ---
-layout: default
+layout: page
 title: doctor
 parent: Command Reference
 nav_order: 1

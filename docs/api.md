@@ -1,5 +1,5 @@
 ---
-layout: default
+layout: page
 title: "API Reference"
 permalink: /api/
 nav_order: 7

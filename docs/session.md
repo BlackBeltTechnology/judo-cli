@@ -1,5 +1,5 @@
 ---
-layout: default
+layout: page
 title: Interactive Session
 nav_order: 4
 description: "Using JUDO CLI's interactive session mode"
