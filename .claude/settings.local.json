@@ -39,7 +39,8 @@
       "Bash(echo:*)",
       "Bash(rbenv versions:*)",
       "Bash(rbenv global:*)",
-      "Bash(bundle env:*)"
+      "Bash(bundle env:*)",
+      "Bash(pkill:*)"
     ],
     "deny": [],
     "ask": []
