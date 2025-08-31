@@ -1,7 +1,10 @@
 ---
 layout: home
 title: "JUDO CLI"
+subtitle: "Low Code Command Line Interface"
 description: "Command-line tool for managing the lifecycle of JUDO applications"
+hero_image: /assets/img/hero-placeholder.png
+show_install_tabs: true
 ---
 
 # JUDO CLI
@@ -28,6 +31,11 @@ brew install blackbelttechnology/tap/judo
 
 #### Manual Installation
 Download the latest release from [GitHub Releases](https://github.com/BlackBeltTechnology/judo-cli/releases/latest) and extract to your PATH.
+
+#### Building from Source
+```bash
+go build -o judo ./cmd/judo
+```
 
 ### Basic Usage
 
@@ -63,7 +71,3 @@ judo clean
 ## Contributing
 
 We welcome contributions! Please see our [Contributing Guide](https://github.com/BlackBeltTechnology/judo-cli/blob/develop/CONTRIBUTING.md) for details.
-
-## License
-
-This project is licensed under the Eclipse Public License 2.0 - see the [LICENSE](https://github.com/BlackBeltTechnology/judo-cli/blob/develop/LICENSE) file for details.
