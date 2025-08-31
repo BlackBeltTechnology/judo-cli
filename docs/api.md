@@ -1,7 +1,9 @@
 ---
+layout: default
 title: "API Reference"
 permalink: /api/
-excerpt: "Technical reference for JUDO CLI internals and extension points"
+nav_order: 7
+description: "Technical reference for JUDO CLI internals and extension points"
 ---
 
 # API Reference
