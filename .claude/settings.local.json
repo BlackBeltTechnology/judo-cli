@@ -42,7 +42,8 @@
       "Bash(bundle env:*)",
       "Bash(pkill:*)",
       "Bash(gem install:*)",
-      "Bash(mv:*)"
+      "Bash(mv:*)",
+      "Bash(./serve-docs.sh:*)"
     ],
     "deny": [],
     "ask": []
