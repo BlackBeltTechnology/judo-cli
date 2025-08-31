@@ -60,7 +60,10 @@ echo "Press Ctrl+C to stop"
 echo
 
 # Start without livereload for maximum compatibility
-if command -v bundle &> /dev/null && [[ -f "Gemfile" ]]; then
+# Use rbenv bundle if available, otherwise fallback to system
+if command -v ~/.rbenv/shims/bundle &> /dev/null && [[ -f "Gemfile" ]]; then
+    ~/.rbenv/shims/bundle exec jekyll serve --host 127.0.0.1 --port 4000 --incremental --watch
+elif command -v bundle &> /dev/null && [[ -f "Gemfile" ]]; then
     bundle exec jekyll serve --host 127.0.0.1 --port 4000 --incremental --watch
 else
     jekyll serve --host 127.0.0.1 --port 4000 --incremental --watch

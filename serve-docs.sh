@@ -169,19 +169,36 @@ start_jekyll() {
     cd "$DOCS_DIR"
     
     # Start Jekyll with livereload (using built-in feature)
-    bundle exec jekyll serve \
-        --host "$HOST" \
-        --port "$PORT" \
-        --livereload \
-        --livereload-port "$LIVERELOAD_PORT" \
-        --incremental \
-        --watch \
-        --open-url 2>/dev/null || \
-    bundle exec jekyll serve \
-        --host "$HOST" \
-        --port "$PORT" \
-        --incremental \
-        --watch
+    # Use rbenv bundle if available, otherwise fallback to system
+    if command -v ~/.rbenv/shims/bundle &> /dev/null; then
+        ~/.rbenv/shims/bundle exec jekyll serve \
+            --host "$HOST" \
+            --port "$PORT" \
+            --livereload \
+            --livereload-port "$LIVERELOAD_PORT" \
+            --incremental \
+            --watch \
+            --open-url 2>/dev/null || \
+        ~/.rbenv/shims/bundle exec jekyll serve \
+            --host "$HOST" \
+            --port "$PORT" \
+            --incremental \
+            --watch
+    else
+        bundle exec jekyll serve \
+            --host "$HOST" \
+            --port "$PORT" \
+            --livereload \
+            --livereload-port "$LIVERELOAD_PORT" \
+            --incremental \
+            --watch \
+            --open-url 2>/dev/null || \
+        bundle exec jekyll serve \
+            --host "$HOST" \
+            --port "$PORT" \
+            --incremental \
+            --watch
+    fi
 }
 
 # Cleanup on exit

@@ -71,3 +71,5 @@ judo-cli
 judo-stable
 judo-snapshot
 vendor
+_site
+.jekyll-metadata

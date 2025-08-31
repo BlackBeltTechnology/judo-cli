@@ -6,13 +6,18 @@ source "https://rubygems.org"
 # Use Ruby 2.6 compatible versions
 ruby ">= 2.6.0"
 
-# Jekyll with compatible version for CI
-gem "jekyll", "~> 4.2.0"
+# Jekyll with compatible version for CI and Ruby 3.3+
+gem "jekyll", "~> 4.3.0"
 gem "webrick", "~> 1.7"
 
 # Theme dependencies
 gem "kramdown-parser-gfm"
-gem "rouge", "~> 3.0"
+gem "rouge", "~> 4.0"
+
+# Required for Ruby 3.3+ compatibility
+gem "csv"
+gem "base64"
+gem "bigdecimal"
 
 # Jekyll plugins (required for GitHub Pages build)
 group :jekyll_plugins do
