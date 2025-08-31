@@ -45,32 +45,15 @@ jobs:
         id: pages
         uses: actions/configure-pages@v4
 
-      - name: Create Gemfile for CI
+      - name: Use project Gemfile
         run: |
           cd docs
-          cat > Gemfile << 'EOF'
-          source "https://rubygems.org"
-          
-          gem "jekyll", "~> 4.3"
-          gem "webrick"
-          
-          # Theme dependencies
-          gem "kramdown-parser-gfm"
-          gem "rouge", "~> 4.0"
-          gem "jekyll-sass-converter"
-          
-          group :jekyll_plugins do
-            gem "jekyll-remote-theme"
-            gem "jekyll-feed"
-            gem "jekyll-sitemap" 
-            gem "jekyll-seo-tag"
-          end
-          EOF
+          # Ensure the project Gemfile is used instead of creating a minimal one
+          echo "Using project Gemfile for consistent dependencies"
 
       - name: Install dependencies
         run: |
           cd docs
-          rm -f Gemfile.lock
           bundle install
 
       - name: Build with Jekyll

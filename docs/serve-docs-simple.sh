@@ -55,7 +55,7 @@ fi
 
 # Start Jekyll server
 echo -e "${GREEN}Starting Jekyll server...${NC}"
-echo "Documentation will be available at: http://127.0.0.1:4000/judo-cli/"
+echo "Documentation will be available at: http://127.0.0.1:4000/"
 echo "Press Ctrl+C to stop"
 echo
 

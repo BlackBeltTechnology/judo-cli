@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # JUDO CLI Documentation Development Server
-# This script starts Jekyll with livereload for local documentation development
+# This script build jekyll site
 
 set -e
 
@@ -118,29 +118,6 @@ install_dependencies() {
     fi
 }
 
-# Check if ports are available
-check_ports() {
-    log_info "Checking if ports are available..."
-    
-    if lsof -i :$PORT &> /dev/null; then
-        log_warning "Port $PORT is already in use!"
-        log_info "Trying to find an available port..."
-        
-        # Find next available port
-        for ((port=$PORT; port<=4010; port++)); do
-            if ! lsof -i :$port &> /dev/null; then
-                PORT=$port
-                log_info "Using port $port instead"
-                break
-            fi
-        done
-    fi
-    
-    if lsof -i :$LIVERELOAD_PORT &> /dev/null; then
-        log_warning "LiveReload port $LIVERELOAD_PORT is already in use!"
-        log_info "LiveReload may not work properly"
-    fi
-}
 
 # Clean Jekyll cache
 clean_jekyll() {
@@ -159,84 +136,23 @@ clean_jekyll() {
 }
 
 # Start Jekyll server
-start_jekyll() {
-    log_info "Starting Jekyll development server..."
-    log_info "Site will be available at: http://$HOST:$PORT/"
-    log_info "LiveReload will watch for changes automatically"
-    log_info "Press Ctrl+C to stop the server"
+build_jekyll() {
+    log_info "Build jekyll bundle"
     echo
-    
+
     cd "$DOCS_DIR"
-    
-    # Start Jekyll with livereload (using built-in feature)
+
     # Use rbenv bundle if available, otherwise fallback to system
     if command -v ~/.rbenv/shims/bundle &> /dev/null; then
-        ~/.rbenv/shims/bundle exec jekyll serve \
-            --host "$HOST" \
-            --port "$PORT" \
-            --livereload \
-            --livereload-port "$LIVERELOAD_PORT" \
-            --incremental \
-            --watch \
-            --open-url 2>/dev/null || \
-        ~/.rbenv/shims/bundle exec jekyll serve \
-            --host "$HOST" \
-            --port "$PORT" \
-            --incremental \
-            --watch
+        ~/.rbenv/shims/bundle exec jekyll build --baseurl "" --trace 2>/dev/null
     else
-        bundle exec jekyll serve \
-            --host "$HOST" \
-            --port "$PORT" \
-            --livereload \
-            --livereload-port "$LIVERELOAD_PORT" \
-            --incremental \
-            --watch \
-            --open-url 2>/dev/null || \
-        bundle exec jekyll serve \
-            --host "$HOST" \
-            --port "$PORT" \
-            --incremental \
-            --watch
+        bundle exec jekyll build --baseurl "" --trace
     fi
 }
 
-# Cleanup on exit
-cleanup() {
-    echo
-    log_info "Shutting down Jekyll server..."
-    log_success "Development server stopped"
-}
-
-# Show help
-show_help() {
-    cat << EOF
-JUDO CLI Documentation Development Server
-
-Usage: $0 [OPTIONS]
-
-Options:
-    -h, --help          Show this help message
-    -c, --clean         Clean Jekyll cache before starting
-    -p, --port PORT     Use specific port (default: 4000)
-    --host HOST         Use specific host (default: 127.0.0.1)
-    --no-open          Don't automatically open browser
-
-Examples:
-    $0                  Start development server with defaults
-    $0 --clean          Clean cache and start server
-    $0 --port 3000      Start server on port 3000
-    $0 --host 0.0.0.0   Start server accessible from network
-
-The documentation will be available at:
-    http://HOST:PORT/
-
-EOF
-}
 
 # Parse command line arguments
 CLEAN_CACHE=false
-OPEN_BROWSER=true
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -246,18 +162,6 @@ while [[ $# -gt 0 ]]; do
             ;;
         -c|--clean)
             CLEAN_CACHE=true
-            shift
-            ;;
-        -p|--port)
-            PORT="$2"
-            shift 2
-            ;;
-        --host)
-            HOST="$2"
-            shift 2
-            ;;
-        --no-open)
-            OPEN_BROWSER=false
             shift
             ;;
         *)
@@ -270,32 +174,21 @@ done
 
 # Main execution
 main() {
-    log_info "JUDO CLI Documentation Development Server"
+    log_info "JUDO CLI Documentation Builder"
     echo
-    
-    # Setup trap for cleanup
-    trap cleanup EXIT INT TERM
     
     # Run checks and setup
     check_directory
     check_dependencies
     install_dependencies
-    check_ports
-    
+
     # Clean cache if requested
     if [[ "$CLEAN_CACHE" == true ]]; then
         clean_jekyll
     fi
-    
-    # Modify Jekyll args based on options
-    JEKYLL_ARGS="--host $HOST --port $PORT --livereload --livereload-port $LIVERELOAD_PORT --incremental --watch"
-    
-    if [[ "$OPEN_BROWSER" == true ]]; then
-        JEKYLL_ARGS="$JEKYLL_ARGS --open-url"
-    fi
-    
-    # Start the server
-    start_jekyll
+
+    # Build
+    build_jekyll
 }
 
 # Run main function
