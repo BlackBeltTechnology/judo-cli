@@ -1,48 +1,87 @@
-title: "JUDO CLI Documentation"
-description: "Complete documentation for the JUDO CLI tool"
+# Site settings
+title: "JUDO CLI"
+description: "Command-line tool for managing the lifecycle of JUDO applications"
 baseurl: "/judo-cli"
 url: "https://blackbelttechnology.github.io"
 
-# Build settings
+# Repository information
+repository: "BlackBeltTechnology/judo-cli"
+github_username: BlackBeltTechnology
+
+# Theme configuration
+remote_theme: BlackBeltTechnology/jekyll-theme-judo@develop
+
+# Jekyll configuration
 markdown: kramdown
 highlighter: rouge
-theme: jekyll-theme-cayman
+permalink: pretty
 
-# Plugin configuration
+# Plugins
 plugins:
   - jekyll-feed
   - jekyll-sitemap
   - jekyll-seo-tag
+  - jekyll-remote-theme
+
+# Collections
+collections:
+  docs:
+    output: true
+    permalink: /:collection/:name/
 
 # Navigation
-navigation:
+nav:
   - title: "Home"
-    url: /
-  - title: "Overview"
-    url: /docs/overview/
-  - title: "Features"
-    url: /docs/features/
+    url: "/docs"
   - title: "Commands"
-    url: /commands/
-  - title: "Installation"
-    url: /installation/
-  - title: "Interactive Session"
-    url: /session/
+    url: "/docs/commands/"
+  - title: "Configuration"
+    url: "/docs/configuration/"
+  - title: "API"
+    url: "/docs/api/"
 
-# SEO
-lang: en_US
-repository: BlackBeltTechnology/judo-cli
-author: BlackBelt Meta Zrt.
+# Site metadata
+author:
+  name: "BlackBelt Technology"
+  email: "info@blackbelt.hu"
+  url: "https://blackbelt.hu"
 
 # Social links
-github_username: BlackBeltTechnology
+social:
+  github: "BlackBeltTechnology"
+  twitter: "blackbelttech"
 
-# Exclude from processing
+# SEO
+logo: "/assets/img/logo.svg"
+twitter:
+  username: blackbelttech
+  card: summary
+
+# Build settings
 exclude:
   - Gemfile
   - Gemfile.lock
   - node_modules
-  - vendor/bundle/
-  - vendor/cache/
-  - vendor/gems/
-  - vendor/ruby/
+  - vendor/
+  - .bundle/
+  - .sass-cache/
+  - .jekyll-cache/
+  - gemfiles/
+  - README.md
+  - LICENSE
+  - CHANGELOG.md
+  - scripts/
+  - internal/
+  - cmd/
+  - "*.go"
+  - "*.sh"
+  - go.mod
+  - go.sum
+  - .goreleaser.yml
+  - VERSION
+  - .github/
+  - dist/
+
+# Include
+include:
+  - _pages

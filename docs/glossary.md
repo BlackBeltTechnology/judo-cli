@@ -4,6 +4,7 @@ title: JUDO CLI Documentation
 nav_order: 1
 description: "Complete documentation for the JUDO CLI tool"
 permalink: /docs/
+show_os_selector: true
 ---
 
 # JUDO CLI Documentation
@@ -112,8 +113,6 @@ The interactive session provides:
 ## License
 
 This project is licensed under the [Eclipse Public License 2.0 (EPL-2.0)](https://www.eclipse.org/legal/epl-2.0/).
-
-Copyright © 2026 BlackBelt Meta Zrt.
 
 ## Support
 

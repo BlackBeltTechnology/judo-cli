@@ -47,6 +47,7 @@ jobs:
 
       - name: Create Gemfile for CI
         run: |
+          cd docs
           cat > Gemfile << 'EOF'
           source "https://rubygems.org"
           
@@ -67,11 +68,13 @@ jobs:
 
       - name: Install dependencies
         run: |
+          cd docs
           rm -f Gemfile.lock
           bundle install
 
       - name: Build with Jekyll
         run: |
+          cd docs
           bundle exec jekyll build --baseurl "${{ steps.pages.outputs.base_path }}"
         env:
           JEKYLL_ENV: production
