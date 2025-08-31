@@ -40,7 +40,8 @@
       "Bash(rbenv versions:*)",
       "Bash(rbenv global:*)",
       "Bash(bundle env:*)",
-      "Bash(pkill:*)"
+      "Bash(pkill:*)",
+      "Bash(gem install:*)"
     ],
     "deny": [],
     "ask": []
