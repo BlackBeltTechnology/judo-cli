@@ -36,6 +36,19 @@ log_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
+# Function to show Ruby error message
+show_ruby_error() {
+    log_error "Failed to install Jekyll dependencies!"
+    log_error "This is likely due to Ruby environment or native compilation issues."
+    log_warning "The documentation is available online at: https://judo.technology/"
+    log_info "For local development, you may need to:"
+    log_info "  1. Install a proper Ruby version manager (rbenv, rvm, or asdf)"
+    log_info "  2. Install a newer Ruby version (3.0+)"
+    log_info "  3. Ensure Xcode command line tools are properly configured"
+    log_info "  4. Or use the online documentation instead"
+    exit 1
+}
+
 # Check if we're in the right directory
 check_directory() {
     if [[ ! -f "$DOCS_DIR/_config.yml" ]]; then
@@ -87,16 +100,17 @@ install_dependencies() {
     
     if ! bundle check &> /dev/null; then
         log_info "Installing gems..."
-        if ! bundle install --path vendor/bundle 2>/dev/null; then
-            log_error "Failed to install Jekyll dependencies!"
-            log_error "This is likely due to Ruby environment or native compilation issues."
-            log_warning "The documentation is available online at: https://judo.technology/"
-            log_info "For local development, you may need to:"
-            log_info "  1. Install a proper Ruby version manager (rbenv, rvm, or asdf)"
-            log_info "  2. Install a newer Ruby version (3.0+)"
-            log_info "  3. Ensure Xcode command line tools are properly configured"
-            log_info "  4. Or use the online documentation instead"
-            exit 1
+        # Try with system bundle first, fallback to rbenv if available
+        if command -v ~/.rbenv/shims/bundle &> /dev/null; then
+            if ! ~/.rbenv/shims/bundle install --path vendor/bundle 2>/dev/null; then
+                show_ruby_error
+            fi
+        elif command -v bundle &> /dev/null; then
+            if ! bundle install --path vendor/bundle 2>/dev/null; then
+                show_ruby_error
+            fi
+        else
+            show_ruby_error
         fi
         log_success "Dependencies installed successfully"
     else

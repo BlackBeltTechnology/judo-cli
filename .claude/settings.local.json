@@ -34,7 +34,12 @@
       "Bash(gcc:*)",
       "Bash(bundle config:*)",
       "WebFetch(domain:blackbelttechnology.github.io)",
-      "WebFetch(domain:judo.technology)"
+      "WebFetch(domain:judo.technology)",
+      "Bash(ruby:*)",
+      "Bash(echo:*)",
+      "Bash(rbenv versions:*)",
+      "Bash(rbenv global:*)",
+      "Bash(bundle env:*)"
     ],
     "deny": [],
     "ask": []
