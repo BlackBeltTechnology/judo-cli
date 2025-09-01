@@ -41,104 +41,8 @@ jobs:
             exit 1
           fi
 
-      #      - name: Setup rbenv for documentation
-      #        if: always()
-      #        run: |
-      #          if [ -f "docs/build-docs.sh" ]; then
-      #            echo "Setting up rbenv for documentation..."
-      #            # Install rbenv from package
-      #            sudo apt-get update
-      #            sudo apt-get install -y rbenv ruby-build libffi-dev libyaml-dev
-      #
-      #            # Initialize rbenv and set up plugins directory
-      #            eval "$(rbenv init -)"
-      #            mkdir -p "$(rbenv root)/plugins"
-      #            # Update ruby-build if it exists, otherwise install it
-      #            if [ -d "$(rbenv root)/plugins/ruby-build" ]; then
-      #                git -C "$(rbenv root)/plugins/ruby-build" pull
-      #            else
-      #                git clone https://github.com/rbenv/ruby-build.git "$(rbenv root)/plugins/ruby-build"
-      #            fi
-      #            # Install Ruby 3.2.2 (or latest stable compatible with Jekyll)
-      #            if ! rbenv versions | grep -q "3.2.2"; then
-      #                rbenv install 3.2.2 -s
-      #            fi
-      #            # Set Ruby version for current session only
-      #            export RBENV_VERSION=3.2.2
-      #
-      #            # Install Bundler
-      #            gem install bundler
-      #            rbenv rehash
-      #
-      #            echo "Ruby $(ruby -v) and Bundler $(bundle -v) installed via rbenv"
-      #          fi
 
-      - name: Define cache dirs
-        run: |
-          # Choose a stable cache location (adjust as you wish)
-          echo "RUNNER_TOOL_CACHE=$HOME/actions/_tool" >> "$GITHUB_ENV"
-          echo "RUNNER_TEMP=$HOME/actions/_temp" >> "$GITHUB_ENV"
-          echo "AGENT_TOOLSDIRECTORY=$HOME/actions/_tool" >> "$GITHUB_ENV"
-          mkdir -p "$HOME/actions/_tool" "$HOME/actions/_temp"
 
-      - name: Bootstrap Ruby into toolcache if missing
-        run: |
-          set -euo pipefail
-          TOOLBASE="${RUNNER_TOOL_CACHE:-$HOME/actions/_tool}"
-          DEST="$TOOLBASE/Ruby/3.2.2/x64"
-          MARKER="$DEST.complete"
-          if [ -f "$MARKER" ]; then
-            echo "Ruby 3.2.2 already in toolcache."
-            exit 0
-          fi
-
-          # Build deps (Ubuntu 22.04)
-          sudo apt-get update -y
-          sudo apt-get install -y build-essential autoconf bison libssl-dev zlib1g-dev \
-            libreadline-dev libyaml-dev libxml2-dev libxslt1-dev \
-            libffi-dev libgdbm-dev libncurses5-dev libdb-dev wget ca-certificates
-
-          # Always fetch a fresh ruby-build and use its binary directly
-          RB_TMP="$(mktemp -d)"
-          git clone --depth=1 https://github.com/rbenv/ruby-build.git "$RB_TMP"
-          "$RB_TMP/bin/ruby-build" --version
-          "$RB_TMP/bin/ruby-build" --definitions | tail -n +1 | grep -E '^3\.2\.2$' >/dev/null || {
-            echo "ruby-build does not list 3.2.2; aborting."; exit 1;
-          }
-
-          mkdir -p "$DEST"
-          # Optional: prevent parallel installs on a busy runner
-          lock=/tmp/ruby-3.2.2.lock
-          (
-            flock 9
-            "$RB_TMP/bin/ruby-build" 3.2.2 "$DEST"
-            touch "$MARKER"
-          ) 9>"$lock"
-
-          echo "Installed Ruby to $DEST"
-
-      - name: Set up Ruby (use preinstalled)
-        uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: 3.2.2
-          bundler: "2.7.1"
-          bundler-cache: false
-          self-hosted: true
-
-      - name: Bundler path (optional)
-        run: bundle config set path ".bundle"
-
-      - name: Validate documentation build
-        run: |
-          if [ -f "docs/build-docs.sh" ]; then
-            echo "Validating documentation build..."
-            cd docs
-            chmod +x build-docs.sh
-            ./build-docs.sh --clean
-            echo "Documentation build validation successful"
-          else
-            echo "Warning: docs/build-docs.sh not found, skipping documentation validation"
-          fi
 
   build-snapshot:
     name: Build Snapshot (Develop)
@@ -322,22 +226,49 @@ jobs:
     if: github.ref == 'refs/heads/master'
     needs: test
     steps:
-      - name: Checkout code
+      - name: Checkout code with tags
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          fetch-tags: true
 
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version: "1.25"
 
-      - name: Generate build version
+      - name: Fetch all tags explicitly
+        run: git fetch --tags --force
+
+      - name: Generate build version and create tag
         id: version
         run: |
+          set -e
           chmod +x scripts/version.sh
           BASE_VERSION=$(scripts/version.sh get)
           echo "base_version=${BASE_VERSION}" >> $GITHUB_OUTPUT
+          
+          # Create the release tag locally for GoReleaser validation
+          TAG_NAME="v${BASE_VERSION}"
+          echo "Creating local tag: $TAG_NAME"
+          
+          # Check if tag already exists locally or remotely
+          if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
+            echo "Tag $TAG_NAME already exists locally"
+            # Verify it points to the current commit
+            TAG_COMMIT=$(git rev-parse "$TAG_NAME")
+            CURRENT_COMMIT=$(git rev-parse HEAD)
+            if [[ "$TAG_COMMIT" != "$CURRENT_COMMIT" ]]; then
+              echo "::error::Tag $TAG_NAME exists but points to different commit ($TAG_COMMIT vs $CURRENT_COMMIT)"
+              exit 1
+            fi
+          else
+            # Create the tag locally
+            git tag -a "$TAG_NAME" -m "Release version ${BASE_VERSION}"
+            echo "Created local tag: $TAG_NAME"
+          fi
+          
+          echo "GORELEASER_CURRENT_TAG=${TAG_NAME}" >> $GITHUB_ENV
 
       - name: Run GoReleaser (Build only)
         uses: goreleaser/goreleaser-action@v6
@@ -354,3 +285,21 @@ jobs:
           name: judo-build-${{ steps.version.outputs.base_version }}
           path: |
             dist/judo_*
+
+      - name: Cleanup local tag if build failed
+        if: failure()
+        run: |
+          set -e
+          BASE_VERSION="${{ steps.version.outputs.base_version }}"
+          TAG_NAME="v${BASE_VERSION}"
+          
+          # Only delete if it's a local tag (not pushed to remote)
+          if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
+            # Check if tag exists on remote
+            if ! git ls-remote --tags origin "refs/tags/$TAG_NAME" | grep -q "$TAG_NAME"; then
+              echo "Deleting local tag $TAG_NAME (build failed)"
+              git tag -d "$TAG_NAME"
+            else
+              echo "Tag $TAG_NAME exists on remote, skipping cleanup"
+            fi
+          fi

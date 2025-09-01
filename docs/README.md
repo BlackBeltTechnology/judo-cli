@@ -59,19 +59,29 @@ Theme features:
 
 ## GitHub Pages Deployment
 
-Documentation is automatically deployed to GitHub Pages when:
+Documentation is automatically deployed to GitHub Pages when a commit is tagged with `current-site`:
 
-1. Changes are pushed to `develop` or `main` branches
-2. Files in the documentation paths are modified:
-   - `docs/**`
-   - `_docs/**` 
-   - `_config.yml`
-   - `index.md`
+```bash
+# Deploy documentation for current commit
+git tag current-site
+git push origin current-site
+```
 
 The deployment workflow:
-1. Builds the Jekyll site
-2. Deploys to GitHub Pages
+1. Builds the Jekyll site with Ruby 3.2.2
+2. Deploys to GitHub Pages using peaceiris/actions-gh-pages
 3. Available at: `https://blackbelttechnology.github.io/judo-cli/`
+
+### Manual Deployment
+For manual documentation deployment, use the dedicated workflow:
+
+```bash
+# Tag the commit you want to deploy
+git tag current-site
+git push origin current-site
+```
+
+This ensures documentation updates are intentional and versioned.
 
 ## Content Guidelines
 

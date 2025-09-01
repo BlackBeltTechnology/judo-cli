@@ -4,6 +4,7 @@ image:https://img.shields.io/github/v/release/BlackBeltTechnology/judo-cli?style
 image:https://img.shields.io/github/v/tag/BlackBeltTechnology/judo-cli?style=for-the-badge&logo=git&label=Latest%20Tag[Latest Tag]
 image:https://img.shields.io/github/actions/workflow/status/BlackBeltTechnology/judo-cli/build.yml?branch=develop&style=for-the-badge&logo=github-actions&label=Build%20(develop)[Build Status - Develop]
 image:https://img.shields.io/github/actions/workflow/status/BlackBeltTechnology/judo-cli/release.yml?branch=main&style=for-the-badge&logo=github-actions&label=Release%20(main)[Release Status - Main]
+image:https://img.shields.io/github/actions/workflow/status/BlackBeltTechnology/judo-cli/docs-release.yml?style=for-the-badge&logo=github-actions&label=Documentation[Documentation Status]
 
 image:https://img.shields.io/github/license/BlackBeltTechnology/judo-cli?style=for-the-badge&logo=opensourceinitiative[License]
 image:https://img.shields.io/github/issues/BlackBeltTechnology/judo-cli?style=for-the-badge&logo=github[GitHub Issues]
