@@ -19,17 +19,20 @@ jobs:
     # Continue on error to allow post-release cleanup even if release fails
     continue-on-error: true
     steps:
-      - name: Checkout code with full history
+      - name: Checkout code with full history and all tags
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          # Fetch all tags and history for proper version validation
+          # Fetch all tags for proper version validation
           fetch-tags: true
 
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version: '1.25'
+
+      - name: Fetch all tags explicitly
+        run: git fetch --tags --force
 
       - name: Validate tag format and existence
         run: |
@@ -81,6 +84,32 @@ jobs:
           CURRENT_VERSION=$(cat VERSION | tr -d '[:space:]')
           echo "Current VERSION file content: $CURRENT_VERSION"
           echo "Tag version: $VERSION"
+          
+          # Verify tag version is semantically larger than all existing tags
+          echo "Checking if tag version $VERSION is valid..."
+          
+          # Get all version tags and sort them semantically
+          ALL_TAGS=$(git tag -l "v*" | grep -E "^v[0-9]+\.[0-9]+\.[0-9]+$" | sed 's/^v//')
+          if [[ -n "$ALL_TAGS" ]]; then
+            LATEST_TAG=$(echo "$ALL_TAGS" | sort -t '.' -k1,1n -k2,2n -k3,3n | tail -1)
+            echo "Latest existing tag version: $LATEST_TAG"
+            
+            # Compare versions semantically
+            IFS='.' read -ra NEW_VER <<< "$VERSION"
+            IFS='.' read -ra LATEST_VER <<< "$LATEST_TAG"
+            
+            for i in 0 1 2; do
+              if [[ "${NEW_VER[$i]}" -gt "${LATEST_VER[$i]}" ]]; then
+                echo "✅ New version $VERSION is greater than latest tag $LATEST_TAG"
+                break
+              elif [[ "${NEW_VER[$i]}" -lt "${LATEST_VER[$i]}" ]]; then
+                echo "::error::New version $VERSION is not greater than latest tag $LATEST_TAG"
+                exit 1
+              fi
+            done
+          else
+            echo "No existing version tags found, first release"
+          fi
           
           # Warn if versions don't match (but don't fail - this might be intentional)
           if [[ "$CURRENT_VERSION" != "$VERSION" ]]; then
@@ -278,16 +307,36 @@ jobs:
             exit 1
           fi
           
-          # Increment patch version
-          NEXT_VERSION=$(scripts/version.sh increment patch --commit)
+          # Increment patch version and capture only the version (last line of output)
+          NEXT_VERSION=$(scripts/version.sh increment patch --commit | tail -1)
           
-          # Verify increment worked
-          if [[ -z "$NEXT_VERSION" ]]; then
-            echo "::error::Version increment failed - no output from version.sh"
+          # Verify increment worked and output is a valid version
+          if [[ -z "$NEXT_VERSION" || ! "$NEXT_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Version increment failed - invalid output from version.sh: '$NEXT_VERSION'"
             exit 1
           fi
           
           echo "✅ Next development version: $NEXT_VERSION"
+          
+          # Verify the new version is greater than the released version
+          RELEASED_VERSION="${{ steps.current_version.outputs.version }}"
+          echo "Released version: $RELEASED_VERSION"
+          echo "Next version: $NEXT_VERSION"
+          
+          # Compare versions semantically
+          IFS='.' read -ra RELEASED_VER <<< "$RELEASED_VERSION"
+          IFS='.' read -ra NEXT_VER <<< "$NEXT_VERSION"
+          
+          for i in 0 1 2; do
+            if [[ "${NEXT_VER[$i]}" -gt "${RELEASED_VER[$i]}" ]]; then
+              echo "✅ Version properly incremented: $RELEASED_VERSION -> $NEXT_VERSION"
+              break
+            elif [[ "${NEXT_VER[$i]}" -lt "${RELEASED_VER[$i]}" ]]; then
+              echo "::error::Version not properly incremented. Next version $NEXT_VERSION should be greater than released version $RELEASED_VERSION"
+              exit 1
+            fi
+          done
+          
           echo "next_version=${NEXT_VERSION}" >> $GITHUB_OUTPUT
 
       - name: Push version increment to develop with validation
