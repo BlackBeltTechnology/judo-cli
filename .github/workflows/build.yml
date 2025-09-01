@@ -332,12 +332,35 @@ jobs:
         with:
           go-version: "1.25"
 
-      - name: Generate build version
+      - name: Generate build version and create tag
         id: version
         run: |
+          set -e
           chmod +x scripts/version.sh
           BASE_VERSION=$(scripts/version.sh get)
           echo "base_version=${BASE_VERSION}" >> $GITHUB_OUTPUT
+          
+          # Create the release tag locally for GoReleaser validation
+          TAG_NAME="v${BASE_VERSION}"
+          echo "Creating local tag: $TAG_NAME"
+          
+          # Check if tag already exists locally or remotely
+          if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
+            echo "Tag $TAG_NAME already exists locally"
+            # Verify it points to the current commit
+            TAG_COMMIT=$(git rev-parse "$TAG_NAME")
+            CURRENT_COMMIT=$(git rev-parse HEAD)
+            if [[ "$TAG_COMMIT" != "$CURRENT_COMMIT" ]]; then
+              echo "::error::Tag $TAG_NAME exists but points to different commit ($TAG_COMMIT vs $CURRENT_COMMIT)"
+              exit 1
+            fi
+          else
+            # Create the tag locally
+            git tag -a "$TAG_NAME" -m "Release version ${BASE_VERSION}"
+            echo "Created local tag: $TAG_NAME"
+          fi
+          
+          echo "GORELEASER_CURRENT_TAG=${TAG_NAME}" >> $GITHUB_ENV
 
       - name: Run GoReleaser (Build only)
         uses: goreleaser/goreleaser-action@v6
@@ -354,3 +377,21 @@ jobs:
           name: judo-build-${{ steps.version.outputs.base_version }}
           path: |
             dist/judo_*
+
+      - name: Cleanup local tag if build failed
+        if: failure()
+        run: |
+          set -e
+          BASE_VERSION="${{ steps.version.outputs.base_version }}"
+          TAG_NAME="v${BASE_VERSION}"
+          
+          # Only delete if it's a local tag (not pushed to remote)
+          if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
+            # Check if tag exists on remote
+            if ! git ls-remote --tags origin "refs/tags/$TAG_NAME" | grep -q "$TAG_NAME"; then
+              echo "Deleting local tag $TAG_NAME (build failed)"
+              git tag -d "$TAG_NAME"
+            else
+              echo "Tag $TAG_NAME exists on remote, skipping cleanup"
+            fi
+          fi
