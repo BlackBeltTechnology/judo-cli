@@ -45,7 +45,7 @@ jobs:
             echo "Setting up rbenv for documentation..."
             # Install rbenv from package
             sudo apt-get update
-            sudo apt-get install -y rbenv ruby-build
+            sudo apt-get install -y rbenv ruby-build libffi-dev libyaml-dev
             
             # Initialize rbenv and set up plugins directory
             eval "$(rbenv init -)"
@@ -56,9 +56,9 @@ jobs:
             else
                 git clone https://github.com/rbenv/ruby-build.git "$(rbenv root)/plugins/ruby-build"
             fi            
-            # Install Ruby 3.3.4 (or latest stable compatible with Jekyll)
-            rbenv install 3.3.4 -s
-            rbenv global 3.3.4
+            # Install Ruby 3.2.2 (or latest stable compatible with Jekyll)
+            rbenv install 3.2.2 -s
+            rbenv global 3.2.2
             
             # Install Bundler
             gem install bundler

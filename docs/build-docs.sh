@@ -153,7 +153,7 @@ build_jekyll() {
     echo
 
     cd "$DOCS_DIR"
-
+    export JEKYLL_ENV=production
     # Use rbenv bundle if available, otherwise fallback to system
     if command -v "$HOME/.rbenv/shims/bundle" &> /dev/null; then
         "$HOME/.rbenv/shims/bundle" exec jekyll build --baseurl "" --trace 2>/dev/null
