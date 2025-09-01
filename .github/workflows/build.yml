@@ -15,7 +15,7 @@ jobs:
     runs-on: judong
     env:
       RUNNER_TOOL_CACHE: ${{ github.workspace }}/.toolcache
-      RUNNER_TEMP:       ${{ github.workspace }}/.tmp
+      RUNNER_TEMP: ${{ github.workspace }}/.tmp
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -25,7 +25,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.25'
+          go-version: "1.25"
 
       - name: Run tests
         run: go test -v ./...
@@ -41,42 +41,53 @@ jobs:
             exit 1
           fi
 
-#      - name: Setup rbenv for documentation
-#        if: always()
-#        run: |
-#          if [ -f "docs/build-docs.sh" ]; then
-#            echo "Setting up rbenv for documentation..."
-#            # Install rbenv from package
-#            sudo apt-get update
-#            sudo apt-get install -y rbenv ruby-build libffi-dev libyaml-dev
-#
-#            # Initialize rbenv and set up plugins directory
-#            eval "$(rbenv init -)"
-#            mkdir -p "$(rbenv root)/plugins"
-#            # Update ruby-build if it exists, otherwise install it
-#            if [ -d "$(rbenv root)/plugins/ruby-build" ]; then
-#                git -C "$(rbenv root)/plugins/ruby-build" pull
-#            else
-#                git clone https://github.com/rbenv/ruby-build.git "$(rbenv root)/plugins/ruby-build"
-#            fi
-#            # Install Ruby 3.2.2 (or latest stable compatible with Jekyll)
-#            if ! rbenv versions | grep -q "3.2.2"; then
-#                rbenv install 3.2.2 -s
-#            fi
-#            # Set Ruby version for current session only
-#            export RBENV_VERSION=3.2.2
-#
-#            # Install Bundler
-#            gem install bundler
-#            rbenv rehash
-#
-#            echo "Ruby $(ruby -v) and Bundler $(bundle -v) installed via rbenv"
-#          fi
+      #      - name: Setup rbenv for documentation
+      #        if: always()
+      #        run: |
+      #          if [ -f "docs/build-docs.sh" ]; then
+      #            echo "Setting up rbenv for documentation..."
+      #            # Install rbenv from package
+      #            sudo apt-get update
+      #            sudo apt-get install -y rbenv ruby-build libffi-dev libyaml-dev
+      #
+      #            # Initialize rbenv and set up plugins directory
+      #            eval "$(rbenv init -)"
+      #            mkdir -p "$(rbenv root)/plugins"
+      #            # Update ruby-build if it exists, otherwise install it
+      #            if [ -d "$(rbenv root)/plugins/ruby-build" ]; then
+      #                git -C "$(rbenv root)/plugins/ruby-build" pull
+      #            else
+      #                git clone https://github.com/rbenv/ruby-build.git "$(rbenv root)/plugins/ruby-build"
+      #            fi
+      #            # Install Ruby 3.2.2 (or latest stable compatible with Jekyll)
+      #            if ! rbenv versions | grep -q "3.2.2"; then
+      #                rbenv install 3.2.2 -s
+      #            fi
+      #            # Set Ruby version for current session only
+      #            export RBENV_VERSION=3.2.2
+      #
+      #            # Install Bundler
+      #            gem install bundler
+      #            rbenv rehash
+      #
+      #            echo "Ruby $(ruby -v) and Bundler $(bundle -v) installed via rbenv"
+      #          fi
 
       - name: Set up Ruby 3.2.2 with Bundler cache
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: '3.2.2'   # exact patch
+          ruby-version: "3.2.2"
+          bundler-cache: false
+          bundler-version: "2.7.1"
+          bundler-path: "$PWD/.toolcache/ruby/3.2.2/bin/bundle"
+
+      - name: Set up Ruby 3.2.2 with Bundler cache
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.2.2"
+          bundler-cache: false
+          bundler-version: "2.7.1"
+          bundler-path: "$PWD/.toolcache/ruby/3.2.2/bin/bundle"
 
       - name: Validate documentation build
         run: |
@@ -104,7 +115,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.25'
+          go-version: "1.25"
 
       - name: Get base version
         id: version
@@ -118,7 +129,7 @@ jobs:
         uses: goreleaser/goreleaser-action@v6
         with:
           distribution: goreleaser
-          version: '~> v2'
+          version: "~> v2"
           args: release --snapshot --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -131,15 +142,15 @@ jobs:
           script: |
             const { owner, repo } = context.repo;
             const fs = require('fs');
-            
+
             // Generate snapshot version
             const baseVersion = '${{ steps.version.outputs.base_version }}';
             const timestamp = new Date().toISOString().replace(/[-:T]/g, '').substring(0, 14);
             const snapshotVersion = `${baseVersion}-snapshot-${timestamp}`;
             const tagName = `v${snapshotVersion}`;
-            
+
             console.log(`Creating snapshot release: ${tagName}`);
-            
+
             // Create the tag and release
             const release = await github.rest.repos.createRelease({
               owner,
@@ -147,23 +158,23 @@ jobs:
               tag_name: tagName,
               name: `JUDO CLI ${tagName} (Development Snapshot)`,
               body: `**⚠️ Development Snapshot Build**
-            
+
             This is an automated development build from the \`develop\` branch.
-            
+
             **Build Info:**
             - Version: ${tagName}
             - Branch: develop
             - Commit: ${{ github.sha }}
             - Built: ${new Date().toISOString()}
-            
+
             **⚠️ This is a pre-release version intended for testing and development only.**
-            
+
             **Installation:**
             Download the appropriate binary for your platform from the assets below.`,
               draft: false,
               prerelease: true
             });
-            
+
             // Store release info for later steps
             core.setOutput('release_id', release.data.id);
             core.setOutput('tag_name', tagName);
@@ -178,18 +189,18 @@ jobs:
             const fs = require('fs');
             const path = require('path');
             const releaseId = '${{ steps.create-release.outputs.release_id }}';
-            
+
             // Find all files in dist directory
             const distDir = './dist';
             const files = fs.readdirSync(distDir);
-            
+
             for (const file of files) {
               if (file.endsWith('.tar.gz') || file.endsWith('.zip') || file === 'checksums.txt') {
                 const filePath = path.join(distDir, file);
                 const fileContent = fs.readFileSync(filePath);
-                
+
                 console.log(`Uploading ${file}...`);
-                
+
                 await github.rest.repos.uploadReleaseAsset({
                   owner,
                   repo,
@@ -197,7 +208,7 @@ jobs:
                   name: file,
                   data: fileContent
                 });
-                
+
                 console.log(`✓ Uploaded ${file}`);
               }
             }
@@ -217,30 +228,30 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const { owner, repo } = context.repo;
-            
+
             // Get all releases
             const releases = await github.rest.repos.listReleases({
               owner,
               repo,
               per_page: 100
             });
-            
+
             // Filter snapshot releases (contain 'snapshot' in tag name)
-            const snapshotReleases = releases.data.filter(release => 
+            const snapshotReleases = releases.data.filter(release =>
               release.tag_name.includes('snapshot') && release.prerelease
             );
-            
+
             console.log(`Found ${snapshotReleases.length} snapshot releases`);
-            
+
             // Sort by creation date (newest first)
             snapshotReleases.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-            
+
             // Keep only the latest 3 snapshots, delete the rest
             if (snapshotReleases.length > 3) {
               const toDelete = snapshotReleases.slice(3);
-              
+
               console.log(`Keeping ${Math.min(3, snapshotReleases.length)} latest snapshots, deleting ${toDelete.length} old ones`);
-              
+
               for (const release of toDelete) {
                 console.log(`Deleting old snapshot release: ${release.tag_name} (created: ${release.created_at})`);
                 try {
@@ -249,14 +260,14 @@ jobs:
                     repo,
                     release_id: release.id
                   });
-                  
+
                   // Also delete the tag
                   await github.rest.git.deleteRef({
                     owner,
                     repo,
                     ref: `tags/${release.tag_name}`
                   });
-                  
+
                   console.log(`Successfully deleted: ${release.tag_name}`);
                 } catch (error) {
                   console.log(`Failed to delete release ${release.tag_name}: ${error.message}`);
@@ -280,7 +291,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.25'
+          go-version: "1.25"
 
       - name: Generate build version
         id: version
@@ -294,7 +305,7 @@ jobs:
         uses: goreleaser/goreleaser-action@v6
         with:
           distribution: goreleaser
-          version: '~> v2'
+          version: "~> v2"
           args: build --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
