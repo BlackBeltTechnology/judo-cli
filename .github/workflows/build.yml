@@ -73,21 +73,53 @@ jobs:
       #            echo "Ruby $(ruby -v) and Bundler $(bundle -v) installed via rbenv"
       #          fi
 
-      - name: Set up Ruby 3.2.2 with Bundler cache
-        uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: "3.2.2"
-          bundler-cache: false
-          bundler-version: "2.7.1"
-          bundler-path: "$PWD/.toolcache/ruby/3.2.2/bin/bundle"
+      - name: Define cache dirs
+        run: |
+          # Choose a stable cache location (adjust as you wish)
+          echo "RUNNER_TOOL_CACHE=$HOME/actions/_tool" >> "$GITHUB_ENV"
+          echo "RUNNER_TEMP=$HOME/actions/_temp" >> "$GITHUB_ENV"
+          echo "AGENT_TOOLSDIRECTORY=$HOME/actions/_tool" >> "$GITHUB_ENV"
+          mkdir -p "$HOME/actions/_tool" "$HOME/actions/_temp"
 
-      - name: Set up Ruby 3.2.2 with Bundler cache
+      - name: Bootstrap Ruby into toolcache if missing
+        run: |
+          set -euo pipefail
+          TOOLBASE="${RUNNER_TOOL_CACHE:-$HOME/actions/_tool}"
+          DEST="$TOOLBASE/Ruby/3.2.2/x64"
+          MARKER="$DEST.complete"
+          if [ -f "$MARKER" ]; then
+            echo "Ruby 3.2.2 already in toolcache."
+            exit 0
+          fi
+
+          # Install ruby-build if not present
+          if ! command -v ruby-build >/dev/null 2>&1; then
+            echo "Installing ruby-build..."
+            sudo apt-get update -y
+            sudo apt-get install -y build-essential libssl-dev zlib1g-dev \
+              libreadline-dev libyaml-dev libxml2-dev libxslt1-dev \
+              libffi-dev libgdbm-dev libncurses5-dev libdb-dev wget ca-certificates
+            # Lightweight install of ruby-build
+            git clone --depth=1 https://github.com/rbenv/ruby-build.git /tmp/ruby-build
+            sudo /tmp/ruby-build/install.sh
+          fi
+
+          mkdir -p "$DEST"
+          # Build Ruby into the toolcache path (matches what the action looks for)
+          ruby-build 3.2.2 "$DEST"
+          touch "$MARKER"
+          echo "Installed Ruby to $DEST"
+
+      - name: Set up Ruby (use preinstalled)
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: 3.2.2
-          bundler: "2.7.1" # <-- valid input
+          bundler: "2.7.1"
           bundler-cache: false
           self-hosted: true
+
+      - name: Bundler path (optional)
+        run: bundle config set path ".bundle"
 
       - name: Validate documentation build
         run: |
