@@ -3,7 +3,7 @@ set -euo pipefail
 
 # ---------- Config (change owner/repo + binary name if needed) ----------
 REPO="BlackBeltTechnology/judo-cli"             # e.g., acme/judo-cli
-PROJECT="judo-cli"                # archive base name inside Releases
+PROJECT="judo"                    # archive base name inside Releases (matches GoReleaser project_name)
 BINARY_NAME="judo"                # installed command name (no extension)
 
 # Optional overrides from env: JUDO_VERSION (e.g. v1.2.3), JUDO_INSTALL_DIR
@@ -18,14 +18,14 @@ if command -v curl >/dev/null 2>&1; then DL="curl -fL --proto '=https' --tlsv1.2
 # ---------- OS/Arch detection ----------
 uname_s=$(uname -s)
 case "$uname_s" in
-  Linux)   os="linux";;
-  Darwin)  os="darwin";;
+  Linux)   os="Linux";;
+  Darwin)  os="Darwin";;
   *) echo "Unsupported OS: $uname_s"; exit 1;;
  esac
 
 uname_m=$(uname -m)
 case "$uname_m" in
-  x86_64|amd64) arch="amd64";;
+  x86_64|amd64) arch="x86_64";;
   arm64|aarch64) arch="arm64";;
   i386|i686) echo "Unsupported architecture: $uname_m (386 is not supported)"; exit 1;;
   *) echo "Unsupported architecture: $uname_m"; exit 1;;
