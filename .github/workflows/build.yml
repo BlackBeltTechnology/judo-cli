@@ -338,7 +338,6 @@ jobs:
           chmod +x scripts/version.sh
           BASE_VERSION=$(scripts/version.sh get)
           echo "base_version=${BASE_VERSION}" >> $GITHUB_OUTPUT
-          echo "GORELEASER_CURRENT_TAG=v${BASE_VERSION}" >> $GITHUB_ENV
 
       - name: Run GoReleaser (Build only)
         uses: goreleaser/goreleaser-action@v6
