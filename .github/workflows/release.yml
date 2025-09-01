@@ -218,27 +218,36 @@ jobs:
             echo "No existing release found for $TAG_NAME"
           fi
 
-      - name: Install GoReleaser for changelog generation
-        uses: goreleaser/goreleaser-action@v6
-        with:
-          distribution: goreleaser
-          version: '~> v2'
-          args: changelog --output RELEASE_NOTES.md
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      
-      - name: Check RELEASE_NOTES.md generation
+      - name: Generate release notes using git log
         run: |
           set -e
-          if [[ -f "RELEASE_NOTES.md" && -s "RELEASE_NOTES.md" ]]; then
-            echo "✅ RELEASE_NOTES.md generated successfully"
-            echo "Release notes content preview:"
-            head -10 RELEASE_NOTES.md
+          TAG_NAME="${{ steps.tag_version.outputs.tag }}"
+          echo "Generating release notes for tag: $TAG_NAME"
+          
+          # Get previous tag for changelog range
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 "$TAG_NAME^" 2>/dev/null || echo "")
+          
+          if [[ -n "$PREVIOUS_TAG" ]]; then
+            echo "Generating changelog from $PREVIOUS_TAG to $TAG_NAME"
+            git log --oneline --no-merges --decorate "$PREVIOUS_TAG..$TAG_NAME" > RELEASE_NOTES.md
           else
-            echo "::warning::RELEASE_NOTES.md not generated or empty"
-            # Create empty file to avoid errors in later steps
-            touch RELEASE_NOTES.md
+            echo "No previous tag found, generating full changelog"
+            git log --oneline --no-merges --decorate > RELEASE_NOTES.md
           fi
+          
+          # Add header
+          echo "# Release Notes - $TAG_NAME" > temp_notes.md
+          echo "" >> temp_notes.md
+          echo "**Release Date**: $(date +%Y-%m-%d)" >> temp_notes.md
+          echo "" >> temp_notes.md
+          echo "## Changes" >> temp_notes.md
+          echo "" >> temp_notes.md
+          cat RELEASE_NOTES.md >> temp_notes.md
+          mv temp_notes.md RELEASE_NOTES.md
+          
+          echo "✅ RELEASE_NOTES.md generated successfully"
+          echo "Release notes content preview:"
+          head -10 RELEASE_NOTES.md
       
       - name: Run GoReleaser for release
         uses: goreleaser/goreleaser-action@v6
@@ -274,7 +283,7 @@ jobs:
             
             # Check if there are changes to commit
             if ! git diff --cached --quiet; then
-              git commit -m "docs: update release notes for ${{ steps.tag_version.outputs.tag }}"
+              git commit -m "docs: update release notes from git log for ${{ steps.tag_version.outputs.tag }}"
               echo "✅ Committed RELEASE_NOTES.md"
             else
               echo "No changes to RELEASE_NOTES.md to commit"
