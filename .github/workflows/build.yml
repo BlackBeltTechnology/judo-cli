@@ -337,12 +337,12 @@ jobs:
           echo "Release notes content preview:"
           head -5 RELEASE_NOTES.md
 
-      - name: Run GoReleaser (Release artifacts)
+      - name: Run GoReleaser (Build artifacts)
         uses: goreleaser/goreleaser-action@v6
         with:
           distribution: goreleaser
           version: "~> v2"
-          args: release --clean --skip-publish
+          args: build --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
