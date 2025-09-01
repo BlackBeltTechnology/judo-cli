@@ -35,39 +35,45 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Setup Ruby
-        uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: '3.3'
-          bundler-cache: false
+      - name: Setup rbenv for documentation
+        run: |
+          echo "Setting up rbenv for documentation deployment..."
+          # Install rbenv and ruby-build
+          git clone https://github.com/rbenv/rbenv.git ~/.rbenv
+          cd ~/.rbenv && src/configure && make -C src
+          echo 'export PATH="$HOME/.rbenv/bin:$PATH"' >> ~/.bashrc
+          echo 'eval "$(rbenv init -)"' >> ~/.bashrc
+          
+          git clone https://github.com/rbenv/ruby-build.git ~/.rbenv/plugins/ruby-build
+          
+          # Source bashrc to make rbenv available
+          source ~/.bashrc
+          
+          # Install Ruby 3.2.2 (compatible with Jekyll)
+          rbenv install 3.2.2 -s
+          rbenv global 3.2.2
+          
+          # Install Bundler
+          gem install bundler
+          rbenv rehash
+          
+          echo "Ruby $(ruby -v) and Bundler $(bundle -v) installed via rbenv"
 
       - name: Setup Pages
         id: pages
         uses: actions/configure-pages@v4
 
-      - name: Use project Gemfile
+      - name: Build documentation with build-docs.sh
         run: |
           cd docs
-          # Ensure the project Gemfile is used instead of creating a minimal one
-          echo "Using project Gemfile for consistent dependencies"
+          chmod +x build-docs.sh
+          ./build-docs.sh --clean
+          
+          # Copy install scripts to the built site
+          mkdir -p _site
+          cp ../scripts/install.sh _site/
+          cp ../scripts/install.ps1 _site/
 
-      - name: Install dependencies
-        run: |
-          cd docs
-          bundle install
-
-      - name: Build with Jekyll
-        run: |
-          cd docs
-          bundle exec jekyll build --baseurl "${{ steps.pages.outputs.base_path }}" --trace
-        env:
-          JEKYLL_ENV: production
-
-      - name: Copy install scripts to site
-        run: |
-          mkdir -p docs/_site
-          cp ../scripts/install.sh docs/_site/
-          cp ../scripts/install.ps1 docs/_site/
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
