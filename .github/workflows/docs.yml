@@ -44,7 +44,9 @@ jobs:
           
           # Initialize rbenv
           eval "$(rbenv init -)"
-          
+          # Update ruby-build
+          git -C $(rbenv root)/plugins/ruby-build pull            
+
           # Install Ruby 3.3.4 (compatible with Jekyll)
           rbenv install 3.3.4 -s
           rbenv global 3.3.4
