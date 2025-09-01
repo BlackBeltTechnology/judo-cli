@@ -75,14 +75,15 @@ jobs:
           TAG_NAME="v${BASE_VERSION}"
           echo "Generating release notes for version: $BASE_VERSION"
           
-          # Get previous tag for changelog range
-          PREVIOUS_TAG=$(git describe --tags --abbrev=0 "HEAD^" 2>/dev/null || echo "")
+          # Get previous RELEASE tag (not snapshot) for changelog range
+          # List all tags, filter out snapshots, sort by version, and get the latest release
+          PREVIOUS_TAG=$(git tag -l "v*" | grep -E "^v[0-9]+\\.[0-9]+\\.[0-9]+$" | grep -v "snapshot" | sort -V | tail -1)
           
           if [[ -n "$PREVIOUS_TAG" ]]; then
-            echo "Generating changelog from $PREVIOUS_TAG to current commit"
+            echo "Generating changelog from last release $PREVIOUS_TAG to current commit"
             git log --oneline --no-merges --decorate "$PREVIOUS_TAG..HEAD" > RELEASE_NOTES.md
           else
-            echo "No previous tag found, generating recent changelog"
+            echo "No previous release tag found, generating recent changelog"
             git log --oneline --no-merges --decorate -n 20 > RELEASE_NOTES.md
           fi
           
@@ -311,14 +312,15 @@ jobs:
           TAG_NAME="v${BASE_VERSION}"
           echo "Generating release notes for version: $BASE_VERSION"
           
-          # Get previous tag for changelog range
-          PREVIOUS_TAG=$(git describe --tags --abbrev=0 "HEAD^" 2>/dev/null || echo "")
+          # Get previous RELEASE tag (not snapshot) for changelog range
+          # List all tags, filter out snapshots, sort by version, and get the latest release
+          PREVIOUS_TAG=$(git tag -l "v*" | grep -E "^v[0-9]+\\.[0-9]+\\.[0-9]+$" | grep -v "snapshot" | sort -V | tail -1)
           
           if [[ -n "$PREVIOUS_TAG" ]]; then
-            echo "Generating changelog from $PREVIOUS_TAG to current commit"
+            echo "Generating changelog from last release $PREVIOUS_TAG to current commit"
             git log --oneline --no-merges --decorate "$PREVIOUS_TAG..HEAD" > RELEASE_NOTES.md
           else
-            echo "No previous tag found, generating recent changelog"
+            echo "No previous release tag found, generating recent changelog"
             git log --oneline --no-merges --decorate -n 20 > RELEASE_NOTES.md
           fi
           
