@@ -58,6 +58,12 @@ snapshot:
 changelog:
   sort: asc
   use: git
+  # Follow merge commits to include all commits from merged branches (like develop)
+  git:
+    # Include commits from all merged branches
+    follow_merges: true
+    # Include conventional commit messages from merge commits themselves
+    include_merge_commits: true
   filters:
     exclude:
       - '^docs:'
@@ -65,6 +71,10 @@ changelog:
       - '^ci:'
       - '^chore:'
       - '^build:'
+      # Exclude generic merge commit messages
+      - '^Merge branch'
+      - '^Merge pull request'
+      - '^Merge remote-tracking branch'
   groups:
     - title: Features
       regexp: '^.*?feat(\([[:word:]]+\))??!?:.+$'
