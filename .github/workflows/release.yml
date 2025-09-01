@@ -82,6 +82,32 @@ jobs:
           echo "Current VERSION file content: $CURRENT_VERSION"
           echo "Tag version: $VERSION"
           
+          # Verify tag version is semantically larger than all existing tags
+          echo "Checking if tag version $VERSION is valid..."
+          
+          # Get all version tags and sort them semantically
+          ALL_TAGS=$(git tag -l "v*" | grep -E "^v[0-9]+\.[0-9]+\.[0-9]+$" | sed 's/^v//')
+          if [[ -n "$ALL_TAGS" ]]; then
+            LATEST_TAG=$(echo "$ALL_TAGS" | sort -t '.' -k1,1n -k2,2n -k3,3n | tail -1)
+            echo "Latest existing tag version: $LATEST_TAG"
+            
+            # Compare versions semantically
+            IFS='.' read -ra NEW_VER <<< "$VERSION"
+            IFS='.' read -ra LATEST_VER <<< "$LATEST_TAG"
+            
+            for i in 0 1 2; do
+              if [[ "${NEW_VER[$i]}" -gt "${LATEST_VER[$i]}" ]]; then
+                echo "✅ New version $VERSION is greater than latest tag $LATEST_TAG"
+                break
+              elif [[ "${NEW_VER[$i]}" -lt "${LATEST_VER[$i]}" ]]; then
+                echo "::error::New version $VERSION is not greater than latest tag $LATEST_TAG"
+                exit 1
+              fi
+            done
+          else
+            echo "No existing version tags found, first release"
+          fi
+          
           # Warn if versions don't match (but don't fail - this might be intentional)
           if [[ "$CURRENT_VERSION" != "$VERSION" ]]; then
             echo "::warning::VERSION file ($CURRENT_VERSION) doesn't match tag version ($VERSION)"
@@ -288,6 +314,26 @@ jobs:
           fi
           
           echo "✅ Next development version: $NEXT_VERSION"
+          
+          # Verify the new version is greater than the released version
+          RELEASED_VERSION="${{ steps.current_version.outputs.version }}"
+          echo "Released version: $RELEASED_VERSION"
+          echo "Next version: $NEXT_VERSION"
+          
+          # Compare versions semantically
+          IFS='.' read -ra RELEASED_VER <<< "$RELEASED_VERSION"
+          IFS='.' read -ra NEXT_VER <<< "$NEXT_VERSION"
+          
+          for i in 0 1 2; do
+            if [[ "${NEXT_VER[$i]}" -gt "${RELEASED_VER[$i]}" ]]; then
+              echo "✅ Version properly incremented: $RELEASED_VERSION -> $NEXT_VERSION"
+              break
+            elif [[ "${NEXT_VER[$i]}" -lt "${RELEASED_VER[$i]}" ]]; then
+              echo "::error::Version not properly incremented. Next version $NEXT_VERSION should be greater than released version $RELEASED_VERSION"
+              exit 1
+            fi
+          done
+          
           echo "next_version=${NEXT_VERSION}" >> $GITHUB_OUTPUT
 
       - name: Push version increment to develop with validation
