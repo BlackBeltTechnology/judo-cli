@@ -72,9 +72,9 @@ jobs:
           TAG_NAME="v${BASE_VERSION}"
           echo "Generating release notes for version: $BASE_VERSION"
 
-          # Get previous RELEASE tag (not snapshot) for changelog range
-          # List all tags, filter out snapshots, sort by version, and get the latest release
-          PREVIOUS_TAG=$(git tag -l "v*" | grep -E "^v[0-9]+\\.[0-9]+\\.[0-9]+$" | grep -v "snapshot" | sort -V | tail -1)
+          # Get previous RELEASE tag (not snapshot or current tag) for changelog range
+          # List all tags, filter out snapshots and current tag, sort by version, and get the latest release
+          PREVIOUS_TAG=$(git tag -l "v*" | grep -E "^v[0-9]+\\.[0-9]+\\.[0-9]+$" | grep -v "snapshot" | grep -v "^$TAG_NAME$" | sort -V | tail -1)
 
           if [[ -n "$PREVIOUS_TAG" ]]; then
             echo "Generating changelog from last release $PREVIOUS_TAG to current commit"
@@ -318,9 +318,9 @@ jobs:
           TAG_NAME="v${BASE_VERSION}"
           echo "Generating release notes for version: $BASE_VERSION"
 
-          # Get previous RELEASE tag (not snapshot) for changelog range
-          # List all tags, filter out snapshots, sort by version, and get the latest release
-          PREVIOUS_TAG=$(git tag -l "v*" | grep -E "^v[0-9]+\\.[0-9]+\\.[0-9]+$" | grep -v "snapshot" | sort -V | tail -1)
+          # Get previous RELEASE tag (not snapshot or current tag) for changelog range
+          # List all tags, filter out snapshots and current tag, sort by version, and get the latest release
+          PREVIOUS_TAG=$(git tag -l "v*" | grep -E "^v[0-9]+\\.[0-9]+\\.[0-9]+$" | grep -v "snapshot" | grep -v "^$TAG_NAME$" | sort -V | tail -1)
 
           if [[ -n "$PREVIOUS_TAG" ]]; then
             echo "Generating changelog from last release $PREVIOUS_TAG to current commit"
