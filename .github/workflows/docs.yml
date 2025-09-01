@@ -38,23 +38,22 @@ jobs:
       - name: Setup rbenv for documentation
         run: |
           echo "Setting up rbenv for documentation deployment..."
-          # Install rbenv and ruby-build
-          git clone https://github.com/rbenv/rbenv.git ~/.rbenv
-          git clone https://github.com/rbenv/ruby-build.git ~/.rbenv/plugins/ruby-build
+          # Install rbenv from package
+          sudo apt-get update
+          sudo apt-get install -y rbenv ruby-build
           
-          # Add rbenv to PATH for current session
-          export PATH="$HOME/.rbenv/bin:$PATH"
-          eval "$(~/.rbenv/bin/rbenv init -)"
+          # Initialize rbenv
+          eval "$(rbenv init -)"
           
-          # Install Ruby 3.2.2 (compatible with Jekyll)
-          ~/.rbenv/bin/rbenv install 3.2.2 -s
-          ~/.rbenv/bin/rbenv global 3.2.2
+          # Install Ruby 3.3.4 (compatible with Jekyll)
+          rbenv install 3.3.4 -s
+          rbenv global 3.3.4
           
           # Install Bundler
-          ~/.rbenv/shims/gem install bundler
-          ~/.rbenv/bin/rbenv rehash
+          gem install bundler
+          rbenv rehash
           
-          echo "Ruby $(~/.rbenv/shims/ruby -v) and Bundler $(~/.rbenv/shims/bundle -v) installed via rbenv"
+          echo "Ruby $(ruby -v) and Bundler $(bundle -v) installed via rbenv"
 
       - name: Setup Pages
         id: pages
