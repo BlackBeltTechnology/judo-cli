@@ -68,14 +68,18 @@ jobs:
           echo "base_version=${BASE_VERSION}" >> $GITHUB_OUTPUT
           echo "GORELEASER_CURRENT_TAG=v${BASE_VERSION}" >> $GITHUB_ENV
 
-      - name: Generate RELEASE_NOTES.md from changelog
+      - name: Install GoReleaser for changelog generation
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: "~> v2"
+          args: changelog --output RELEASE_NOTES.md
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check RELEASE_NOTES.md generation
         run: |
           set -e
-          echo "Generating RELEASE_NOTES.md from GoReleaser changelog..."
-          
-          # Run GoReleaser to generate the changelog only
-          goreleaser changelog --output RELEASE_NOTES.md
-          
           if [[ -f "RELEASE_NOTES.md" && -s "RELEASE_NOTES.md" ]]; then
             echo "✅ RELEASE_NOTES.md generated successfully"
           else
@@ -287,14 +291,18 @@ jobs:
           
           echo "GORELEASER_CURRENT_TAG=${TAG_NAME}" >> $GITHUB_ENV
 
-      - name: Generate RELEASE_NOTES.md from changelog
+      - name: Install GoReleaser for changelog generation
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: "~> v2"
+          args: changelog --output RELEASE_NOTES.md
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check RELEASE_NOTES.md generation
         run: |
           set -e
-          echo "Generating RELEASE_NOTES.md from GoReleaser changelog..."
-          
-          # Run GoReleaser to generate the changelog only
-          goreleaser changelog --output RELEASE_NOTES.md
-          
           if [[ -f "RELEASE_NOTES.md" && -s "RELEASE_NOTES.md" ]]; then
             echo "✅ RELEASE_NOTES.md generated successfully"
           else
