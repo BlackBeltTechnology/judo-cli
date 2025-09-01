@@ -38,6 +38,18 @@ jobs:
             exit 1
           fi
 
+      - name: Validate documentation build
+        run: |
+          if [ -f "docs/build-docs.sh" ]; then
+            echo "Validating documentation build..."
+            cd docs
+            chmod +x build-docs.sh
+            ./build-docs.sh --clean
+            echo "Documentation build validation successful"
+          else
+            echo "Warning: docs/build-docs.sh not found, skipping documentation validation"
+          fi
+
   build-snapshot:
     name: Build Snapshot (Develop)
     runs-on: ubuntu-latest

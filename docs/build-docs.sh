@@ -68,22 +68,32 @@ check_directory() {
 check_dependencies() {
     log_info "Checking dependencies..."
     
-    if ! command -v ruby &> /dev/null; then
+    # Check for Ruby - try rbenv first, then system
+    if command -v "$HOME/.rbenv/shims/ruby" &> /dev/null; then
+        RUBY_CMD="$HOME/.rbenv/shims/ruby"
+    elif command -v ruby &> /dev/null; then
+        RUBY_CMD="ruby"
+    else
         log_error "Ruby is not installed!"
         log_error "Please install Ruby 3.2+ to run Jekyll."
         log_error "Visit: https://www.ruby-lang.org/en/documentation/installation/"
         exit 1
     fi
     
-    if ! command -v bundle &> /dev/null; then
+    # Check for Bundler - try rbenv first, then system
+    if command -v "$HOME/.rbenv/shims/bundle" &> /dev/null; then
+        BUNDLE_CMD="$HOME/.rbenv/shims/bundle"
+    elif command -v bundle &> /dev/null; then
+        BUNDLE_CMD="bundle"
+    else
         log_error "Bundler is not installed!"
         log_error "Install it with: gem install bundler"
         exit 1
     fi
     
-    RUBY_VERSION=$(ruby -v | cut -d' ' -f2 | cut -d'.' -f1-2)
+    RUBY_VERSION=$($RUBY_CMD -v | cut -d' ' -f2 | cut -d'.' -f1-2)
     log_success "Ruby $RUBY_VERSION detected"
-    log_success "Bundler $(bundle -v | cut -d' ' -f3) detected"
+    log_success "Bundler $($BUNDLE_CMD -v | cut -d' ' -f3) detected"
     
     # Check Ruby version compatibility
     if [[ $(echo "$RUBY_VERSION < 2.6" | bc -l 2>/dev/null || echo 0) -eq 1 ]]; then
@@ -98,18 +108,20 @@ install_dependencies() {
     
     cd "$DOCS_DIR"
     
-    if ! bundle check &> /dev/null; then
+    # Check for Bundler - try rbenv first, then system
+    if command -v "$HOME/.rbenv/shims/bundle" &> /dev/null; then
+        BUNDLE_CMD="$HOME/.rbenv/shims/bundle"
+    elif command -v bundle &> /dev/null; then
+        BUNDLE_CMD="bundle"
+    else
+        log_error "Bundler is not installed!"
+        log_error "Install it with: gem install bundler"
+        exit 1
+    fi
+    
+    if ! $BUNDLE_CMD check &> /dev/null; then
         log_info "Installing gems..."
-        # Try with system bundle first, fallback to rbenv if available
-        if command -v ~/.rbenv/shims/bundle &> /dev/null; then
-            if ! ~/.rbenv/shims/bundle install --path vendor/bundle 2>/dev/null; then
-                show_ruby_error
-            fi
-        elif command -v bundle &> /dev/null; then
-            if ! bundle install --path vendor/bundle 2>/dev/null; then
-                show_ruby_error
-            fi
-        else
+        if ! $BUNDLE_CMD install --path vendor/bundle 2>/dev/null; then
             show_ruby_error
         fi
         log_success "Dependencies installed successfully"
@@ -143,8 +155,8 @@ build_jekyll() {
     cd "$DOCS_DIR"
 
     # Use rbenv bundle if available, otherwise fallback to system
-    if command -v ~/.rbenv/shims/bundle &> /dev/null; then
-        ~/.rbenv/shims/bundle exec jekyll build --baseurl "" --trace 2>/dev/null
+    if command -v "$HOME/.rbenv/shims/bundle" &> /dev/null; then
+        "$HOME/.rbenv/shims/bundle" exec jekyll build --baseurl "" --trace 2>/dev/null
     else
         bundle exec jekyll build --baseurl "" --trace
     fi
