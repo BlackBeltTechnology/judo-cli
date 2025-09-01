@@ -19,17 +19,20 @@ jobs:
     # Continue on error to allow post-release cleanup even if release fails
     continue-on-error: true
     steps:
-      - name: Checkout code with full history
+      - name: Checkout code with full history and all tags
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          # Fetch all tags and history for proper version validation
+          # Fetch all tags for proper version validation
           fetch-tags: true
 
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version: '1.25'
+
+      - name: Fetch all tags explicitly
+        run: git fetch --tags --force
 
       - name: Validate tag format and existence
         run: |
