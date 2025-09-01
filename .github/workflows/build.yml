@@ -68,25 +68,38 @@ jobs:
           echo "base_version=${BASE_VERSION}" >> $GITHUB_OUTPUT
           echo "GORELEASER_CURRENT_TAG=v${BASE_VERSION}" >> $GITHUB_ENV
 
-      - name: Install GoReleaser for changelog generation
-        uses: goreleaser/goreleaser-action@v6
-        with:
-          distribution: goreleaser
-          version: "~> v2"
-          args: changelog --output RELEASE_NOTES.md
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Check RELEASE_NOTES.md generation
+      - name: Generate release notes using git log
         run: |
           set -e
-          if [[ -f "RELEASE_NOTES.md" && -s "RELEASE_NOTES.md" ]]; then
-            echo "✅ RELEASE_NOTES.md generated successfully"
+          BASE_VERSION="${{ steps.version.outputs.base_version }}"
+          TAG_NAME="v${BASE_VERSION}"
+          echo "Generating release notes for version: $BASE_VERSION"
+          
+          # Get previous tag for changelog range
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 "HEAD^" 2>/dev/null || echo "")
+          
+          if [[ -n "$PREVIOUS_TAG" ]]; then
+            echo "Generating changelog from $PREVIOUS_TAG to current commit"
+            git log --oneline --no-merges --decorate "$PREVIOUS_TAG..HEAD" > RELEASE_NOTES.md
           else
-            echo "::warning::RELEASE_NOTES.md not generated or empty"
-            # Create empty file to avoid errors in later steps
-            touch RELEASE_NOTES.md
+            echo "No previous tag found, generating recent changelog"
+            git log --oneline --no-merges --decorate -n 20 > RELEASE_NOTES.md
           fi
+          
+          # Add header
+          echo "# Development Snapshot - $TAG_NAME" > temp_notes.md
+          echo "" >> temp_notes.md
+          echo "**Build Date**: $(date +%Y-%m-%d)" >> temp_notes.md
+          echo "**Branch**: develop" >> temp_notes.md
+          echo "" >> temp_notes.md
+          echo "## Recent Changes" >> temp_notes.md
+          echo "" >> temp_notes.md
+          cat RELEASE_NOTES.md >> temp_notes.md
+          mv temp_notes.md RELEASE_NOTES.md
+          
+          echo "✅ RELEASE_NOTES.md generated successfully"
+          echo "Release notes content preview:"
+          head -5 RELEASE_NOTES.md
 
       - name: Run GoReleaser (Snapshot Release)
         uses: goreleaser/goreleaser-action@v6
@@ -291,25 +304,38 @@ jobs:
           
           echo "GORELEASER_CURRENT_TAG=${TAG_NAME}" >> $GITHUB_ENV
 
-      - name: Install GoReleaser for changelog generation
-        uses: goreleaser/goreleaser-action@v6
-        with:
-          distribution: goreleaser
-          version: "~> v2"
-          args: changelog --output RELEASE_NOTES.md
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Check RELEASE_NOTES.md generation
+      - name: Generate release notes using git log
         run: |
           set -e
-          if [[ -f "RELEASE_NOTES.md" && -s "RELEASE_NOTES.md" ]]; then
-            echo "✅ RELEASE_NOTES.md generated successfully"
+          BASE_VERSION="${{ steps.version.outputs.base_version }}"
+          TAG_NAME="v${BASE_VERSION}"
+          echo "Generating release notes for version: $BASE_VERSION"
+          
+          # Get previous tag for changelog range
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 "HEAD^" 2>/dev/null || echo "")
+          
+          if [[ -n "$PREVIOUS_TAG" ]]; then
+            echo "Generating changelog from $PREVIOUS_TAG to current commit"
+            git log --oneline --no-merges --decorate "$PREVIOUS_TAG..HEAD" > RELEASE_NOTES.md
           else
-            echo "::warning::RELEASE_NOTES.md not generated or empty"
-            # Create empty file to avoid errors in later steps
-            touch RELEASE_NOTES.md
+            echo "No previous tag found, generating recent changelog"
+            git log --oneline --no-merges --decorate -n 20 > RELEASE_NOTES.md
           fi
+          
+          # Add header
+          echo "# Development Snapshot - $TAG_NAME" > temp_notes.md
+          echo "" >> temp_notes.md
+          echo "**Build Date**: $(date +%Y-%m-%d)" >> temp_notes.md
+          echo "**Branch**: develop" >> temp_notes.md
+          echo "" >> temp_notes.md
+          echo "## Recent Changes" >> temp_notes.md
+          echo "" >> temp_notes.md
+          cat RELEASE_NOTES.md >> temp_notes.md
+          mv temp_notes.md RELEASE_NOTES.md
+          
+          echo "✅ RELEASE_NOTES.md generated successfully"
+          echo "Release notes content preview:"
+          head -5 RELEASE_NOTES.md
 
       - name: Run GoReleaser (Release artifacts)
         uses: goreleaser/goreleaser-action@v6
