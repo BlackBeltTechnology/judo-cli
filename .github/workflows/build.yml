@@ -74,7 +74,6 @@ jobs:
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: '3.2.2'   # exact patch
-          bundler-cache: true     # caches gems based on your Gemfile.lock
 
       - name: Validate documentation build
         run: |

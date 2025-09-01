@@ -64,15 +64,14 @@ jobs:
 #
 #          echo "Ruby $(ruby -v) and Bundler $(bundle -v) installed via rbenv"
 
+      - name: Setup Pages
+        id: pages
+        uses: actions/configure-pages@v4
+
       - name: Set up Ruby 3.2.2 with Bundler cache
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: '3.2.2'   # exact patch
-          bundler-cache: true     # caches gems based on your Gemfile.lock
-
-      - name: Setup Pages
-        id: pages
-        uses: actions/configure-pages@v4
 
       - name: Build documentation with build-docs.sh
         run: |
