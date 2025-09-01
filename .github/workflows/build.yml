@@ -12,7 +12,7 @@ on:
 jobs:
   test:
     name: Test
-    runs-on: ubuntu-latest
+    runs-on: judong
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -81,7 +81,7 @@ jobs:
 
   build-snapshot:
     name: Build Snapshot (Develop)
-    runs-on: ubuntu-latest
+    runs-on: judong
     if: github.ref == 'refs/heads/develop'
     needs: test
     steps:
@@ -257,7 +257,7 @@ jobs:
 
   build-master:
     name: Build Master Branch
-    runs-on: ubuntu-latest
+    runs-on: judong
     if: github.ref == 'refs/heads/master'
     needs: test
     steps:

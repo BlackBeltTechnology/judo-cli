@@ -15,7 +15,7 @@ env:
 jobs:
   release:
     name: Create GitHub Release
-    runs-on: ubuntu-latest
+    runs-on: judong
     # Continue on error to allow post-release cleanup even if release fails
     continue-on-error: true
     steps:
@@ -190,7 +190,7 @@ jobs:
 
   post-release:
     name: Post-Release Version Increment
-    runs-on: ubuntu-latest
+    runs-on: judong
     needs: release
     # Run even if release failed to ensure version management cleanup
     if: always()
@@ -344,7 +344,7 @@ jobs:
   # Cleanup job to handle failures and ensure proper state
   cleanup:
     name: Cleanup and Final Status
-    runs-on: ubuntu-latest
+    runs-on: judong
     needs: [release, post-release]
     if: always()
     steps:
