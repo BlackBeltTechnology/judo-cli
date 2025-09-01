@@ -65,6 +65,10 @@ changelog:
       - '^ci:'
       - '^chore:'
       - '^build:'
+      # Exclude generic merge commit messages
+      - '^Merge branch'
+      - '^Merge pull request'
+      - '^Merge remote-tracking branch'
   groups:
     - title: Features
       regexp: '^.*?feat(\([[:word:]]+\))??!?:.+$'
@@ -77,6 +81,9 @@ changelog:
       order: 2
     - title: Others
       order: 999
+
+# RELEASE_NOTES.md generation will be handled in GitHub Actions workflow
+# using GoReleaser's changelog functionality
 
 release:
   # Repository to release to.

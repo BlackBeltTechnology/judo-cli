@@ -68,6 +68,39 @@ jobs:
           echo "base_version=${BASE_VERSION}" >> $GITHUB_OUTPUT
           echo "GORELEASER_CURRENT_TAG=v${BASE_VERSION}" >> $GITHUB_ENV
 
+      - name: Generate release notes using git log
+        run: |
+          set -e
+          BASE_VERSION="${{ steps.version.outputs.base_version }}"
+          TAG_NAME="v${BASE_VERSION}"
+          echo "Generating release notes for version: $BASE_VERSION"
+          
+          # Get previous tag for changelog range
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 "HEAD^" 2>/dev/null || echo "")
+          
+          if [[ -n "$PREVIOUS_TAG" ]]; then
+            echo "Generating changelog from $PREVIOUS_TAG to current commit"
+            git log --oneline --no-merges --decorate "$PREVIOUS_TAG..HEAD" > RELEASE_NOTES.md
+          else
+            echo "No previous tag found, generating recent changelog"
+            git log --oneline --no-merges --decorate -n 20 > RELEASE_NOTES.md
+          fi
+          
+          # Add header
+          echo "# Development Snapshot - $TAG_NAME" > temp_notes.md
+          echo "" >> temp_notes.md
+          echo "**Build Date**: $(date +%Y-%m-%d)" >> temp_notes.md
+          echo "**Branch**: develop" >> temp_notes.md
+          echo "" >> temp_notes.md
+          echo "## Recent Changes" >> temp_notes.md
+          echo "" >> temp_notes.md
+          cat RELEASE_NOTES.md >> temp_notes.md
+          mv temp_notes.md RELEASE_NOTES.md
+          
+          echo "✅ RELEASE_NOTES.md generated successfully"
+          echo "Release notes content preview:"
+          head -5 RELEASE_NOTES.md
+
       - name: Run GoReleaser (Snapshot Release)
         uses: goreleaser/goreleaser-action@v6
         with:
@@ -164,6 +197,7 @@ jobs:
             dist/*.tar.gz
             dist/*.zip
             dist/checksums.txt
+            RELEASE_NOTES.md
 
       - name: Cleanup old develop releases
         uses: actions/github-script@v7
@@ -270,12 +304,45 @@ jobs:
           
           echo "GORELEASER_CURRENT_TAG=${TAG_NAME}" >> $GITHUB_ENV
 
-      - name: Run GoReleaser (Build only)
+      - name: Generate release notes using git log
+        run: |
+          set -e
+          BASE_VERSION="${{ steps.version.outputs.base_version }}"
+          TAG_NAME="v${BASE_VERSION}"
+          echo "Generating release notes for version: $BASE_VERSION"
+          
+          # Get previous tag for changelog range
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 "HEAD^" 2>/dev/null || echo "")
+          
+          if [[ -n "$PREVIOUS_TAG" ]]; then
+            echo "Generating changelog from $PREVIOUS_TAG to current commit"
+            git log --oneline --no-merges --decorate "$PREVIOUS_TAG..HEAD" > RELEASE_NOTES.md
+          else
+            echo "No previous tag found, generating recent changelog"
+            git log --oneline --no-merges --decorate -n 20 > RELEASE_NOTES.md
+          fi
+          
+          # Add header
+          echo "# Development Snapshot - $TAG_NAME" > temp_notes.md
+          echo "" >> temp_notes.md
+          echo "**Build Date**: $(date +%Y-%m-%d)" >> temp_notes.md
+          echo "**Branch**: develop" >> temp_notes.md
+          echo "" >> temp_notes.md
+          echo "## Recent Changes" >> temp_notes.md
+          echo "" >> temp_notes.md
+          cat RELEASE_NOTES.md >> temp_notes.md
+          mv temp_notes.md RELEASE_NOTES.md
+          
+          echo "✅ RELEASE_NOTES.md generated successfully"
+          echo "Release notes content preview:"
+          head -5 RELEASE_NOTES.md
+
+      - name: Run GoReleaser (Release artifacts)
         uses: goreleaser/goreleaser-action@v6
         with:
           distribution: goreleaser
           version: "~> v2"
-          args: build --clean
+          args: release --clean --skip-publish
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -284,7 +351,11 @@ jobs:
         with:
           name: judo-build-${{ steps.version.outputs.base_version }}
           path: |
-            dist/judo_*
+            dist/*.tar.gz
+            dist/*.zip
+            dist/checksums.txt
+            dist/homebrew/*.rb
+            RELEASE_NOTES.md
 
       - name: Cleanup local tag if build failed
         if: failure()
