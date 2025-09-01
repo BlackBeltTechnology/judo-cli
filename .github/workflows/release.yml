@@ -304,6 +304,14 @@ jobs:
             # Don't exit with error here to allow post-release steps to run
           fi
 
+      - name: Upload release notes artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-notes
+          path: RELEASE_NOTES.md
+          retention-days: 1
+
   post-release:
     name: Post-Release Version Increment
     runs-on: judong
@@ -322,6 +330,12 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
+
+      - name: Download release notes artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: release-notes
+          path: .
 
       - name: Extract current version from tag with fallback
         id: current_version
@@ -403,6 +417,28 @@ jobs:
           done
           
           echo "next_version=${NEXT_VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Commit release notes to develop branch
+        run: |
+          set -e
+          echo "Checking if RELEASE_NOTES.md should be committed to develop branch"
+          
+          if [[ -f "RELEASE_NOTES.md" && -s "RELEASE_NOTES.md" ]]; then
+            echo "RELEASE_NOTES.md found with content, committing to develop branch"
+            
+            # Add the release notes file
+            git add RELEASE_NOTES.md
+            
+            # Check if there are changes to commit
+            if ! git diff --cached --quiet; then
+              git commit -m "docs: add release notes for ${{ steps.current_version.outputs.version }}"
+              echo "✅ Committed RELEASE_NOTES.md to develop branch"
+            else
+              echo "No changes to RELEASE_NOTES.md to commit"
+            fi
+          else
+            echo "RELEASE_NOTES.md not found or empty, skipping commit"
+          fi
 
       - name: Push version increment to develop with validation
         run: |
