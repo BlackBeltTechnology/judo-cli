@@ -41,9 +41,6 @@ jobs:
             exit 1
           fi
 
-
-
-
   build-snapshot:
     name: Build Snapshot (Develop)
     runs-on: judong
@@ -74,11 +71,11 @@ jobs:
           BASE_VERSION="${{ steps.version.outputs.base_version }}"
           TAG_NAME="v${BASE_VERSION}"
           echo "Generating release notes for version: $BASE_VERSION"
-          
+
           # Get previous RELEASE tag (not snapshot) for changelog range
           # List all tags, filter out snapshots, sort by version, and get the latest release
           PREVIOUS_TAG=$(git tag -l "v*" | grep -E "^v[0-9]+\\.[0-9]+\\.[0-9]+$" | grep -v "snapshot" | sort -V | tail -1)
-          
+
           if [[ -n "$PREVIOUS_TAG" ]]; then
             echo "Generating changelog from last release $PREVIOUS_TAG to current commit"
             git log --oneline --no-merges --decorate "$PREVIOUS_TAG..HEAD" > RELEASE_NOTES.md
@@ -86,7 +83,7 @@ jobs:
             echo "No previous release tag found, generating recent changelog"
             git log --oneline --no-merges --decorate -n 20 > RELEASE_NOTES.md
           fi
-          
+
           # Add header
           echo "# Development Snapshot - $TAG_NAME" > temp_notes.md
           echo "" >> temp_notes.md
@@ -97,7 +94,7 @@ jobs:
           echo "" >> temp_notes.md
           cat RELEASE_NOTES.md >> temp_notes.md
           mv temp_notes.md RELEASE_NOTES.md
-          
+
           echo "✅ RELEASE_NOTES.md generated successfully"
           echo "Release notes content preview:"
           head -5 RELEASE_NOTES.md
@@ -282,11 +279,11 @@ jobs:
           chmod +x scripts/version.sh
           BASE_VERSION=$(scripts/version.sh get)
           echo "base_version=${BASE_VERSION}" >> $GITHUB_OUTPUT
-          
+
           # Create the release tag locally for GoReleaser validation
           TAG_NAME="v${BASE_VERSION}"
           echo "Creating local tag: $TAG_NAME"
-          
+
           # Check if tag already exists locally or remotely
           if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
             echo "Tag $TAG_NAME already exists locally"
@@ -302,8 +299,17 @@ jobs:
             git tag -a "$TAG_NAME" -m "Release version ${BASE_VERSION}"
             echo "Created local tag: $TAG_NAME"
           fi
-          
+
           echo "GORELEASER_CURRENT_TAG=${TAG_NAME}" >> $GITHUB_ENV
+
+      - name: Run GoReleaser (Build artifacts)
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: "~> v2"
+          args: build --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Generate release notes using git log
         run: |
@@ -311,11 +317,11 @@ jobs:
           BASE_VERSION="${{ steps.version.outputs.base_version }}"
           TAG_NAME="v${BASE_VERSION}"
           echo "Generating release notes for version: $BASE_VERSION"
-          
+
           # Get previous RELEASE tag (not snapshot) for changelog range
           # List all tags, filter out snapshots, sort by version, and get the latest release
           PREVIOUS_TAG=$(git tag -l "v*" | grep -E "^v[0-9]+\\.[0-9]+\\.[0-9]+$" | grep -v "snapshot" | sort -V | tail -1)
-          
+
           if [[ -n "$PREVIOUS_TAG" ]]; then
             echo "Generating changelog from last release $PREVIOUS_TAG to current commit"
             git log --oneline --no-merges --decorate "$PREVIOUS_TAG..HEAD" > RELEASE_NOTES.md
@@ -323,7 +329,7 @@ jobs:
             echo "No previous release tag found, generating recent changelog"
             git log --oneline --no-merges --decorate -n 20 > RELEASE_NOTES.md
           fi
-          
+
           # Add header
           echo "# Development Snapshot - $TAG_NAME" > temp_notes.md
           echo "" >> temp_notes.md
@@ -334,19 +340,10 @@ jobs:
           echo "" >> temp_notes.md
           cat RELEASE_NOTES.md >> temp_notes.md
           mv temp_notes.md RELEASE_NOTES.md
-          
+
           echo "✅ RELEASE_NOTES.md generated successfully"
           echo "Release notes content preview:"
           head -5 RELEASE_NOTES.md
-
-      - name: Run GoReleaser (Build artifacts)
-        uses: goreleaser/goreleaser-action@v6
-        with:
-          distribution: goreleaser
-          version: "~> v2"
-          args: build --clean
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
@@ -365,7 +362,7 @@ jobs:
           set -e
           BASE_VERSION="${{ steps.version.outputs.base_version }}"
           TAG_NAME="v${BASE_VERSION}"
-          
+
           # Only delete if it's a local tag (not pushed to remote)
           if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
             # Check if tag exists on remote
