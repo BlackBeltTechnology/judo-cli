@@ -68,10 +68,13 @@ check_directory() {
 check_dependencies() {
     log_info "Checking dependencies..."
     
-    # Check for Ruby - try rbenv first, then system
-    if command -v "$HOME/.rbenv/shims/ruby" &> /dev/null; then
-        RUBY_CMD="$HOME/.rbenv/shims/ruby"
-    elif command -v ruby &> /dev/null; then
+    # Initialize rbenv if available
+    if command -v rbenv &> /dev/null; then
+        eval "$(rbenv init -)"
+    fi
+    
+    # Check for Ruby
+    if command -v ruby &> /dev/null; then
         RUBY_CMD="ruby"
     else
         log_error "Ruby is not installed!"
@@ -80,10 +83,8 @@ check_dependencies() {
         exit 1
     fi
     
-    # Check for Bundler - try rbenv first, then system
-    if command -v "$HOME/.rbenv/shims/bundle" &> /dev/null; then
-        BUNDLE_CMD="$HOME/.rbenv/shims/bundle"
-    elif command -v bundle &> /dev/null; then
+    # Check for Bundler
+    if command -v bundle &> /dev/null; then
         BUNDLE_CMD="bundle"
     else
         log_error "Bundler is not installed!"
@@ -108,20 +109,21 @@ install_dependencies() {
     
     cd "$DOCS_DIR"
     
-    # Check for Bundler - try rbenv first, then system
-    if command -v "$HOME/.rbenv/shims/bundle" &> /dev/null; then
-        BUNDLE_CMD="$HOME/.rbenv/shims/bundle"
-    elif command -v bundle &> /dev/null; then
-        BUNDLE_CMD="bundle"
-    else
+    # Initialize rbenv if available
+    if command -v rbenv &> /dev/null; then
+        eval "$(rbenv init -)"
+    fi
+    
+    # Check if Bundler is available
+    if ! command -v bundle &> /dev/null; then
         log_error "Bundler is not installed!"
         log_error "Install it with: gem install bundler"
         exit 1
     fi
     
-    if ! $BUNDLE_CMD check &> /dev/null; then
+    if ! bundle check &> /dev/null; then
         log_info "Installing gems..."
-        if ! $BUNDLE_CMD install --path vendor/bundle 2>/dev/null; then
+        if ! bundle install --path vendor/bundle 2>/dev/null; then
             show_ruby_error
         fi
         log_success "Dependencies installed successfully"
@@ -154,11 +156,16 @@ build_jekyll() {
 
     cd "$DOCS_DIR"
     export JEKYLL_ENV=production
-    # Use rbenv bundle if available, otherwise fallback to system
-    if command -v "$HOME/.rbenv/shims/bundle" &> /dev/null; then
-        "$HOME/.rbenv/shims/bundle" exec jekyll build --baseurl "" --trace 2>/dev/null
-    else
+    
+    # Initialize rbenv if available and use bundle from it
+    if command -v rbenv &> /dev/null; then
+        eval "$(rbenv init -)"
         bundle exec jekyll build --baseurl "" --trace
+    elif command -v bundle &> /dev/null; then
+        bundle exec jekyll build --baseurl "" --trace
+    else
+        log_error "Neither rbenv nor system bundle found!"
+        exit 1
     fi
 }
 

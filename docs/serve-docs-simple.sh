@@ -39,12 +39,14 @@ rm -rf _site .jekyll-cache
 # Install dependencies if needed
 if [[ -f "Gemfile" ]] && ! bundle check &> /dev/null; then
     echo "Installing dependencies..."
-    # Try with rbenv bundle first, fallback to system if available
-    if command -v "$HOME/.rbenv/shims/bundle" &> /dev/null; then
-        if ! "$HOME/.rbenv/shims/bundle" install --path vendor/bundle; then
-            show_ruby_error
-        fi
-    elif command -v bundle &> /dev/null; then
+    
+    # Initialize rbenv if available
+    if command -v rbenv &> /dev/null; then
+        eval "$(rbenv init -)"
+    fi
+    
+    # Try with bundle, fallback to direct jekyll if needed
+    if command -v bundle &> /dev/null; then
         if ! bundle install --path vendor/bundle; then
             show_ruby_error
         fi
@@ -60,9 +62,10 @@ echo "Press Ctrl+C to stop"
 echo
 
 # Start without livereload for maximum compatibility
-# Use rbenv bundle if available, otherwise fallback to system
-if command -v "$HOME/.rbenv/shims/bundle" &> /dev/null && [[ -f "Gemfile" ]]; then
-    "$HOME/.rbenv/shims/bundle" exec jekyll serve --host 127.0.0.1 --port 4000 --incremental --watch
+# Initialize rbenv if available and use bundle from it
+if command -v rbenv &> /dev/null && [[ -f "Gemfile" ]]; then
+    eval "$(rbenv init -)"
+    bundle exec jekyll serve --host 127.0.0.1 --port 4000 --incremental --watch
 elif command -v bundle &> /dev/null && [[ -f "Gemfile" ]]; then
     bundle exec jekyll serve --host 127.0.0.1 --port 4000 --incremental --watch
 else

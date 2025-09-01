@@ -68,10 +68,13 @@ check_directory() {
 check_dependencies() {
     log_info "Checking dependencies..."
     
-    # Check for Ruby - try rbenv first, then system
-    if command -v "$HOME/.rbenv/shims/ruby" &> /dev/null; then
-        RUBY_CMD="$HOME/.rbenv/shims/ruby"
-    elif command -v ruby &> /dev/null; then
+    # Initialize rbenv if available
+    if command -v rbenv &> /dev/null; then
+        eval "$(rbenv init -)"
+    fi
+    
+    # Check for Ruby
+    if command -v ruby &> /dev/null; then
         RUBY_CMD="ruby"
     else
         log_error "Ruby is not installed!"
@@ -80,10 +83,8 @@ check_dependencies() {
         exit 1
     fi
     
-    # Check for Bundler - try rbenv first, then system
-    if command -v "$HOME/.rbenv/shims/bundle" &> /dev/null; then
-        BUNDLE_CMD="$HOME/.rbenv/shims/bundle"
-    elif command -v bundle &> /dev/null; then
+    # Check for Bundler
+    if command -v bundle &> /dev/null; then
         BUNDLE_CMD="bundle"
     else
         log_error "Bundler is not installed!"
@@ -108,10 +109,13 @@ install_dependencies() {
     
     cd "$DOCS_DIR"
 
-    # Check for Bundler - try rbenv first, then system
-    if command -v "$HOME/.rbenv/shims/bundle" &> /dev/null; then
-        BUNDLE_CMD="$HOME/.rbenv/shims/bundle"
-    elif command -v bundle &> /dev/null; then
+    # Initialize rbenv if available
+    if command -v rbenv &> /dev/null; then
+        eval "$(rbenv init -)"
+    fi
+
+    # Check for Bundler
+    if command -v bundle &> /dev/null; then
         BUNDLE_CMD="bundle"
     else
         log_error "Bundler is not installed!"
@@ -121,7 +125,7 @@ install_dependencies() {
 
     if ! $BUNDLE_CMD check &> /dev/null; then
         log_info "Installing gems..."
-        if ! $BUNDLE_CMD install --path vendor/bundle 2>/dev/null; then
+        if ! $BUNDLE_CMD install --path vendor/bundle; then
             show_ruby_error
         fi
         log_success "Dependencies installed successfully"
@@ -180,18 +184,9 @@ start_jekyll() {
     
     cd "$DOCS_DIR"
     
-    # Start Jekyll with livereload (using built-in feature)
-    # Use rbenv bundle if available, otherwise fallback to system
-    if command -v "$HOME/.rbenv/shims/bundle" &> /dev/null; then
-        "$HOME/.rbenv/shims/bundle" exec jekyll serve \
-            --host "$HOST" \
-            --port "$PORT" \
-            --livereload \
-            --livereload-port "$LIVERELOAD_PORT" \
-            --incremental \
-            --watch \
-            --open-url 2>/dev/null
-    else
+    # Initialize rbenv if available and use bundle from it
+    if command -v rbenv &> /dev/null; then
+        eval "$(rbenv init -)"
         bundle exec jekyll serve \
             --host "$HOST" \
             --port "$PORT" \
@@ -199,7 +194,19 @@ start_jekyll() {
             --livereload-port "$LIVERELOAD_PORT" \
             --incremental \
             --watch \
-            --open-url 2>/dev/null
+            --open-url
+    elif command -v bundle &> /dev/null; then
+        bundle exec jekyll serve \
+            --host "$HOST" \
+            --port "$PORT" \
+            --livereload \
+            --livereload-port "$LIVERELOAD_PORT" \
+            --incremental \
+            --watch \
+            --open-url
+    else
+        log_error "Neither rbenv nor system bundle found!"
+        exit 1
     fi
 }
 
