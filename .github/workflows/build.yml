@@ -13,6 +13,9 @@ jobs:
   test:
     name: Test
     runs-on: judong
+    env:
+      RUNNER_TOOL_CACHE: ${{ github.workspace }}/.toolcache
+      RUNNER_TEMP:       ${{ github.workspace }}/.tmp
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
