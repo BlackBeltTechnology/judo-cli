@@ -218,6 +218,24 @@ jobs:
             echo "No existing release found for $TAG_NAME"
           fi
 
+      - name: Generate RELEASE_NOTES.md from changelog
+        run: |
+          set -e
+          echo "Generating RELEASE_NOTES.md from GoReleaser changelog..."
+          
+          # Run GoReleaser to generate the changelog only
+          goreleaser changelog --output RELEASE_NOTES.md
+          
+          if [[ -f "RELEASE_NOTES.md" && -s "RELEASE_NOTES.md" ]]; then
+            echo "✅ RELEASE_NOTES.md generated successfully"
+            echo "Release notes content preview:"
+            head -10 RELEASE_NOTES.md
+          else
+            echo "::warning::RELEASE_NOTES.md not generated or empty"
+            # Create empty file to avoid errors in later steps
+            touch RELEASE_NOTES.md
+          fi
+      
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
         with:
@@ -227,7 +245,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       
-      - name: Commit RELEASE_NOTES.md if generated
+      - name: Commit RELEASE_NOTES.md
         if: success()
         run: |
           set -e

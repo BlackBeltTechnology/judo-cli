@@ -68,6 +68,22 @@ jobs:
           echo "base_version=${BASE_VERSION}" >> $GITHUB_OUTPUT
           echo "GORELEASER_CURRENT_TAG=v${BASE_VERSION}" >> $GITHUB_ENV
 
+      - name: Generate RELEASE_NOTES.md from changelog
+        run: |
+          set -e
+          echo "Generating RELEASE_NOTES.md from GoReleaser changelog..."
+          
+          # Run GoReleaser to generate the changelog only
+          goreleaser changelog --output RELEASE_NOTES.md
+          
+          if [[ -f "RELEASE_NOTES.md" && -s "RELEASE_NOTES.md" ]]; then
+            echo "✅ RELEASE_NOTES.md generated successfully"
+          else
+            echo "::warning::RELEASE_NOTES.md not generated or empty"
+            # Create empty file to avoid errors in later steps
+            touch RELEASE_NOTES.md
+          fi
+
       - name: Run GoReleaser (Snapshot Release)
         uses: goreleaser/goreleaser-action@v6
         with:
@@ -270,6 +286,22 @@ jobs:
           fi
           
           echo "GORELEASER_CURRENT_TAG=${TAG_NAME}" >> $GITHUB_ENV
+
+      - name: Generate RELEASE_NOTES.md from changelog
+        run: |
+          set -e
+          echo "Generating RELEASE_NOTES.md from GoReleaser changelog..."
+          
+          # Run GoReleaser to generate the changelog only
+          goreleaser changelog --output RELEASE_NOTES.md
+          
+          if [[ -f "RELEASE_NOTES.md" && -s "RELEASE_NOTES.md" ]]; then
+            echo "✅ RELEASE_NOTES.md generated successfully"
+          else
+            echo "::warning::RELEASE_NOTES.md not generated or empty"
+            # Create empty file to avoid errors in later steps
+            touch RELEASE_NOTES.md
+          fi
 
       - name: Run GoReleaser (Release artifacts)
         uses: goreleaser/goreleaser-action@v6

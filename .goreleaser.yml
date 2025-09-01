@@ -58,12 +58,6 @@ snapshot:
 changelog:
   sort: asc
   use: git
-  # Follow merge commits to include all commits from merged branches (like develop)
-  git:
-    # Include commits from all merged branches
-    follow_merges: true
-    # Include conventional commit messages from merge commits themselves
-    include_merge_commits: true
   filters:
     exclude:
       - '^docs:'
@@ -88,11 +82,8 @@ changelog:
     - title: Others
       order: 999
 
-# Generate RELEASE_NOTES.md file
-extra_files:
-  - src: "{{ .Changelog }}"
-    dst: RELEASE_NOTES.md
-    mode: 0644
+# RELEASE_NOTES.md generation will be handled in GitHub Actions workflow
+# using GoReleaser's changelog functionality
 
 release:
   # Repository to release to.
