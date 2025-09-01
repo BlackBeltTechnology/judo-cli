@@ -1,0 +1,131 @@
+@use "variables" as *;
+
+:root {
+    /* CSS Custom Properties for theming */
+    --color-bg: #{$color-bg};
+    --color-fg: #{$color-fg};
+    --color-muted: #{$color-muted};
+    --color-accent: #{$color-accent};
+    --color-accent-hover: #{$color-accent-hover};
+    --color-border: #{$color-border};
+    --color-surface: #{$color-surface};
+    --color-hero-bg: #{$color-hero-bg};
+    --color-bg-rgb: 255, 255, 255;
+
+    /* Dark theme variables - will be applied when [data-theme="dark"] */
+    --color-bg-dark: #{$color-bg-dark};
+    --color-fg-dark: #{$color-fg-dark};
+    --color-muted-dark: #{$color-muted-dark};
+    --color-border-dark: #{$color-border-dark};
+    --color-surface-dark: #{$color-surface-dark};
+    --color-hero-bg-dark: #{$color-hero-bg-dark};
+}
+
+[data-theme="dark"] {
+    --color-bg: var(--color-bg-dark);
+    --color-fg: var(--color-fg-dark);
+    --color-muted: var(--color-muted-dark);
+    --color-border: var(--color-border-dark);
+    --color-surface: var(--color-surface-dark);
+    --color-hero-bg: var(--color-hero-bg-dark);
+    --color-bg-rgb: 17, 24, 39;
+}
+
+/* Apply CSS custom properties to elements */
+body {
+    background-color: var(--color-bg);
+    color: var(--color-fg);
+}
+
+/* Update all existing styles to use CSS variables */
+.site-header {
+    background: rgba(var(--color-bg-rgb), 0.9);
+    border-bottom-color: var(--color-border);
+}
+
+.nav a {
+    color: var(--color-fg);
+}
+
+.nav a:hover {
+    color: var(--color-accent);
+}
+
+.hero {
+    border-bottom-color: var(--color-border);
+}
+
+.btn-primary {
+    background: var(--color-accent);
+    border-color: var(--color-accent);
+}
+
+.btn-primary:hover {
+    background: var(--color-accent-hover);
+    border-color: var(--color-accent-hover);
+}
+
+.btn-secondary {
+    color: var(--color-fg);
+    border-color: var(--color-border);
+}
+
+.btn-secondary:hover {
+    background: var(--color-surface);
+    border-color: var(--color-fg);
+}
+
+.section {
+    background: var(--color-bg);
+}
+
+.section-head .sub {
+    color: var(--color-muted);
+}
+
+.card {
+    background: var(--color-bg);
+    border-color: var(--color-border);
+}
+
+.card h3 {
+    color: var(--color-fg);
+}
+
+.card p {
+    color: var(--color-muted);
+}
+
+.content p {
+    color: var(--color-fg);
+}
+
+.site-footer {
+    border-top-color: var(--color-border);
+    color: var(--color-muted);
+    background: var(--color-surface);
+}
+
+.foot-links a:hover {
+    color: var(--color-accent);
+}
+
+/* Additional elements that need theme support */
+a {
+    color: var(--color-accent);
+}
+
+a:hover,
+a:focus {
+    color: var(--color-accent-hover);
+}
+
+blockquote {
+    border-left-color: var(--color-border);
+    color: var(--color-muted);
+}
+
+th,
+td {
+    border-color: var(--color-border);
+}

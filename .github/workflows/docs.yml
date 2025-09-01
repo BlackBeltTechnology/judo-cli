@@ -1,0 +1,106 @@
+name: Deploy Documentation
+
+on:
+  push:
+    branches: 
+      - develop
+      - main
+    paths:
+      - 'docs/**'
+      - '_docs/**'
+      - '_config.yml'
+      - 'docs/index.md'
+      - '.github/workflows/docs.yml'
+  workflow_dispatch:
+
+# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
+# However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  # Build job
+  build:
+    runs-on: judong
+    env:
+      RUNNER_TOOL_CACHE: ${{ github.workspace }}/.toolcache
+      RUNNER_TEMP:       ${{ github.workspace }}/.tmp
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+#      - name: Setup rbenv for documentation
+#        run: |
+#          echo "Setting up rbenv for documentation deployment..."
+#          # Install rbenv from package
+#          sudo apt-get update
+#          sudo apt-get install -y rbenv ruby-build libffi-dev libyaml-dev
+#          # Initialize rbenv and set up plugins directory
+#          eval "$(rbenv init -)"
+#          mkdir -p "$(rbenv root)/plugins"
+#          # Update ruby-build if it exists, otherwise install it
+#          if [ -d "$(rbenv root)/plugins/ruby-build" ]; then
+#              git -C "$(rbenv root)/plugins/ruby-build" pull
+#          else
+#              git clone https://github.com/rbenv/ruby-build.git "$(rbenv root)/plugins/ruby-build"
+#          fi
+#
+#          # Install Ruby 3.2.2 (compatible with Jekyll)
+#          if ! rbenv versions | grep -q "3.2.2"; then
+#              rbenv install 3.2.2 -s
+#          fi
+#          # Set Ruby version for current session only
+#          export RBENV_VERSION=3.2.2
+#
+#          # Install Bundler
+#          gem install bundler
+#          rbenv rehash
+#
+#          echo "Ruby $(ruby -v) and Bundler $(bundle -v) installed via rbenv"
+
+      - name: Setup Pages
+        id: pages
+        uses: actions/configure-pages@v4
+
+      - name: Set up Ruby 3.2.2 with Bundler cache
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2.2'   # exact patch
+
+      - name: Build documentation with build-docs.sh
+        run: |
+          cd docs
+          chmod +x build-docs.sh
+          ./build-docs.sh --clean
+          
+          # Copy install scripts to the built site
+          mkdir -p _site
+          cp ../scripts/install.sh _site/
+          cp ../scripts/install.ps1 _site/
+
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/_site
+
+  # Deployment job
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: judong
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

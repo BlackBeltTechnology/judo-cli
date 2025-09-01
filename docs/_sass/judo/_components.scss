@@ -1,0 +1,308 @@
+@use "variables" as *;
+
+/* extra component hooks */
+.text-link { text-decoration: underline; }
+code, pre { font-family: $font-mono; }
+code { color: var(--color-accent); }
+blockquote { border-left: 4px solid $color-border; padding-left: $spacing-4; color: $color-muted; }
+table { width: 100%; border-collapse: collapse; }
+th, td { border: 1px solid $color-border; padding: $spacing-3 $spacing-4; text-align: left; }
+
+/* Theme toggle switch */
+.theme-toggle {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  width: 60px;
+  height: 32px;
+  cursor: pointer;
+  margin-left: $spacing-4;
+}
+
+.theme-toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+  position: absolute;
+}
+
+.theme-toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--color-border);
+  transition: .4s;
+  border-radius: 34px;
+}
+
+.theme-toggle-slider:before {
+  position: absolute;
+  content: "";
+  height: 24px;
+  width: 24px;
+  left: 4px;
+  bottom: 4px;
+  background-color: white;
+  transition: .4s;
+  border-radius: 50%;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+[data-theme="dark"] .theme-toggle-slider:before {
+  background-color: #f9fafb; /* Light gray for better contrast in dark mode */
+}
+
+.theme-toggle input:checked + .theme-toggle-slider {
+  background-color: var(--color-accent);
+}
+
+[data-theme="dark"] .theme-toggle input:checked + .theme-toggle-slider {
+  background-color: #374151; /* Dark gray for dark mode */
+}
+
+.theme-toggle input:checked + .theme-toggle-slider:before {
+  transform: translateX(28px);
+}
+
+.theme-toggle-icons {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  height: 100%;
+  padding: 0 6px;
+  pointer-events: none;
+}
+
+.theme-icon-light,
+.theme-icon-dark {
+  font-size: 14px;
+  opacity: 0.7;
+  transition: opacity 0.3s ease;
+}
+
+.theme-toggle input:not(:checked) ~ .theme-toggle-icons .theme-icon-dark,
+.theme-toggle input:checked ~ .theme-toggle-icons .theme-icon-light {
+  opacity: 0.3;
+}
+
+/* Mobile responsive */
+@media (max-width: 800px) {
+  .theme-toggle {
+    margin: $spacing-3 0;
+    align-self: center;
+  }
+}
+
+/* Install Tabs Component */
+.install-tabs {
+  max-width: 900px;
+  margin: $spacing-12 auto;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: $radius-lg;
+  overflow: hidden;
+  box-shadow: $shadow-lg;
+}
+
+.tab-buttons {
+  display: flex;
+  background: var(--color-bg);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.tab-button {
+  flex: 1;
+  padding: $spacing-6 $spacing-8;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 1.1rem;
+  color: var(--color-muted);
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: $spacing-2;
+  position: relative;
+  min-height: 100px;
+}
+
+.tab-button:hover {
+  background: var(--color-surface);
+  color: var(--color-fg);
+  transform: translateY(-1px);
+}
+
+.tab-button.active {
+  background: var(--color-surface);
+  color: var(--color-accent);
+  font-weight: 600;
+}
+
+.tab-button.active::before {
+  content: '';
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 24px;
+  height: 24px;
+  background: var(--color-accent);
+  border-radius: 50%;
+  box-shadow: 0 2px 8px rgba(235, 90, 41, 0.3);
+}
+
+.tab-button.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--color-accent);
+}
+
+.tab-icon {
+  font-size: 1.8em;
+}
+
+.tab-content {
+  position: relative;
+}
+
+.tab-panel {
+  display: none;
+  padding: $spacing-8;
+}
+
+.tab-panel.active {
+  display: block;
+}
+
+.command-box {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: $radius;
+  overflow: hidden;
+  margin-bottom: $spacing-6;
+}
+
+.command-box:last-child {
+  margin-bottom: 0;
+}
+
+.command-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: $spacing-4 $spacing-6;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.command-title {
+  font-weight: 600;
+  color: var(--color-fg);
+  font-size: 1rem;
+}
+
+.copy-btn {
+  padding: $spacing-2 $spacing-4;
+  background: var(--color-accent);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: $spacing-2;
+  min-height: 40px;
+}
+
+.copy-btn:hover {
+  background: var(--color-accent-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(235, 90, 41, 0.3);
+}
+
+.copy-btn.copied {
+  background: #10b981;
+}
+
+.copy-icon {
+  font-size: 1em;
+}
+
+.command-text {
+  display: block;
+  padding: $spacing-6;
+  font-family: $font-mono;
+  font-size: 1.1rem;
+  color: var(--color-accent);
+  background: var(--color-bg);
+  margin: 0;
+  white-space: pre;
+  overflow-x: auto;
+  line-height: 1.4;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .install-tabs {
+    margin: $spacing-8 $spacing-4;
+    max-width: none;
+  }
+  
+  .tab-button {
+    padding: $spacing-4 $spacing-3;
+    font-size: 1rem;
+    min-height: 80px;
+    flex-direction: column;
+    gap: $spacing-2;
+  }
+  
+  .tab-button.active::before {
+    top: -10px;
+    width: 20px;
+    height: 20px;
+  }
+  
+  .tab-icon {
+    font-size: 1.6em;
+  }
+  
+  .tab-panel {
+    padding: $spacing-6;
+  }
+  
+  .command-box {
+    margin-bottom: $spacing-4;
+  }
+  
+  .command-header {
+    flex-direction: column;
+    gap: $spacing-3;
+    align-items: stretch;
+    padding: $spacing-3 $spacing-4;
+  }
+  
+  .copy-btn {
+    align-self: stretch;
+    justify-content: center;
+  }
+  
+  .command-text {
+    font-size: 0.95rem;
+    padding: $spacing-4;
+  }
+}

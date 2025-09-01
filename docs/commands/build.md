@@ -1,5 +1,5 @@
 ---
-layout: default
+layout: page
 title: build
 parent: Command Reference
 nav_order: 2

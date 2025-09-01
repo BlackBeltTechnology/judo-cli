@@ -1,0 +1,124 @@
+<!-- Material Design Icons -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css">
+
+<div class="install-tabs">
+  <div class="tab-buttons">
+    <button class="tab-button active" data-tab="macos">
+      <span class="tab-icon mdi mdi-apple"></span>
+      macOS
+    </button>
+    <button class="tab-button" data-tab="linux">
+      <span class="tab-icon mdi mdi-penguin"></span>
+      Linux
+    </button>
+    <button class="tab-button" data-tab="windows">
+      <span class="tab-icon mdi mdi-microsoft-windows"></span>
+      Windows
+    </button>
+  </div>
+  
+  <div class="tab-content">
+    <div class="tab-panel active" id="macos">
+      <div class="command-box">
+        <div class="command-header">
+          <span class="command-title">Homebrew</span>
+          <button class="copy-btn" data-copy="brew install judo-cli">
+            <span class="copy-icon mdi mdi-content-copy"></span>
+            Copy
+          </button>
+        </div>
+        <code class="command-text">brew install judo-cli</code>
+      </div>
+      
+      <div class="command-box">
+        <div class="command-header">
+          <span class="command-title">cURL</span>
+          <button class="copy-btn" data-copy="curl -fsSL https://judo.technology/install.sh | bash">
+            <span class="copy-icon mdi mdi-content-copy"></span>
+            Copy
+          </button>
+        </div>
+        <code class="command-text">curl -fsSL https://judo.technology/install.sh | bash</code>
+      </div>
+    </div>
+    
+    <div class="tab-panel" id="linux">
+      <div class="command-box">
+        <div class="command-header">
+          <span class="command-title">cURL</span>
+          <button class="copy-btn" data-copy="curl -fsSL https://judo.technology/install.sh | bash">
+            <span class="copy-icon mdi mdi-content-copy"></span>
+            Copy
+          </button>
+        </div>
+        <code class="command-text">curl -fsSL https://judo.technology/install.sh | bash</code>
+      </div>
+    </div>
+    
+    <div class="tab-panel" id="windows">
+      <div class="command-box">
+        <div class="command-header">
+          <span class="command-title">PowerShell</span>
+          <button class="copy-btn" data-copy="iwr -useb https://judo.technology/install.ps1 | iex">
+            <span class="copy-icon mdi mdi-content-copy"></span>
+            Copy
+          </button>
+        </div>
+        <code class="command-text">iwr -useb https://judo.technology/install.ps1 | iex</code>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// OS Detection and Auto-selection
+(function() {
+  const userAgent = navigator.userAgent.toLowerCase();
+  let detectedOS = 'macos'; // default
+
+  if (userAgent.includes('win')) {
+    detectedOS = 'windows';
+  } else if (userAgent.includes('linux')) {
+    detectedOS = 'linux';
+  }
+
+  // Auto-select the detected OS tab
+  const tabButton = document.querySelector(`[data-tab="${detectedOS}"]`);
+  const tabPanel = document.getElementById(detectedOS);
+  
+  if (tabButton && tabPanel) {
+    document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.remove('active'));
+    
+    tabButton.classList.add('active');
+    tabPanel.classList.add('active');
+  }
+
+  // Tab switching functionality
+  document.querySelectorAll('.tab-button').forEach(button => {
+    button.addEventListener('click', () => {
+      const tab = button.getAttribute('data-tab');
+      
+      document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.remove('active'));
+      
+      button.classList.add('active');
+      document.getElementById(tab).classList.add('active');
+    });
+  });
+
+  // Copy button functionality
+  document.querySelectorAll('.copy-btn').forEach(button => {
+    button.addEventListener('click', () => {
+      const command = button.getAttribute('data-copy');
+      navigator.clipboard.writeText(command).then(() => {
+        const originalText = button.innerHTML;
+        button.innerHTML = '<span class="copy-icon mdi mdi-check"></span> Copied!';
+        setTimeout(() => {
+          button.innerHTML = originalText;
+        }, 2000);
+      });
+    });
+  });
+})();
+</script>

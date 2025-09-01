@@ -180,17 +180,22 @@ main() {
             local new_version
             new_version=$(increment_version "$current_version" "$part")
             
-            log_info "Incrementing $part version: $current_version -> $new_version"
-            
             if [ "$CI_MODE" = true ]; then
+                # CI mode: update file and commit, only output final version at the end
                 echo "$new_version" > "$PROJECT_ROOT/$VERSION_FILE"
+                if [[ "${3:-}" == "--commit" ]]; then
+                    cd "$PROJECT_ROOT"
+                    git add "$VERSION_FILE"
+                    git commit -m "chore: bump version to $new_version" || true
+                fi
                 echo "$new_version"  # Clean output for GitHub Actions
             else
+                # Interactive mode: with logging
+                log_info "Incrementing $part version: $current_version -> $new_version"
                 update_version_file "$new_version"
-            fi
-            
-            if [[ "${3:-}" == "--commit" ]]; then
-                commit_version_change "$new_version"
+                if [[ "${3:-}" == "--commit" ]]; then
+                    commit_version_change "$new_version"
+                fi
             fi
             ;;
         "set")
@@ -200,17 +205,22 @@ main() {
                 exit 1
             fi
             
-            log_info "Setting version to: $new_version"
-            
             if [ "$CI_MODE" = true ]; then
+                # CI mode: update file and commit, only output final version at the end
                 echo "$new_version" > "$PROJECT_ROOT/$VERSION_FILE"
+                if [[ "${3:-}" == "--commit" ]]; then
+                    cd "$PROJECT_ROOT"
+                    git add "$VERSION_FILE"
+                    git commit -m "chore: bump version to $new_version" || true
+                fi
                 echo "$new_version"  # Clean output for GitHub Actions
             else
+                # Interactive mode: with logging
+                log_info "Setting version to: $new_version"
                 update_version_file "$new_version"
-            fi
-            
-            if [[ "${3:-}" == "--commit" ]]; then
-                commit_version_change "$new_version"
+                if [[ "${3:-}" == "--commit" ]]; then
+                    commit_version_change "$new_version"
+                fi
             fi
             ;;
         "snapshot")

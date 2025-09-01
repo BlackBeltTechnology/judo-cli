@@ -66,7 +66,7 @@ app.*.map.json
 .gemini/
 gha-creds-*.json
 
-judo
-judo-cli
-judo-stable
-judo-snapshot
+/judo
+/judo-cli
+/judo-stable
+/judo-snapshot

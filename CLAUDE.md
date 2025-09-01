@@ -4,77 +4,96 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a Go-based CLI tool called `judo` for managing the lifecycle of JUDO applications. The tool orchestrates Docker containers, Maven builds, and Apache Karaf runtime environments for Java-based enterprise applications.
+Go-based CLI tool (`judo`) for managing JUDO application lifecycle. Orchestrates Docker containers, Maven builds, and Apache Karaf runtime environments.
 
 ## Core Architecture
 
-The CLI is built using the Cobra library and follows this structure:
-
-- **cmd/judo/main.go**: Entry point that sets up the root command and registers all subcommands
-- **internal/commands/commands.go**: Core command implementations (build, start, stop, clean, etc.)
-- **internal/config/config.go**: Configuration management for judo.properties files and environment profiles
-- **internal/docker/docker.go**: Docker container management (PostgreSQL, Keycloak)
-- **internal/karaf/karaf.go**: Apache Karaf runtime management
-- **internal/db/db.go**: Database operations (dump/import for PostgreSQL)
-- **internal/utils/utils.go**: Common utilities for command execution and system checks
-
-The tool operates in two main runtime modes:
-- **karaf**: Local development with Karaf runtime + Docker services
-- **compose**: Full Docker Compose environment
+- **Cobra-based CLI** with modular internal packages
+- **Two runtime modes**: karaf (local dev + Docker services) and compose (full Docker Compose)
+- **Profile-based configuration**: judo.properties, {env}.properties, judo-version.properties
 
 ## Essential Commands
 
-### Building the CLI
+### Building & Testing
 ```bash
-go build -o judo ./cmd/judo
+go build -o judo ./cmd/judo           # Build CLI
+go test ./internal/...               # Run tests (limited coverage)
+go vet ./...                         # Vet code
+go fmt ./...                         # Format code
+go mod tidy                          # Clean modules
 ```
 
-### Running Tests
+### Core CLI Operations
 ```bash
-go test ./...
+./judo build                         # Build application (Maven mvnd clean install)
+./judo start                         # Start services
+./judo stop                          # Stop services  
+./judo status                        # Check service status
+./judo clean                         # Clean environment
+./judo -e compose-dev build start    # Use environment profile
 ```
 
-### Core Application Management
-- `./judo build` - Build the JUDO application using Maven (mvnd clean install)
-- `./judo start` - Start the application and required services
-- `./judo stop` - Stop all running services
-- `./judo clean` - Clean environment (remove containers/volumes)
-- `./judo status` - Check status of all services
+### Development Workflows
+```bash
+./judo build -a                      # Build app module only
+./judo build -f                      # Build frontend only  
+./judo build -q                      # Quick mode (skip validations)
+./judo reckless                      # Ultra-fast build and start
+./judo session                       # Interactive session mode
+```
 
-### Build Variations
-- `./judo build -a` - Build app module only
-- `./judo build -f` - Build frontend only
-- `./judo build -q` - Quick mode (skip validations, use cache)
-- `./judo reckless` - Ultra-fast build and start
+## Release Management
 
-### Environment Management
-- `./judo -e compose-dev build start` - Use alternate environment profile
-- `./judo prune` - Remove untracked files and reset state
-- `./judo update` - Update JUDO dependency versions
+### Version Control
+```bash
+CI=true scripts/version.sh get               # Get current version
+CI=true scripts/version.sh increment patch   # Increment version
+CI=true scripts/version.sh set 0.1.4 --commit # Set version with commit
+```
 
-## Configuration System
+### Local Release Builds
+```bash
+# Snapshot build (no tag required)
+JUDO_VERSION=1.0.0-SNAPSHOT go build -o judo-snapshot ./cmd/judo
 
-The tool uses a profile-based configuration system:
-- **judo.properties**: Default configuration
-- **{env}.properties**: Environment-specific overrides (e.g., compose-dev.properties)
-- **judo-version.properties**: Version constraints
+# Versioned build (requires git tag)
+go build -ldflags "-X main.version=$(git describe --tags)" -o judo ./cmd/judo
+```
 
-Key configuration aspects:
-- Database type (postgresql/hsqldb)
-- Runtime mode (karaf/compose)
-- Port assignments for services
-- Schema and application names
+### GitHub Actions
+- **build.yml**: CI testing and snapshot releases from develop branch
+- **release.yml**: Full releases from main branch with GoReleaser
+- **docs.yml**: Documentation deployment to GitHub Pages
 
-## Development Dependencies
+## Documentation
 
-The application requires several external tools:
-- **Docker**: For PostgreSQL, Keycloak containers
-- **Maven/mvnd**: For building Java applications
-- **SDKMAN**: For managing Java toolchain versions
-- **Git**: For source control and clean operations
+### Local Development
+```bash
+cd docs && ./serve-docs.sh           # Enhanced server with livereload
+cd docs && ./serve-docs-simple.sh    # Simple server
+```
 
-## Test Framework
+**Note**: Ruby environment required for local Jekyll. Docs auto-deployed to https://judo.technology/
 
-Uses testify for Go unit tests. Current test coverage is limited, with most tests being integration-style or requiring external dependencies (Docker, file system).
+## Dependencies
 
-Run tests with: `go test ./internal/...`
+- **External tools**: Docker, Maven/mvnd, SDKMAN, Git, Java
+- **Go modules**: Cobra, testify, Docker client
+- **Runtime**: PostgreSQL, Keycloak, Apache Karaf containers
+
+## Module Structure
+
+- **cmd/judo**: CLI entry point with Cobra setup
+- **internal/commands**: Core command implementations
+- **internal/config**: Configuration management (properties files)
+- **internal/docker**: Docker container operations
+- **internal/karaf**: Karaf runtime management
+- **internal/db**: PostgreSQL database operations
+- **internal/utils**: Common utilities
+- **internal/session**: Interactive session mode
+- **internal/selfupdate**: Self-update functionality
+
+# important-instruction-reminders
+Do what has been asked; nothing more, nothing less.
+NEVER create files unless they're absolutely necessary for achieving your goal.
+ALWAYS prefer editing an existing file to creating a new one.
