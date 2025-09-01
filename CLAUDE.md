@@ -63,7 +63,7 @@ go build -ldflags "-X main.version=$(git describe --tags)" -o judo ./cmd/judo
 ### GitHub Actions
 - **build.yml**: CI testing and snapshot releases from develop branch
 - **release.yml**: Full releases from main branch with GoReleaser
-- **docs.yml**: Documentation deployment to GitHub Pages
+- **docs-release.yml**: Documentation deployment to GitHub Pages on `current-site` tags
 
 ## Documentation
 
