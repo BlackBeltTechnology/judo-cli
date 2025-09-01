@@ -84,10 +84,10 @@ jobs:
       - name: Set up Ruby 3.2.2 with Bundler cache
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: "3.2.2"
+          ruby-version: 3.2.2
+          bundler: "2.7.1" # <-- valid input
           bundler-cache: false
-          bundler-version: "2.7.1"
-          bundler-path: "$PWD/.toolcache/ruby/3.2.2/bin/bundle"
+          self-hosted: true
 
       - name: Validate documentation build
         run: |
