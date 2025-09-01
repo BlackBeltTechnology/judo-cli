@@ -217,7 +217,7 @@ jobs:
           else
             echo "No existing release found for $TAG_NAME"
           fi
-      
+
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
         with:
@@ -226,6 +226,40 @@ jobs:
           args: release --clean --timeout 30m
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Commit RELEASE_NOTES.md if generated
+        if: success()
+        run: |
+          set -e
+          # Check if RELEASE_NOTES.md was created and has content
+          if [[ -f "RELEASE_NOTES.md" && -s "RELEASE_NOTES.md" ]]; then
+            echo "Committing RELEASE_NOTES.md..."
+            
+            # Verify we're still on the correct commit (tag commit)
+            TAG_NAME="${{ steps.tag_version.outputs.tag }}"
+            EXPECTED_COMMIT=$(git rev-parse "$TAG_NAME")
+            CURRENT_COMMIT=$(git rev-parse HEAD)
+            
+            if [[ "$CURRENT_COMMIT" != "$EXPECTED_COMMIT" ]]; then
+              echo "::warning::Current commit ($CURRENT_COMMIT) doesn't match tag commit ($EXPECTED_COMMIT), skipping RELEASE_NOTES.md commit"
+              exit 0
+            fi
+            
+            git config --local user.email "action@github.com"
+            git config --local user.name "GitHub Action"
+            
+            git add RELEASE_NOTES.md
+            
+            # Check if there are changes to commit
+            if ! git diff --cached --quiet; then
+              git commit -m "docs: update release notes for ${{ steps.tag_version.outputs.tag }}"
+              echo "✅ Committed RELEASE_NOTES.md"
+            else
+              echo "No changes to RELEASE_NOTES.md to commit"
+            fi
+          else
+            echo "RELEASE_NOTES.md not found or empty, skipping commit"
+          fi
       
       - name: Check GoReleaser result
         if: always()

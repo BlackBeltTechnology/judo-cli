@@ -78,6 +78,12 @@ changelog:
     - title: Others
       order: 999
 
+# Generate RELEASE_NOTES.md file
+extra_files:
+  - src: "{{ .Changelog }}"
+    dst: RELEASE_NOTES.md
+    mode: 0644
+
 release:
   # Repository to release to.
   github:
