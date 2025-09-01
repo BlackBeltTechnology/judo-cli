@@ -90,22 +90,29 @@ jobs:
             exit 0
           fi
 
-          # Install ruby-build if not present
-          if ! command -v ruby-build >/dev/null 2>&1; then
-            echo "Installing ruby-build..."
-            sudo apt-get update -y
-            sudo apt-get install -y build-essential libssl-dev zlib1g-dev \
-              libreadline-dev libyaml-dev libxml2-dev libxslt1-dev \
-              libffi-dev libgdbm-dev libncurses5-dev libdb-dev wget ca-certificates
-            # Lightweight install of ruby-build
-            git clone --depth=1 https://github.com/rbenv/ruby-build.git /tmp/ruby-build
-            sudo /tmp/ruby-build/install.sh
-          fi
+          # Build deps (Ubuntu 22.04)
+          sudo apt-get update -y
+          sudo apt-get install -y build-essential autoconf bison libssl-dev zlib1g-dev \
+            libreadline-dev libyaml-dev libxml2-dev libxslt1-dev \
+            libffi-dev libgdbm-dev libncurses5-dev libdb-dev wget ca-certificates
+
+          # Always fetch a fresh ruby-build and use its binary directly
+          RB_TMP="$(mktemp -d)"
+          git clone --depth=1 https://github.com/rbenv/ruby-build.git "$RB_TMP"
+          "$RB_TMP/bin/ruby-build" --version
+          "$RB_TMP/bin/ruby-build" --definitions | tail -n +1 | grep -E '^3\.2\.2$' >/dev/null || {
+            echo "ruby-build does not list 3.2.2; aborting."; exit 1;
+          }
 
           mkdir -p "$DEST"
-          # Build Ruby into the toolcache path (matches what the action looks for)
-          ruby-build 3.2.2 "$DEST"
-          touch "$MARKER"
+          # Optional: prevent parallel installs on a busy runner
+          lock=/tmp/ruby-3.2.2.lock
+          (
+            flock 9
+            "$RB_TMP/bin/ruby-build" 3.2.2 "$DEST"
+            touch "$MARKER"
+          ) 9>"$lock"
+
           echo "Installed Ruby to $DEST"
 
       - name: Set up Ruby (use preinstalled)
