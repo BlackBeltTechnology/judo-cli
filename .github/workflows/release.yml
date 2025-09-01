@@ -166,6 +166,21 @@ jobs:
           fi
           
           echo "✅ Git state is clean and ready for GoReleaser"
+
+      - name: Clean up existing release artifacts if any
+        run: |
+          set -e
+          TAG_NAME="${{ steps.tag_version.outputs.tag }}"
+          echo "Checking for existing release artifacts for tag: $TAG_NAME"
+          
+          # Check if release already exists and delete it to allow overwrite
+          if gh release view "$TAG_NAME" >/dev/null 2>&1; then
+            echo "Found existing release for $TAG_NAME, deleting to allow clean release..."
+            gh release delete "$TAG_NAME" --yes
+            echo "✅ Deleted existing release artifacts"
+          else
+            echo "No existing release found for $TAG_NAME"
+          fi
       
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
