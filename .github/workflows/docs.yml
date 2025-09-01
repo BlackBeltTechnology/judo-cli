@@ -52,8 +52,11 @@ jobs:
           fi            
 
           # Install Ruby 3.2.2 (compatible with Jekyll)
-          rbenv install 3.2.2 -s
-          rbenv global 3.2.2
+          if ! rbenv versions | grep -q "3.2.2"; then
+              rbenv install 3.2.2 -s
+          fi
+          # Set Ruby version for current session only
+          export RBENV_VERSION=3.2.2
           
           # Install Bundler
           gem install bundler
