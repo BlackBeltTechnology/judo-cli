@@ -154,38 +154,38 @@ jobs:
             core.setOutput('tag_name', tagName);
             core.setOutput('snapshot_version', snapshotVersion);
 
-      - name: Upload binaries to release
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const { owner, repo } = context.repo;
-            const fs = require('fs');
-            const path = require('path');
-            const releaseId = '${{ steps.create-release.outputs.release_id }}';
+      # - name: Upload binaries to release
+      #   uses: actions/github-script@v7
+      #   with:
+      #     github-token: ${{ secrets.GITHUB_TOKEN }}
+      #     script: |
+      #       const { owner, repo } = context.repo;
+      #       const fs = require('fs');
+      #       const path = require('path');
+      #       const releaseId = '${{ steps.create-release.outputs.release_id }}';
 
-            // Find all files in dist directory
-            const distDir = './dist';
-            const files = fs.readdirSync(distDir);
+      #       // Find all files in dist directory
+      #       const distDir = './dist';
+      #       const files = fs.readdirSync(distDir);
 
-            for (const file of files) {
-              if (file.endsWith('.tar.gz') || file.endsWith('.zip') || file === 'checksums.txt') {
-                const filePath = path.join(distDir, file);
-                const fileContent = fs.readFileSync(filePath);
+      #       for (const file of files) {
+      #         if (file.endsWith('.tar.gz') || file.endsWith('.zip') || file === 'checksums.txt') {
+      #           const filePath = path.join(distDir, file);
+      #           const fileContent = fs.readFileSync(filePath);
 
-                console.log(`Uploading ${file}...`);
+      #           console.log(`Uploading ${file}...`);
 
-                await github.rest.repos.uploadReleaseAsset({
-                  owner,
-                  repo,
-                  release_id: releaseId,
-                  name: file,
-                  data: fileContent
-                });
+      #           await github.rest.repos.uploadReleaseAsset({
+      #             owner,
+      #             repo,
+      #             release_id: releaseId,
+      #             name: file,
+      #             data: fileContent
+      #           });
 
-                console.log(`✓ Uploaded ${file}`);
-              }
-            }
+      #           console.log(`✓ Uploaded ${file}`);
+      #         }
+      #       }
 
       - name: Upload snapshot artifacts
         uses: actions/upload-artifact@v4
@@ -311,50 +311,13 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Generate release notes using git log
+      - name: Push release tag to trigger release workflow
         run: |
           set -e
-          BASE_VERSION="${{ steps.version.outputs.base_version }}"
-          TAG_NAME="v${BASE_VERSION}"
-          echo "Generating release notes for version: $BASE_VERSION"
-
-          # Get previous RELEASE tag (not snapshot or current tag) for changelog range
-          # List all tags, filter out snapshots and current tag, sort by version, and get the latest release
-          PREVIOUS_TAG=$(git tag -l "v*" | grep -E "^v[0-9]+\\.[0-9]+\\.[0-9]+$" | grep -v "snapshot" | grep -v "^$TAG_NAME$" | sort -V | tail -1)
-
-          if [[ -n "$PREVIOUS_TAG" ]]; then
-            echo "Generating changelog from last release $PREVIOUS_TAG to current commit"
-            git log --oneline --no-merges --decorate "$PREVIOUS_TAG..HEAD" > RELEASE_NOTES.md
-          else
-            echo "No previous release tag found, generating recent changelog"
-            git log --oneline --no-merges --decorate -n 20 > RELEASE_NOTES.md
-          fi
-
-          # Add header
-          echo "# Development Snapshot - $TAG_NAME" > temp_notes.md
-          echo "" >> temp_notes.md
-          echo "**Build Date**: $(date +%Y-%m-%d)" >> temp_notes.md
-          echo "**Branch**: develop" >> temp_notes.md
-          echo "" >> temp_notes.md
-          echo "## Recent Changes" >> temp_notes.md
-          echo "" >> temp_notes.md
-          cat RELEASE_NOTES.md >> temp_notes.md
-          mv temp_notes.md RELEASE_NOTES.md
-
-          echo "✅ RELEASE_NOTES.md generated successfully"
-          echo "Release notes content preview:"
-          head -5 RELEASE_NOTES.md
-
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: judo-build-${{ steps.version.outputs.base_version }}
-          path: |
-            dist/*.tar.gz
-            dist/*.zip
-            dist/checksums.txt
-            dist/homebrew/*.rb
-            RELEASE_NOTES.md
+          TAG_NAME="v${{ steps.version.outputs.base_version }}"
+          echo "Pushing release tag $TAG_NAME to trigger release workflow"
+          git push origin "$TAG_NAME"
+          echo "✅ Tag $TAG_NAME pushed - release workflow will now execute"
 
       - name: Cleanup local tag if build failed
         if: failure()
