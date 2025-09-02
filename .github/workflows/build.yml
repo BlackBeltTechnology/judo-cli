@@ -154,48 +154,57 @@ jobs:
             core.setOutput('tag_name', tagName);
             core.setOutput('snapshot_version', snapshotVersion);
 
-      # - name: Upload binaries to release
-      #   uses: actions/github-script@v7
-      #   with:
-      #     github-token: ${{ secrets.GITHUB_TOKEN }}
-      #     script: |
-      #       const { owner, repo } = context.repo;
-      #       const fs = require('fs');
-      #       const path = require('path');
-      #       const releaseId = '${{ steps.create-release.outputs.release_id }}';
-
-      #       // Find all files in dist directory
-      #       const distDir = './dist';
-      #       const files = fs.readdirSync(distDir);
-
-      #       for (const file of files) {
-      #         if (file.endsWith('.tar.gz') || file.endsWith('.zip') || file === 'checksums.txt') {
-      #           const filePath = path.join(distDir, file);
-      #           const fileContent = fs.readFileSync(filePath);
-
-      #           console.log(`Uploading ${file}...`);
-
-      #           await github.rest.repos.uploadReleaseAsset({
-      #             owner,
-      #             repo,
-      #             release_id: releaseId,
-      #             name: file,
-      #             data: fileContent
-      #           });
-
-      #           console.log(`✓ Uploaded ${file}`);
-      #         }
-      #       }
-
-      - name: Upload snapshot artifacts
-        uses: actions/upload-artifact@v4
+      - name: Upload binaries to release
+        uses: actions/github-script@v7
         with:
-          name: judo-snapshot-${{ steps.create-release.outputs.snapshot_version }}
-          path: |
-            dist/*.tar.gz
-            dist/*.zip
-            dist/checksums.txt
-            RELEASE_NOTES.md
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { owner, repo } = context.repo;
+            const fs = require('fs');
+            const path = require('path');
+            const releaseId = '${{ steps.create-release.outputs.release_id }}';
+
+            // Find all files in dist directory
+            const distDir = './dist';
+            const files = fs.readdirSync(distDir);
+
+            for (const file of files) {
+              if (file.endsWith('.tar.gz') || file.endsWith('.zip') || file === 'checksums.txt') {
+                const filePath = path.join(distDir, file);
+                const fileContent = fs.readFileSync(filePath);
+
+                console.log(`Uploading ${file}...`);
+
+                await github.rest.repos.uploadReleaseAsset({
+                  owner,
+                  repo,
+                  release_id: releaseId,
+                  name: file,
+                  data: fileContent
+                });
+
+                console.log(`✓ Uploaded ${file}`);
+              }
+            }
+            await github.rest.repos.uploadReleaseAsset({
+                  owner,
+                  repo,
+                  release_id: releaseId,
+                  name: "RELEASE_NOTES.md",
+                  data: fs.readFileSync('./RELEASE_NOTES.md')
+                });
+
+            console.log(`✓ Uploaded RELEASE_NOTES.md`);
+
+      # - name: Upload snapshot artifacts
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: judo-snapshot-${{ steps.create-release.outputs.snapshot_version }}
+      #     path: |
+      #       dist/*.tar.gz
+      #       dist/*.zip
+      #       dist/checksums.txt
+      #       RELEASE_NOTES.md
 
       - name: Cleanup old develop releases
         uses: actions/github-script@v7
@@ -318,6 +327,17 @@ jobs:
           echo "Pushing release tag $TAG_NAME to trigger release workflow"
           git push origin "$TAG_NAME"
           echo "✅ Tag $TAG_NAME pushed - release workflow will now execute"
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: judo-build-${{ steps.version.outputs.base_version }}
+          path: |
+            dist/*.tar.gz
+            dist/*.zip
+            dist/checksums.txt
+            dist/homebrew/*.rb
+            RELEASE_NOTES.md
 
       - name: Cleanup local tag if build failed
         if: failure()
