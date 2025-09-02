@@ -126,20 +126,20 @@ jobs:
             console.log(`Creating snapshot release: ${tagName}`);
 
             // Read RELEASE_NOTES.md content for release body
-            let releaseBody = `**⚠️ Development Snapshot Build**
-
-This is an automated development build from the \`develop\` branch.
-
-**Build Info:**
-- Version: ${tagName}
-- Branch: develop
-- Commit: ${{ github.sha }}
-- Built: ${new Date().toISOString()}
-
-**⚠️ This is a pre-release version intended for testing and development only.**
-
-**Installation:**
-Download the appropriate binary for your platform from the assets below.`;
+            let releaseBody = `**⚠️ Development Snapshot Build**\n` +
+            `\n` +
+            `This is an automated development build from the \`develop\` branch.\n`
+            `\n` +
+            `**Build Info:**\n` +
+            `- Version: ${tagName}\n` +
+            `- Branch: develop\n` +
+            `- Commit: ${{ github.sha }}\n` +
+            `- Built: ${new Date().toISOString()}\n` +
+            `\n` +
+            `**⚠️ This is a pre-release version intended for testing and development only.**`\n` +
+            `\n` +
+            `**Installation:**`\n` +
+            `Download the appropriate binary for your platform from the assets below.`;
 
             try {
               if (fs.existsSync('./RELEASE_NOTES.md')) {
