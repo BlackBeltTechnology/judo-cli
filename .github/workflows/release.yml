@@ -218,12 +218,12 @@ jobs:
             echo "No existing release found for $TAG_NAME"
           fi
 
-      - name: Run GoReleaser for release
+      - name: Run GoReleaser for release with custom release notes
         uses: goreleaser/goreleaser-action@v6
         with:
           distribution: goreleaser
           version: "~> v2"
-          args: release --clean --timeout 30m
+          args: release --clean --timeout 30m --release-notes=RELEASE_NOTES.md
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

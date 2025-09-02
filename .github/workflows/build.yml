@@ -125,26 +125,41 @@ jobs:
 
             console.log(`Creating snapshot release: ${tagName}`);
 
+            // Read RELEASE_NOTES.md content for release body
+            let releaseBody = `**⚠️ Development Snapshot Build**
+
+This is an automated development build from the \`develop\` branch.
+
+**Build Info:**
+- Version: ${tagName}
+- Branch: develop
+- Commit: ${{ github.sha }}
+- Built: ${new Date().toISOString()}
+
+**⚠️ This is a pre-release version intended for testing and development only.**
+
+**Installation:**
+Download the appropriate binary for your platform from the assets below.`;
+
+            try {
+              if (fs.existsSync('./RELEASE_NOTES.md')) {
+                const releaseNotes = fs.readFileSync('./RELEASE_NOTES.md', 'utf8');
+                if (releaseNotes.trim()) {
+                  releaseBody = releaseNotes;
+                  console.log('Using RELEASE_NOTES.md content as release body');
+                }
+              }
+            } catch (error) {
+              console.log('Could not read RELEASE_NOTES.md, using default body:', error.message);
+            }
+
             // Create the tag and release
             const release = await github.rest.repos.createRelease({
               owner,
               repo,
               tag_name: tagName,
               name: `JUDO CLI ${tagName} (Development Snapshot)`,
-              body: `**⚠️ Development Snapshot Build**
-
-            This is an automated development build from the \`develop\` branch.
-
-            **Build Info:**
-            - Version: ${tagName}
-            - Branch: develop
-            - Commit: ${{ github.sha }}
-            - Built: ${new Date().toISOString()}
-
-            **⚠️ This is a pre-release version intended for testing and development only.**
-
-            **Installation:**
-            Download the appropriate binary for your platform from the assets below.`,
+              body: releaseBody,
               draft: false,
               prerelease: true
             });
