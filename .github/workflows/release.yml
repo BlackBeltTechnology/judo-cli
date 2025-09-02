@@ -239,10 +239,10 @@ jobs:
 
           if [[ -n "$PREVIOUS_TAG" && "$PREVIOUS_TAG" != "$TAG_NAME" ]]; then
             echo "Generating changelog from last release $PREVIOUS_TAG to $TAG_NAME"
-            git log --oneline --no-merges --decorate "$PREVIOUS_TAG..$TAG_NAME" > RELEASE_NOTES.md
+            git log --no-merges --no-decorate --pretty=format:"---%n%H%n%B" "$PREVIOUS_TAG..$TAG_NAME" > RELEASE_NOTES.md
           else
             echo "No previous release tag found, generating full changelog since beginning"
-            git log --oneline --no-merges --decorate > RELEASE_NOTES.md
+            git log --no-merges --no-decorate --pretty=format:"---%n%H%n%B" > RELEASE_NOTES.md
           fi
 
           # Add header
@@ -257,7 +257,7 @@ jobs:
 
           echo "✅ RELEASE_NOTES.md generated successfully"
           echo "Release notes content preview:"
-          head -10 RELEASE_NOTES.md
+          head -20 RELEASE_NOTES.md
 
       - name: Commit RELEASE_NOTES.md
         if: success()
