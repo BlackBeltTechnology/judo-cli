@@ -25,7 +25,7 @@ docs/
 ├── static/            # Static files
 └── .github/
     └── workflows/
-        └── docs.yml   # GitHub Pages deployment
+        └── hugo.yml   # GitHub Pages deployment
 ```
 
 ## Local Development

@@ -80,7 +80,7 @@ cd docs && ./serve-docs.sh           # Enhanced server with livereload
 cd docs && ./serve-docs-simple.sh    # Simple server
 ```
 
-**Note**: Ruby environment required for local Jekyll. Docs auto-deployed to https://judo.technology/
+**Note**: Hugo framework used for documentation. Docs auto-deployed to https://judo.technology/
 
 ## Dependencies
 
