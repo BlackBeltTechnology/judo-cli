@@ -112,12 +112,14 @@ jobs:
         id: create-release
         uses: actions/github-script@v7
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
+           github-token: ${{ secrets.GITHUB_TOKEN }}
+           script: |
             const { owner, repo } = context.repo;
             const fs = require('fs');
+            const core = require('@actions/core');
+            const commitSha = '${{ github.sha }}';
 
-            // Generate snapshot version
+             // Generate snapshot version
             const baseVersion = '${{ steps.version.outputs.base_version }}';
             const timestamp = new Date().toISOString().replace(/[-:T]/g, '').substring(0, 14);
             const snapshotVersion = `${baseVersion}-snapshot-${timestamp}`;
@@ -126,19 +128,15 @@ jobs:
             console.log(`Creating snapshot release: ${tagName}`);
 
             // Read RELEASE_NOTES.md content for release body
-            let releaseBody = `**⚠️ Development Snapshot Build**\n` +
-            `\n` +
-            `This is an automated development build from the \`develop\` branch.\n`
-            `\n` +
+            let releaseBody = `**⚠️ Development Snapshot Build**\n\n` +
+            `This is an automated development build from the \`develop\` branch.\n\n` +
             `**Build Info:**\n` +
             `- Version: ${tagName}\n` +
             `- Branch: develop\n` +
-            `- Commit: ${{ github.sha }}\n` +
-            `- Built: ${new Date().toISOString()}\n` +
-            `\n` +
-            `**⚠️ This is a pre-release version intended for testing and development only.**`\n` +
-            `\n` +
-            `**Installation:**`\n` +
+            `- Commit: ${commitSha}\n` +
+            `- Built: ${new Date().toISOString()}\n\n` +
+            `**⚠️ This is a pre-release version intended for testing and development only.**\n\n` +
+            `**Installation:**\n` +
             `Download the appropriate binary for your platform from the assets below.`;
 
             try {
