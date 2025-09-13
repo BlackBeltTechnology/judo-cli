@@ -1,87 +1,68 @@
 # JUDO CLI Documentation
 
-This directory contains the documentation for JUDO CLI, built with Jekyll and the custom JUDO theme.
+This directory contains the documentation for JUDO CLI, built with Hugo static site generator.
 
 ## Documentation Structure
 
 ```
 docs/
 ├── README.md           # This file
-├── _config.yml         # Jekyll configuration
-├── index.md           # Documentation home page
-├── glossary.md        # Command glossary
-├── Gemfile            # Ruby dependencies
-├── _docs/             # Documentation pages
-│   ├── getting-started.md
-│   ├── commands.md
-│   ├── configuration.md
-│   ├── examples.md
-│   └── api.md
+├── hugo.toml          # Hugo configuration
+├── content/           # Documentation content
+│   ├── _index.md      # Home page
+│   ├── commands/      # Command documentation
+│   ├── configuration/ # Configuration guides
+│   ├── getting-started/ # Getting started guides
+│   ├── examples/      # Usage examples
+│   └── api/           # API reference
+├── layouts/           # HTML templates
+│   ├── _default/      # Default layouts
+│   └── partials/      # Reusable components
+├── assets/            # CSS, JS, images
+│   ├── css/
+│   ├── js/
+│   └── img/
+├── static/            # Static files
 └── .github/
     └── workflows/
-        └── docs.yml   # GitHub Pages deployment
+        └── hugo.yml   # GitHub Pages deployment
 ```
 
 ## Local Development
 
 ### Prerequisites
 
-- Ruby 3.2+
-- Bundler
+- Hugo Extended v0.150.0+
 
 ### Setup
 
 ```bash
-# Install dependencies
-bundle install
-
 # Serve locally with live reload
-bundle exec jekyll serve --livereload
+hugo server
 
 # Build static site
-bundle exec jekyll build
+hugo --minify
 ```
 
-The site will be available at `http://localhost:4000/judo-cli/`
+The site will be available at `http://localhost:1313/`
 
-### Theme Configuration
+### Theme Features
 
-The documentation uses the custom JUDO theme from:
-`BlackBeltTechnology/jekyll-theme-judo@develop`
-
-Theme features:
 - Responsive design
 - Dark/light mode toggle
-- Search functionality
-- Navigation sidebar
+- Navigation menu
 - Code syntax highlighting
 - Mobile-friendly layout
+- Fast build times
 
 ## GitHub Pages Deployment
 
-Documentation is automatically deployed to GitHub Pages when a commit is tagged with `current-site`:
-
-```bash
-# Deploy documentation for current commit
-git tag current-site
-git push origin current-site
-```
+Documentation is automatically deployed to GitHub Pages when changes are pushed to the main branch.
 
 The deployment workflow:
-1. Builds the Jekyll site with Ruby 3.2.2
-2. Deploys to GitHub Pages using peaceiris/actions-gh-pages
+1. Builds the Hugo site
+2. Deploys to GitHub Pages
 3. Available at: `https://blackbelttechnology.github.io/judo-cli/`
-
-### Manual Deployment
-For manual documentation deployment, use the dedicated workflow:
-
-```bash
-# Tag the commit you want to deploy
-git tag current-site
-git push origin current-site
-```
-
-This ensures documentation updates are intentional and versioned.
 
 ## Content Guidelines
 
@@ -154,8 +135,7 @@ Each documentation page should include front matter:
 ```yaml
 ---
 title: "Page Title"
-permalink: /page-name/
-excerpt: "Brief description for SEO and navigation"
+description: "Brief description for SEO and navigation"
 ---
 ```
 
@@ -163,28 +143,31 @@ excerpt: "Brief description for SEO and navigation"
 
 ### Navigation
 
-Update navigation in `_config.yml`:
+Update navigation in `hugo.toml`:
 
-```yaml
-navigation:
-  - title: "Home"
-    url: "/"
-  - title: "Getting Started"
-    url: "/docs/getting-started/"
-  # Add more items...
+```toml
+[menu]
+  [[menu.main]]
+    name = "Home"
+    url = "/"
+    weight = 100
+  [[menu.main]]
+    name = "Getting Started"
+    url = "/getting-started/"
+    weight = 200
 ```
 
 ### Site Configuration
 
-Key configuration options in `_config.yml`:
+Key configuration options in `hugo.toml`:
 
-```yaml
-title: "JUDO CLI"
-description: "Command-line tool for managing JUDO applications"
-baseurl: "/judo-cli"
-url: "https://blackbelttechnology.github.io"
+```toml
+baseURL = 'https://judo.technology/'
+title = 'JUDO CLI'
 
-remote_theme: BlackBeltTechnology/jekyll-theme-judo@develop
+[params]
+  description = 'Command-line tool for managing JUDO applications'
+  author = 'BlackBelt Technology'
 ```
 
 ## Contributing to Documentation
@@ -192,16 +175,16 @@ remote_theme: BlackBeltTechnology/jekyll-theme-judo@develop
 1. **Fork the repository**
 2. **Create a feature branch** for documentation changes
 3. **Make your changes** following the content guidelines
-4. **Test locally** with `bundle exec jekyll serve`
+4. **Test locally** with `hugo server`
 5. **Submit a pull request** with clear description of changes
 
 ### Common Tasks
 
 **Add a new documentation page:**
 
-1. Create new file in `_docs/` directory
+1. Create new file in `content/` directory
 2. Add proper front matter
-3. Update navigation in `_config.yml` if needed
+3. Update navigation in `hugo.toml` if needed
 4. Cross-reference from other relevant pages
 
 **Update existing content:**
@@ -217,48 +200,14 @@ remote_theme: BlackBeltTechnology/jekyll-theme-judo@develop
 3. Update navigation and cross-references
 4. Consider adding examples and use cases
 
-## Troubleshooting
+## Local Development Tips
 
-### Common Issues
-
-**Bundle install fails:**
-```bash
-# Update Ruby and Bundler
-gem update bundler
-bundle install
-```
-
-**Jekyll serve fails:**
-```bash
-# Clear cache and reinstall
-rm -rf _site .jekyll-cache
-bundle clean --force
-bundle install
-```
-
-**Theme not loading:**
-```bash
-# Check theme configuration in _config.yml
-# Ensure internet connection for remote theme
-bundle exec jekyll clean
-bundle exec jekyll serve
-```
-
-**GitHub Pages build fails:**
-- Check the Actions tab for build errors
-- Verify all files have valid front matter
-- Ensure no invalid Liquid syntax
-
-### Local Development Tips
-
-- Use `--livereload` for automatic browser refresh
-- Use `--drafts` to include draft posts
-- Use `--incremental` for faster builds during development
-- Check `_site/` directory to see generated output
+- Use `hugo server` for automatic browser refresh
+- Use `hugo --minify` for production builds
+- Check `public/` directory to see generated output
 
 ## Resources
 
-- [Jekyll Documentation](https://jekyllrb.com/docs/)
+- [Hugo Documentation](https://gohugo.io/documentation/)
 - [GitHub Pages Documentation](https://docs.github.com/en/pages)
 - [Markdown Guide](https://www.markdownguide.org/)
-- [JUDO Theme Repository](https://github.com/BlackBeltTechnology/jekyll-theme-judo)

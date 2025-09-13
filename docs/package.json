@@ -1,0 +1,20 @@
+{
+  "name": "judo-cli-docs",
+  "version": "1.0.0",
+  "description": "JUDO CLI Documentation - Built with Hugo",
+  "scripts": {
+    "dev": "hugo server -D --disableFastRender",
+    "build": "hugo --minify",
+    "build:prod": "hugo --minify --environment production",
+    "clean": "rm -rf public resources",
+    "test:build": "hugo --buildDrafts --buildFuture",
+    "test:build:validate": "node ../tests/build/run-build-tests.js",
+    "test:visual": "echo 'Run visual regression tests with: npx backstopjs test --config=tests/visual/visual-regression.js'",
+    "test:browser": "echo 'Run browser tests with: npx playwright test --config=tests/browser/playwright.config.js'",
+    "test:compatibility": "echo 'Run cross-browser tests with BrowserStack or similar service'",
+    "test:all": "npm run test:build && npm run test:build:validate"
+  },
+  "keywords": ["documentation", "hugo", "judo", "cli"],
+  "author": "BlackBelt Technology",
+  "license": "EPL-2.0"
+}

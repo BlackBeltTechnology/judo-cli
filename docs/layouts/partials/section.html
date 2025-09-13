@@ -1,0 +1,36 @@
+{{/*
+Usage:
+
+page.sections:
+  - id: features
+    title: "What you get from our"
+    subtitle: "low-code toolbox"
+    blocks:
+      - heading: "Fast development"
+        text: "Get rid of tedious coding tasks..."
+      - heading: "Modular design"
+        text: "Choose only what makes you productive..."
+*/}}
+
+<section class="section" id="{{ .id | default "" }}">
+  <div class="container">
+    {{ if or .title .subtitle }}
+    <header class="section-head">
+      {{ with .title }}<h2>{{ . }}</h2>{{ end }}
+      {{ with .subtitle }}<p class="sub">{{ . }}</p>{{ end }}
+    </header>
+    {{ end }}
+
+    {{ if .blocks }}
+    <div class="cards">
+      {{ range .blocks }}
+      <article class="card">
+        <h3>{{ .heading }}</h3>
+        {{ with .text }}<p>{{ . }}</p>{{ end }}
+        {{ with .link }}<p><a class="text-link" href="{{ .url }}">{{ .label }}</a></p>{{ end }}
+      </article>
+      {{ end }}
+    </div>
+    {{ end }}
+  </div>
+</section>

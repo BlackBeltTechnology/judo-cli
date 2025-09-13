@@ -18,6 +18,8 @@ Go-based CLI tool (`judo`) for managing JUDO application lifecycle. Orchestrates
 ```bash
 go build -o judo ./cmd/judo           # Build CLI
 go test ./internal/...               # Run tests (limited coverage)
+go test -v ./internal/...            # Run tests with verbose output
+go test ./internal/db/...            # Run specific package tests
 go vet ./...                         # Vet code
 go fmt ./...                         # Format code
 go mod tidy                          # Clean modules
@@ -40,6 +42,9 @@ go mod tidy                          # Clean modules
 ./judo build -q                      # Quick mode (skip validations)
 ./judo reckless                      # Ultra-fast build and start
 ./judo session                       # Interactive session mode
+./judo doctor                       # Check system requirements and setup
+./judo prune                        # Clean up Docker resources
+./judo self-update                  # Update CLI tool itself
 ```
 
 ## Release Management
@@ -64,6 +69,8 @@ go build -ldflags "-X main.version=$(git describe --tags)" -o judo ./cmd/judo
 - **build.yml**: CI testing and snapshot releases from develop branch
 - **release.yml**: Full releases from main branch with GoReleaser
 - **docs-release.yml**: Documentation deployment to GitHub Pages on `current-site` tags
+- **docs.yml**: Documentation build and testing
+- **manual-release.yml**: Manual release triggering workflow
 
 ## Documentation
 
@@ -73,7 +80,7 @@ cd docs && ./serve-docs.sh           # Enhanced server with livereload
 cd docs && ./serve-docs-simple.sh    # Simple server
 ```
 
-**Note**: Ruby environment required for local Jekyll. Docs auto-deployed to https://judo.technology/
+**Note**: Hugo framework used for documentation. Docs auto-deployed to https://judo.technology/
 
 ## Dependencies
 
@@ -83,15 +90,16 @@ cd docs && ./serve-docs-simple.sh    # Simple server
 
 ## Module Structure
 
-- **cmd/judo**: CLI entry point with Cobra setup
-- **internal/commands**: Core command implementations
-- **internal/config**: Configuration management (properties files)
-- **internal/docker**: Docker container operations
-- **internal/karaf**: Karaf runtime management
-- **internal/db**: PostgreSQL database operations
-- **internal/utils**: Common utilities
-- **internal/session**: Interactive session mode
+- **cmd/judo**: CLI entry point with Cobra setup and version info
+- **internal/commands**: Core command implementations (build, start, stop, status, clean, etc.)
+- **internal/config**: Configuration management (properties files, environment setup)
+- **internal/docker**: Docker container operations and client management
+- **internal/karaf**: Karaf runtime management and operations
+- **internal/db**: PostgreSQL database operations (dump, import, schema upgrade)
+- **internal/utils**: Common utilities and command execution helpers
+- **internal/session**: Interactive session mode with command history
 - **internal/selfupdate**: Self-update functionality
+- **internal/help**: Command help text and documentation
 
 # important-instruction-reminders
 Do what has been asked; nothing more, nothing less.

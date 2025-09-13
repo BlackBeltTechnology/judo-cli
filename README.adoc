@@ -396,25 +396,95 @@ brew install judo
 
 # Or install directly
 brew install blackbelttechnology/tap/judo
+
+# Verify installation
+judo version
 ----
 
-=== Manual Installation
+=== Manual Binary Installation
 
 Download the latest release from the https://github.com/BlackBeltTechnology/judo-cli/releases[GitHub releases page]:
 
+==== Linux (x86_64)
 [source,bash]
 ----
-# Linux x86_64
+# Download and extract
 curl -L https://github.com/BlackBeltTechnology/judo-cli/releases/latest/download/judo_Linux_x86_64.tar.gz | tar xz
 
-# macOS x86_64 (Intel)
+# Make executable and move to PATH
+chmod +x judo
+sudo mv judo /usr/local/bin/
+
+# Verify installation
+judo version
+----
+
+==== macOS (Intel x86_64)
+[source,bash]
+----
+# Download and extract
 curl -L https://github.com/BlackBeltTechnology/judo-cli/releases/latest/download/judo_Darwin_x86_64.tar.gz | tar xz
 
-# macOS arm64 (Apple Silicon)
+# Make executable and move to PATH
+chmod +x judo
+sudo mv judo /usr/local/bin/
+
+# Verify installation
+judo version
+----
+
+==== macOS (Apple Silicon arm64)
+[source,bash]
+----
+# Download and extract
 curl -L https://github.com/BlackBeltTechnology/judo-cli/releases/latest/download/judo_Darwin_arm64.tar.gz | tar xz
 
-# Windows x86_64
-# Download and extract judo_Windows_x86_64.zip from releases page
+# Make executable and move to PATH
+chmod +x judo
+sudo mv judo /usr/local/bin/
+
+# Verify installation
+judo version
+----
+
+==== Windows (x86_64)
+[source,powershell]
+----
+# Download the Windows binary
+Invoke-WebRequest -Uri "https://github.com/BlackBeltTechnology/judo-cli/releases/latest/download/judo_Windows_x86_64.zip" -OutFile "judo.zip"
+
+# Extract the archive
+Expand-Archive judo.zip -DestinationPath .
+
+# Move to a directory in your PATH (e.g., System32 or create a bin directory)
+move judo.exe C:\Windows\System32\
+# OR add current directory to PATH
+[Environment]::SetEnvironmentVariable("PATH", "$env:PATH;$(pwd)", "User")
+
+# Verify installation
+judo version
+----
+
+=== Package Manager Installation
+
+==== Using Go Install
+[source,bash]
+----
+# Install directly using Go
+GO111MODULE=on go install github.com/BlackBeltTechnology/judo-cli/cmd/judo@latest
+
+# Verify installation
+judo version
+----
+
+==== Using Snap (Linux)
+[source,bash]
+----
+# Install via Snap (if available)
+snap install judo-cli
+
+# Verify installation
+judo version
 ----
 
 === Building from Source
@@ -423,10 +493,31 @@ To build the `judo` executable from source, navigate to the project root directo
 
 [source,bash]
 ----
+# Clone the repository
+git clone https://github.com/BlackBeltTechnology/judo-cli.git
+cd judo-cli
+
+# Build the binary
 go build -o judo ./cmd/judo
+
+# Make executable and test
+chmod +x judo
+./judo version
+
+# Install to system (optional)
+sudo mv judo /usr/local/bin/
 ----
 
-This will create an executable named `judo` in the current directory.
+=== Versioned Build with Commit Information
+
+For development builds with version information:
+
+[source,bash]
+----
+go build -ldflags "-X main.version=$(scripts/version.sh get) -X main.commit=$(git rev-parse --short HEAD) -X main.date=$(date -u +%Y-%m-%dT%H:%M:%SZ) -X main.builtBy=source" -o judo ./cmd/judo
+----
+
+This will create an executable named `judo` in the current directory with proper version metadata.
 
 == Common Usage Examples
 

@@ -78,10 +78,10 @@ jobs:
 
           if [[ -n "$PREVIOUS_TAG" ]]; then
             echo "Generating changelog from last release $PREVIOUS_TAG to current commit"
-            git log --oneline --no-merges --decorate "$PREVIOUS_TAG..HEAD" > RELEASE_NOTES.md
+            git log --no-merges --no-decorate --pretty=format:"---%n%H%n%B" "$PREVIOUS_TAG..HEAD" > RELEASE_NOTES.md
           else
             echo "No previous release tag found, generating recent changelog"
-            git log --oneline --no-merges --decorate -n 20 > RELEASE_NOTES.md
+            git log --no-merges --no-decorate --pretty=format:"---%n%H%n%B" -n 20 > RELEASE_NOTES.md
           fi
 
           # Add header
@@ -97,7 +97,7 @@ jobs:
 
           echo "✅ RELEASE_NOTES.md generated successfully"
           echo "Release notes content preview:"
-          head -5 RELEASE_NOTES.md
+          head -20 RELEASE_NOTES.md
 
       - name: Run GoReleaser (Snapshot Release)
         uses: goreleaser/goreleaser-action@v6
@@ -112,12 +112,13 @@ jobs:
         id: create-release
         uses: actions/github-script@v7
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
+           github-token: ${{ secrets.GITHUB_TOKEN }}
+           script: |
             const { owner, repo } = context.repo;
             const fs = require('fs');
+            const commitSha = '${{ github.sha }}';
 
-            // Generate snapshot version
+             // Generate snapshot version
             const baseVersion = '${{ steps.version.outputs.base_version }}';
             const timestamp = new Date().toISOString().replace(/[-:T]/g, '').substring(0, 14);
             const snapshotVersion = `${baseVersion}-snapshot-${timestamp}`;
@@ -125,26 +126,37 @@ jobs:
 
             console.log(`Creating snapshot release: ${tagName}`);
 
+            // Read RELEASE_NOTES.md content for release body
+            let releaseBody = `**⚠️ Development Snapshot Build**\n\n` +
+            `This is an automated development build from the \`develop\` branch.\n\n` +
+            `**Build Info:**\n` +
+            `- Version: ${tagName}\n` +
+            `- Branch: develop\n` +
+            `- Commit: ${commitSha}\n` +
+            `- Built: ${new Date().toISOString()}\n\n` +
+            `**⚠️ This is a pre-release version intended for testing and development only.**\n\n` +
+            `**Installation:**\n` +
+            `Download the appropriate binary for your platform from the assets below.`;
+
+            try {
+              if (fs.existsSync('./RELEASE_NOTES.md')) {
+                const releaseNotes = fs.readFileSync('./RELEASE_NOTES.md', 'utf8');
+                if (releaseNotes.trim()) {
+                  releaseBody = releaseNotes;
+                  console.log('Using RELEASE_NOTES.md content as release body');
+                }
+              }
+            } catch (error) {
+              console.log('Could not read RELEASE_NOTES.md, using default body:', error.message);
+            }
+
             // Create the tag and release
             const release = await github.rest.repos.createRelease({
               owner,
               repo,
               tag_name: tagName,
               name: `JUDO CLI ${tagName} (Development Snapshot)`,
-              body: `**⚠️ Development Snapshot Build**
-
-            This is an automated development build from the \`develop\` branch.
-
-            **Build Info:**
-            - Version: ${tagName}
-            - Branch: develop
-            - Commit: ${{ github.sha }}
-            - Built: ${new Date().toISOString()}
-
-            **⚠️ This is a pre-release version intended for testing and development only.**
-
-            **Installation:**
-            Download the appropriate binary for your platform from the assets below.`,
+              body: releaseBody,
               draft: false,
               prerelease: true
             });
@@ -186,6 +198,15 @@ jobs:
                 console.log(`✓ Uploaded ${file}`);
               }
             }
+            await github.rest.repos.uploadReleaseAsset({
+                  owner,
+                  repo,
+                  release_id: releaseId,
+                  name: "RELEASE_NOTES.md",
+                  data: fs.readFileSync('./RELEASE_NOTES.md')
+                });
+
+            console.log(`✓ Uploaded RELEASE_NOTES.md`);
 
       - name: Upload snapshot artifacts
         uses: actions/upload-artifact@v4
@@ -311,39 +332,13 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Generate release notes using git log
+      - name: Push release tag to trigger release workflow
         run: |
           set -e
-          BASE_VERSION="${{ steps.version.outputs.base_version }}"
-          TAG_NAME="v${BASE_VERSION}"
-          echo "Generating release notes for version: $BASE_VERSION"
-
-          # Get previous RELEASE tag (not snapshot or current tag) for changelog range
-          # List all tags, filter out snapshots and current tag, sort by version, and get the latest release
-          PREVIOUS_TAG=$(git tag -l "v*" | grep -E "^v[0-9]+\\.[0-9]+\\.[0-9]+$" | grep -v "snapshot" | grep -v "^$TAG_NAME$" | sort -V | tail -1)
-
-          if [[ -n "$PREVIOUS_TAG" ]]; then
-            echo "Generating changelog from last release $PREVIOUS_TAG to current commit"
-            git log --oneline --no-merges --decorate "$PREVIOUS_TAG..HEAD" > RELEASE_NOTES.md
-          else
-            echo "No previous release tag found, generating recent changelog"
-            git log --oneline --no-merges --decorate -n 20 > RELEASE_NOTES.md
-          fi
-
-          # Add header
-          echo "# Development Snapshot - $TAG_NAME" > temp_notes.md
-          echo "" >> temp_notes.md
-          echo "**Build Date**: $(date +%Y-%m-%d)" >> temp_notes.md
-          echo "**Branch**: develop" >> temp_notes.md
-          echo "" >> temp_notes.md
-          echo "## Recent Changes" >> temp_notes.md
-          echo "" >> temp_notes.md
-          cat RELEASE_NOTES.md >> temp_notes.md
-          mv temp_notes.md RELEASE_NOTES.md
-
-          echo "✅ RELEASE_NOTES.md generated successfully"
-          echo "Release notes content preview:"
-          head -5 RELEASE_NOTES.md
+          TAG_NAME="v${{ steps.version.outputs.base_version }}"
+          echo "Pushing release tag $TAG_NAME to trigger release workflow"
+          git push origin "$TAG_NAME"
+          echo "✅ Tag $TAG_NAME pushed - release workflow will now execute"
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4

@@ -1,0 +1,32 @@
+{{ define "main" }}
+  {{ $page_title := .Title | default .Site.Title }}
+  {{ if not .Params.hide_hero }}
+    <section class="hero">
+      <div class="container">
+        <h1 class="hero-title">
+          <span>{{ $page_title }}</span><br/>
+          <span>{{ .Params.subtitle | default .Site.Params.subtitle }}</span>
+        </h1>
+        {{ if and .Params.cta_label .Params.cta_url }}
+        <p class="hero-cta">
+          <a class="btn btn-primary" href="{{ .Params.cta_url }}">{{ .Params.cta_label }}</a>
+        </p>
+        {{ end }}
+        
+        {{ if .Params.show_install_tabs }}
+          {{ partial "install-tabs.html" . }}
+        {{ end }}
+      </div>
+    </section>
+  {{ end }}
+
+  {{ if .Params.sections }}
+    {{ range .Params.sections }}
+      {{ partial "section.html" . }}
+    {{ end }}
+  {{ end }}
+
+  <div class="container content">
+    {{ .Content }}
+  </div>
+{{ end }}
