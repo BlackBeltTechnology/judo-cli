@@ -197,7 +197,7 @@ jobs:
           echo "✅ Git state is clean and ready for GoReleaser"
 
       - name: Set up GitHub CLI
-        uses: cli/cli@v2
+        uses: cli/cli-action@v2
         with:
           version: latest
         env:
