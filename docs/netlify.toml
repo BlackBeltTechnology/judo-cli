@@ -1,0 +1,57 @@
+[build]
+  publish = "public"
+  command = "cd docs && npm install && npm run build"
+
+[build.environment]
+  HUGO_VERSION = "0.150.0"
+  NODE_VERSION = "18"
+  HUGO_ENABLEGITINFO = "true"
+
+[context.production.environment]
+  HUGO_ENV = "production"
+
+[context.deploy-preview.environment]
+  HUGO_ENV = "development"
+
+[context.branch-deploy.environment]
+  HUGO_ENV = "development"
+
+# Redirects for clean URLs
+[[redirects]]
+  from = "/commands"
+  to = "/commands/"
+  status = 301
+
+[[redirects]]
+  from = "/configuration"
+  to = "/configuration/"
+  status = 301
+
+[[redirects]]
+  from = "/getting-started"
+  to = "/getting-started/"
+  status = 301
+
+# Headers for security and performance
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+[[headers]]
+  for = "/css/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/js/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/img/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"

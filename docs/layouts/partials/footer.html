@@ -1,0 +1,14 @@
+<footer class="site-footer">
+  <div class="container footer-grid">
+    <div class="foot-brand">
+      &copy; 2026 BlackBelt Meta Zrt. Licensed under the <a href="https://www.eclipse.org/legal/epl-2.0/" target="_blank" rel="noopener">Eclipse Public License 2.0</a>.
+    </div>
+    <div class="foot-links">
+      {{ with .Site.Params.social }}
+        {{ range . }}
+          <a href="{{ .url }}" rel="me noopener" target="_blank">{{ .name }}</a>
+        {{ end }}
+      {{ end }}
+    </div>
+  </div>
+</footer>

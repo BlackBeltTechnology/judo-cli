@@ -1,0 +1,84 @@
+baseURL = 'https://judo.technology/'
+languageCode = 'en-us'
+title = 'JUDO CLI'
+
+[params]
+  description = 'Command-line tool for managing the lifecycle of JUDO applications'
+  author = 'BlackBelt Technology'
+  email = 'info@blackbelt.hu'
+  github_username = 'BlackBeltTechnology'
+  twitter_username = 'blackbelttech'
+  logo = '/img/logo.svg'
+
+[markup]
+  [markup.goldmark]
+    [markup.goldmark.renderer]
+      unsafe = true
+
+[imaging]
+  resampleFilter = 'lanczos'
+  quality = 85
+
+[services]
+  [services.googleAnalytics]
+    disable = true
+
+[build]
+  writeStats = true
+  useResourceCacheWhen = 'fallback'
+  noChmod = true
+  noTimes = true
+
+[build.cachebusters]
+  [build.cachebusters."assets/css/*"]
+    source = "assets/css/*"
+    target = "css/*"
+  [build.cachebusters."assets/js/*"]
+    source = "assets/js/*"
+    target = "js/*"
+  [build.cachebusters."assets/img/*"]
+    source = "assets/img/*"
+    target = "img/*"
+
+[minify]
+  disableXML = true
+  minifyOutput = true
+
+[server]
+  disableFastRender = false
+
+[outputs]
+  home = ['HTML', 'RSS']
+  section = ['HTML', 'RSS']
+  page = ['HTML']
+
+[outputFormats]
+  [outputFormats.RSS]
+    mediaType = 'application/rss+xml'
+    baseName = 'feed'
+
+[menu]
+  [[menu.main]]
+    name = 'Home'
+    url = '/'
+    weight = 100
+  [[menu.main]]
+    name = 'Commands'
+    url = '/commands/'
+    weight = 200
+  [[menu.main]]
+    name = 'Configuration'
+    url = '/configuration/'
+    weight = 300
+  [[menu.main]]
+    name = 'API'
+    url = '/api/'
+    weight = 400
+  [[menu.main]]
+    name = 'Examples'
+    url = '/examples/'
+    weight = 500
+  [[menu.main]]
+    name = 'Session'
+    url = '/session/'
+    weight = 600

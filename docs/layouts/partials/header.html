@@ -1,0 +1,25 @@
+<header class="site-header">
+  <div class="container header-inner">
+    <a class="brand" href="{{ .Site.BaseURL }}">
+      {{ with .Site.Params.logo }}
+        <img src="{{ . | relURL }}" alt="{{ $.Site.Title }} logo" />
+      {{ end }}
+    </a>
+    <nav class="nav" id="site-nav">
+      {{ range .Site.Menus.main }}
+        <a href="{{ .URL | relURL }}">{{ .Name }}</a>
+      {{ end }}
+      
+      <!-- Theme toggle switch -->
+      <label class="theme-toggle" aria-label="Toggle dark mode">
+        <input type="checkbox" id="theme-toggle" />
+        <span class="theme-toggle-slider"></span>
+        <span class="theme-toggle-icons">
+          <span class="theme-icon-light">☀️</span>
+          <span class="theme-icon-dark">🌙</span>
+        </span>
+      </label>
+    </nav>
+    <button class="burger" aria-label="Toggle navigation" onclick="toggleNav()">&#9776;</button>
+  </div>
+</header>

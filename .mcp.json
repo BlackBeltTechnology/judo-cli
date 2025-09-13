@@ -27,5 +27,37 @@
       ],
       "env": {}
     }
+  },
+  "commands": {
+    "specify": {
+      "description": "Start a new feature by creating a specification and feature branch",
+      "arguments": [
+        {
+          "name": "feature_description",
+          "description": "Description of the feature to implement",
+          "required": true
+        }
+      ]
+    },
+    "plan": {
+      "description": "Plan how to implement the specified feature",
+      "arguments": [
+        {
+          "name": "implementation_details",
+          "description": "Implementation details and context",
+          "required": true
+        }
+      ]
+    },
+    "tasks": {
+      "description": "Break down the plan into executable tasks",
+      "arguments": [
+        {
+          "name": "context",
+          "description": "Context for task generation",
+          "required": true
+        }
+      ]
+    }
   }
 }
