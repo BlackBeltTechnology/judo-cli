@@ -151,18 +151,15 @@ jobs:
             exit 1
           fi
 
-          # Configure git
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-
-          # Check if VERSION file actually changed
+          # Note: We don't commit here because the tag should already point to a commit
+          # with the correct version. If the version doesn't match, it's an error.
           if git diff --quiet VERSION; then
-            echo "VERSION file unchanged, skipping commit"
+            echo "VERSION file unchanged - good"
           else
-            # Commit the version change
-            git add VERSION
-            git commit -m "chore: update version to $VERSION for release"
-            echo "✅ Committed version update to $VERSION"
+            echo "::error::VERSION file changed after tag creation. Tag should point to commit with correct version."
+            echo "Current version in file: $(cat VERSION)"
+            echo "Expected version: $VERSION"
+            exit 1
           fi
 
       - name: Verify clean git state before GoReleaser
@@ -196,27 +193,28 @@ jobs:
 
           echo "✅ Git state is clean and ready for GoReleaser"
 
-      - name: Set up GitHub CLI
-        run: |
-          type -p curl >/dev/null || (sudo apt update && sudo apt install curl -y)
-          curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg \\
-          && sudo chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg \\
-          && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null \\
-          && sudo apt update \\
-          && sudo apt install gh -y
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Clean up existing release artifacts if any
         run: |
           set -e
           TAG_NAME="${{ steps.tag_version.outputs.tag }}"
           echo "Checking for existing release artifacts for tag: $TAG_NAME"
 
-          # Check if release already exists and delete it to allow overwrite
-          if gh release view "$TAG_NAME" >/dev/null 2>&1; then
+          # Use GitHub API directly instead of GitHub CLI
+          # Check if release exists using API
+          response=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/${{ github.repository }}/releases/tags/$TAG_NAME" || true)
+          
+          if echo "$response" | grep -q '"id":'; then
             echo "Found existing release for $TAG_NAME, deleting to allow clean release..."
-            gh release delete "$TAG_NAME" --yes
+            release_id=$(echo "$response" | grep '"id":' | head -1 | awk '{print $2}' | tr -d ',')
+            
+            # Delete the release using API
+            curl -s -X DELETE \
+              -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              -H "Accept: application/vnd.github.v3+json" \
+              "https://api.github.com/repos/${{ github.repository }}/releases/$release_id"
+            
             echo "✅ Deleted existing release artifacts"
           else
             echo "No existing release found for $TAG_NAME"
