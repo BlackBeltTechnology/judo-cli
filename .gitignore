@@ -70,3 +70,6 @@ gha-creds-*.json
 /judo-cli
 /judo-stable
 /judo-snapshot
+
+# Hugo build output
+docs/public/
