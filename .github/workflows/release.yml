@@ -516,9 +516,19 @@ jobs:
             echo "4. Ensure all required secrets (GITHUB_TOKEN) are properly configured" >> $GITHUB_STEP_SUMMARY
           fi
 
-  # Cleanup job to handle failures and ensure proper state
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: judo-build-${{ steps.version.outputs.base_version }}
+          path: |
+            dist/*.tar.gz
+            dist/*.zip
+            dist/checksums.txt
+            dist/homebrew/*.rb
+            RELEASE_NOTES.md
+
   cleanup:
-    name: Cleanup and Final Status
+    name: Final Status
     runs-on: judong
     needs: [release, post-release]
     if: always()
