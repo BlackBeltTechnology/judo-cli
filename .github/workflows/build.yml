@@ -52,11 +52,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: "1.25"
-
       - name: Get versions
         id: version
         run: |
@@ -121,12 +116,17 @@ jobs:
       #     NOTES=$(sed ':a;N;$!ba;s/\n/\\n/g' "$TEMP_FILE")
       #     echo "logs=$NOTES" >> "$GITHUB_OUTPUT"
 
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+
       - name: Run GoReleaser (Snapshot Release)
         uses: goreleaser/goreleaser-action@v6
         with:
           distribution: goreleaser
           version: "~> v2"
-          args: release --snapshot --clean")
+          args: release --clean --timeout 5m")
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GORELEASER_CURRENT_TAG: ${{ steps.version.outputs.tag_name }}
