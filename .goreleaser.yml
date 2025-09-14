@@ -83,7 +83,7 @@ release:
 
   # Release footer template.
   footer: |
-    ## Docker Images
+    ## JUDO CLI {{ .Tag }}
 
     **Full Changelog**: https://github.com/BlackBeltTechnology/judo-cli/compare/{{ .PreviousTag }}...{{ .Tag }}
 
