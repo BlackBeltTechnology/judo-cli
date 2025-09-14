@@ -42,7 +42,7 @@ jobs:
           fi
 
   build-snapshot:
-    name: Build Snapshot (Develop)
+    name: Build Snapshot (Develop and Feature branches)
     runs-on: judong
     if: github.ref == 'refs/heads/develop'
     needs: test
@@ -126,7 +126,7 @@ jobs:
         with:
           distribution: goreleaser
           version: "~> v2"
-          args: release --clean")
+          args: release")
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GORELEASER_CURRENT_TAG: ${{ steps.version.outputs.tag_name }}
@@ -263,7 +263,7 @@ jobs:
       #       }
 
   build-master:
-    name: Build Master Branch
+    name: Build Release (Master Branch)
     runs-on: judong
     if: github.ref == 'refs/heads/master'
     needs: test
