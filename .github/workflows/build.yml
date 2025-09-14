@@ -61,16 +61,28 @@ jobs:
         id: version
         run: |
           chmod +x scripts/version.sh
+
+          # Get base version from your script
           BASE_VERSION=$(scripts/version.sh get)
-          const timestamp = new Date().toISOString().replace(/[-:T]/g, '').substring(0, 14);
-          const snapshotVersion = `${baseVersion}-snapshot-${timestamp}`;
-          const tagName = `v${snapshotVersion}`;
 
+          # Generate timestamp for snapshot version (UTC format: YYYYMMDDHHMMSS)
+          TIMESTAMP=$(date -u +"%Y%m%d%H%M%S")
+
+          # Construct snapshot version and tag name
+          SNAPSHOT_VERSION="${BASE_VERSION}-snapshot-${TIMESTAMP}"
+          TAG_NAME="v${SNAPSHOT_VERSION}"
+
+          echo "Base Version: ${BASE_VERSION}"
+          echo "Snapshot Version: ${SNAPSHOT_VERSION}"
+          echo "Tag Name: ${TAG_NAME}"
+
+          # Export to GitHub Actions outputs
           echo "base_version=${BASE_VERSION}" >> $GITHUB_OUTPUT
-          echo "snapshot_version=${BASE_VERSION}" >> $GITHUB_OUTPUT
-          echo "tag_name=${BASE_VERSION}" >> $GITHUB_OUTPUT
-          echo "GORELEASER_CURRENT_TAG=v${snapshot_version}" >> $GITHUB_ENV
+          echo "snapshot_version=${SNAPSHOT_VERSION}" >> $GITHUB_OUTPUT
+          echo "tag_name=${TAG_NAME}" >> $GITHUB_OUTPUT
 
+          # Export environment variable for GoReleaser
+          echo "GORELEASER_CURRENT_TAG=${TAG_NAME}" >> $GITHUB_ENV
       # - name: Generate release logs using git log
       #   id: create-release-logs
       #   run: |
