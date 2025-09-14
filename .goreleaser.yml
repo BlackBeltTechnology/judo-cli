@@ -55,32 +55,9 @@ checksum:
 snapshot:
   version_template: "{{ .Version }}-snapshot-{{ .Timestamp }}"
 
+# Changelog generation disabled - handled by GitHub Actions workflow
 changelog:
-  sort: asc
-  use: git
-  filters:
-    exclude:
-      - '^docs:'
-      - '^test:'
-      - '^ci:'
-      - '^chore:'
-      - '^build:'
-      # Exclude generic merge commit messages
-      - '^Merge branch'
-      - '^Merge pull request'
-      - '^Merge remote-tracking branch'
-  groups:
-    - title: Features
-      regexp: '^.*?feat(\([[:word:]]+\))??!?:.+$'
-      order: 0
-    - title: 'Bug fixes'
-      regexp: '^.*?fix(\([[:word:]]+\))??!?:.+$'
-      order: 1
-    - title: 'Performance improvements'
-      regexp: '^.*?perf(\([[:word:]]+\))??!?:.+$'
-      order: 2
-    - title: Others
-      order: 999
+  skip: true
 
 # RELEASE_NOTES.md generation will be handled in GitHub Actions workflow
 # using GoReleaser's changelog functionality
