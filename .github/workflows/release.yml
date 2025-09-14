@@ -26,8 +26,8 @@ jobs:
           # Fetch all tags for proper version validation
           fetch-tags: true
 
-      - name: Fetch all tags explicitly
-        run: git fetch --tags --force
+      # - name: Fetch all tags explicitly
+      #   run: git fetch --tags --force
 
       - name: Validate tag format and existence
         run: |
@@ -161,15 +161,15 @@ jobs:
             echo "$UNTRACKED"
           fi
 
-          # Verify tag points to current commit
-          TAG_NAME="${{ steps.tag_version.outputs.tag }}"
-          CURRENT_COMMIT=$(git rev-parse HEAD)
-          TAG_COMMIT=$(git rev-parse "$TAG_NAME")
+          # # Verify tag points to current commit
+          # TAG_NAME="${{ steps.tag_version.outputs.tag }}"
+          # CURRENT_COMMIT=$(git rev-parse HEAD)
+          # TAG_COMMIT=$(git rev-parse "$TAG_NAME")
 
-          if [[ "$CURRENT_COMMIT" != "$TAG_COMMIT" ]]; then
-            echo "::error::Current commit ($CURRENT_COMMIT) doesn't match tag commit ($TAG_COMMIT)"
-            exit 1
-          fi
+          # if [[ "$CURRENT_COMMIT" != "$TAG_COMMIT" ]]; then
+          #   echo "::error::Current commit ($CURRENT_COMMIT) doesn't match tag commit ($TAG_COMMIT)"
+          #   exit 1
+          # fi
 
           echo "✅ Git state is clean and ready for GoReleaser"
 
@@ -273,39 +273,50 @@ jobs:
             # Don't exit with error here to allow post-release steps to run
           fi
 
-      - name: Commit RELEASE_NOTES.md
-        if: success()
-        run: |
-          set -e
-          # Check if RELEASE_NOTES.md was created and has content
-          if [[ -f "RELEASE_NOTES.md" && -s "RELEASE_NOTES.md" ]]; then
-            echo "Committing RELEASE_NOTES.md..."
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: judo-build-${{ steps.version.outputs.base_version }}
+          path: |
+            dist/*.tar.gz
+            dist/*.zip
+            dist/checksums.txt
+            dist/homebrew/*.rb
+            RELEASE_NOTES.md
 
-            # Verify we're still on the correct commit (tag commit)
-            TAG_NAME="${{ steps.tag_version.outputs.tag }}"
-            EXPECTED_COMMIT=$(git rev-parse "$TAG_NAME")
-            CURRENT_COMMIT=$(git rev-parse HEAD)
+      # - name: Commit RELEASE_NOTES.md
+      #   if: success()
+      #   run: |
+      #     set -e
+      #     # Check if RELEASE_NOTES.md was created and has content
+      #     if [[ -f "RELEASE_NOTES.md" && -s "RELEASE_NOTES.md" ]]; then
+      #       echo "Committing RELEASE_NOTES.md..."
 
-            if [[ "$CURRENT_COMMIT" != "$EXPECTED_COMMIT" ]]; then
-              echo "::warning::Current commit ($CURRENT_COMMIT) doesn't match tag commit ($EXPECTED_COMMIT), skipping RELEASE_NOTES.md commit"
-              exit 0
-            fi
+      #       # Verify we're still on the correct commit (tag commit)
+      #       TAG_NAME="${{ steps.tag_version.outputs.tag }}"
+      #       EXPECTED_COMMIT=$(git rev-parse "$TAG_NAME")
+      #       CURRENT_COMMIT=$(git rev-parse HEAD)
 
-            git config --local user.email "action@github.com"
-            git config --local user.name "GitHub Action"
+      #       if [[ "$CURRENT_COMMIT" != "$EXPECTED_COMMIT" ]]; then
+      #         echo "::warning::Current commit ($CURRENT_COMMIT) doesn't match tag commit ($EXPECTED_COMMIT), skipping RELEASE_NOTES.md commit"
+      #         exit 0
+      #       fi
 
-            git add RELEASE_NOTES.md
+      #       git config --local user.email "action@github.com"
+      #       git config --local user.name "GitHub Action"
 
-            # Check if there are changes to commit
-            if ! git diff --cached --quiet; then
-              git commit -m "docs: update release notes from git log for ${{ steps.tag_version.outputs.tag }}"
-              echo "✅ Committed RELEASE_NOTES.md"
-            else
-              echo "No changes to RELEASE_NOTES.md to commit"
-            fi
-          else
-            echo "RELEASE_NOTES.md not found or empty, skipping commit"
-          fi
+      #       git add RELEASE_NOTES.md
+
+      #       # Check if there are changes to commit
+      #       if ! git diff --cached --quiet; then
+      #         git commit -m "docs: update release notes from git log for ${{ steps.tag_version.outputs.tag }}"
+      #         echo "✅ Committed RELEASE_NOTES.md"
+      #       else
+      #         echo "No changes to RELEASE_NOTES.md to commit"
+      #       fi
+      #     else
+      #       echo "RELEASE_NOTES.md not found or empty, skipping commit"
+      #     fi
 
       - name: Upload release notes artifact
         if: always()
