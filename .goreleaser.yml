@@ -50,17 +50,17 @@ archives:
       - LICENSE
 
 checksum:
-  name_template: 'checksums.txt'
+  name_template: "checksums.txt"
 
 snapshot:
   version_template: "{{ .Version }}-snapshot-{{ .Timestamp }}"
 
-# Changelog generation disabled - handled by GitHub Actions workflow
-changelog:
-  skip: true
-
 # RELEASE_NOTES.md generation will be handled in GitHub Actions workflow
 # using GoReleaser's changelog functionality
+
+changelog:
+  sort: desc
+  use: git
 
 release:
   # Repository to release to.
@@ -74,7 +74,7 @@ release:
 
   # Controls whether to delete pre-existing releases with the same tag.
   replace_existing_draft: true
-  
+
   # Allow overwriting existing releases and assets
   mode: replace
 
@@ -84,51 +84,51 @@ release:
   # Release footer template.
   footer: |
     ## Docker Images
-    
+
     **Full Changelog**: https://github.com/BlackBeltTechnology/judo-cli/compare/{{ .PreviousTag }}...{{ .Tag }}
-    
+
     ---
-    
+
     **Installation**
-    
+
     ### Homebrew (macOS/Linux)
     ```bash
     brew install blackbelttechnology/tap/judo
     ```
-    
+
     ### Manual Installation
     Download the appropriate binary for your platform from the assets below:
-    
+
     #### Linux (x86_64)
     ```bash
     # Using curl
     curl -L https://github.com/BlackBeltTechnology/judo-cli/releases/latest/download/judo_Linux_x86_64.tar.gz | tar xz
     sudo mv judo /usr/local/bin/
-    
+
     # Using wget
     wget https://github.com/BlackBeltTechnology/judo-cli/releases/latest/download/judo_Linux_x86_64.tar.gz
     tar xzf judo_Linux_x86_64.tar.gz
     sudo mv judo /usr/local/bin/
     ```
-    
+
     #### Linux (ARM64)
     ```bash
     curl -L https://github.com/BlackBeltTechnology/judo-cli/releases/latest/download/judo_Linux_arm64.tar.gz | tar xz
     sudo mv judo /usr/local/bin/
     ```
-    
+
     #### macOS (Intel)
     ```bash
     curl -L https://github.com/BlackBeltTechnology/judo-cli/releases/latest/download/judo_Darwin_x86_64.tar.gz | tar xz
     sudo mv judo /usr/local/bin/
     ```
-    
+
     #### macOS (Apple Silicon)
     ```bash
     curl -L https://github.com/BlackBeltTechnology/judo-cli/releases/latest/download/judo_Darwin_arm64.tar.gz | tar xz
     sudo mv judo /usr/local/bin/
     ```
-    
+
     #### Windows (x86_64)
     ```powershell
     # Using PowerShell
@@ -165,4 +165,4 @@ brews:
 
 # Announce the release
 announce:
-  skip: '{{gt .Patch 0}}'
+  skip: "{{gt .Patch 0}}"
