@@ -296,7 +296,7 @@ jobs:
       - name: Cleanup local tags which are not on remote
         run: |
           set -e
-          git fetch --prune <remote> "+refs/tags/*:refs/tags/*"
+          git fetch --prune origin "+refs/tags/*:refs/tags/*"
 
       - name: Generate build version and create tag
         id: version
