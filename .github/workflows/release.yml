@@ -26,11 +26,6 @@ jobs:
           # Fetch all tags for proper version validation
           fetch-tags: true
 
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: "1.25"
-
       - name: Fetch all tags explicitly
         run: git fetch --tags --force
 
@@ -120,49 +115,31 @@ jobs:
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
           echo "current_version=${CURRENT_VERSION}" >> $GITHUB_OUTPUT
 
-      - name: Update VERSION file and commit with validation
+      - name: Clean up existing release artifacts if any
         run: |
           set -e
-          VERSION="${{ steps.tag_version.outputs.version }}"
+          TAG_NAME="${{ steps.tag_version.outputs.tag }}"
+          echo "Checking for existing release artifacts for tag: $TAG_NAME"
 
-          echo "Updating VERSION file to: $VERSION"
+          # Use GitHub API directly instead of GitHub CLI
+          # Check if release exists using API
+          response=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/${{ github.repository }}/releases/tags/$TAG_NAME" || true)
 
-          # Verify scripts/version.sh exists and is executable
-          if [[ ! -f "scripts/version.sh" ]]; then
-            echo "::error::version.sh script not found"
-            exit 1
-          fi
+          if echo "$response" | grep -q '"id":'; then
+            echo "Found existing release for $TAG_NAME, deleting to allow clean release..."
+            release_id=$(echo "$response" | grep '"id":' | head -1 | awk '{print $2}' | tr -d ',')
 
-          chmod +x scripts/version.sh
+            # Delete the release using API
+            curl -s -X DELETE \
+              -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              -H "Accept: application/vnd.github.v3+json" \
+              "https://api.github.com/repos/${{ github.repository }}/releases/$release_id"
 
-          # Verify the script works
-          if ! scripts/version.sh get > /dev/null 2>&1; then
-            echo "::error::version.sh script validation failed"
-            exit 1
-          fi
-
-          # Update version file
-          scripts/version.sh set "$VERSION"
-
-          # Verify the update worked
-          UPDATED_VERSION=$(scripts/version.sh get)
-          if [[ "$UPDATED_VERSION" != "$VERSION" ]]; then
-            echo "::error::Failed to update VERSION file. Expected: $VERSION, Got: $UPDATED_VERSION"
-            exit 1
-          fi
-
-          # Configure git
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-
-          # Check if VERSION file actually changed
-          if git diff --quiet VERSION; then
-            echo "VERSION file unchanged, skipping commit"
+            echo "✅ Deleted existing release artifacts"
           else
-            # Commit the version change
-            git add VERSION
-            git commit -m "chore: update version to $VERSION for release"
-            echo "✅ Committed version update to $VERSION"
+            echo "No existing release found for $TAG_NAME"
           fi
 
       - name: Verify clean git state before GoReleaser
@@ -196,36 +173,47 @@ jobs:
 
           echo "✅ Git state is clean and ready for GoReleaser"
 
-      - name: Set up GitHub CLI
-        uses: cli/cli@v2
-        with:
-          version: latest
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Clean up existing release artifacts if any
+      - name: Update VERSION file
         run: |
           set -e
-          TAG_NAME="${{ steps.tag_version.outputs.tag }}"
-          echo "Checking for existing release artifacts for tag: $TAG_NAME"
+          VERSION="${{ steps.tag_version.outputs.version }}"
 
-          # Check if release already exists and delete it to allow overwrite
-          if gh release view "$TAG_NAME" >/dev/null 2>&1; then
-            echo "Found existing release for $TAG_NAME, deleting to allow clean release..."
-            gh release delete "$TAG_NAME" --yes
-            echo "✅ Deleted existing release artifacts"
-          else
-            echo "No existing release found for $TAG_NAME"
+          echo "Updating VERSION file to: $VERSION"
+
+          # Verify scripts/version.sh exists and is executable
+          if [[ ! -f "scripts/version.sh" ]]; then
+            echo "::error::version.sh script not found"
+            exit 1
           fi
 
-      - name: Run GoReleaser for release with custom release notes
-        uses: goreleaser/goreleaser-action@v6
-        with:
-          distribution: goreleaser
-          version: "~> v2"
-          args: release --clean --timeout 30m --release-notes=RELEASE_NOTES.md
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          chmod +x scripts/version.sh
+
+          # Verify the script works
+          if ! scripts/version.sh get > /dev/null 2>&1; then
+            echo "::error::version.sh script validation failed"
+            exit 1
+          fi
+
+          # Update version file
+          scripts/version.sh set "$VERSION"
+
+          # Verify the update worked
+          UPDATED_VERSION=$(scripts/version.sh get)
+          if [[ "$UPDATED_VERSION" != "$VERSION" ]]; then
+            echo "::error::Failed to update VERSION file. Expected: $VERSION, Got: $UPDATED_VERSION"
+            exit 1
+          fi
+
+          # Note: We don't commit here because the tag should already point to a commit
+          # with the correct version. If the version doesn't match, it's an error.
+          if git diff --quiet VERSION; then
+            echo "VERSION file unchanged - good"
+          else
+            echo "::error::VERSION file changed after tag creation. Tag should point to commit with correct version."
+            echo "Current version in file: $(cat VERSION)"
+            echo "Expected version: $VERSION"
+            exit 1
+          fi
 
       - name: Generate release notes using git log
         run: |
@@ -259,6 +247,32 @@ jobs:
           echo "Release notes content preview:"
           head -20 RELEASE_NOTES.md
 
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+
+      - name: Run GoReleaser for release with custom release notes
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: "~> v2"
+          args: release --clean --timeout 30m --release-notes=RELEASE_NOTES.md
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check GoReleaser result
+        if: always()
+        run: |
+          if [[ "${{ job.status }}" == "success" ]]; then
+            echo "✅ GoReleaser completed successfully"
+            echo "release_success=true" >> $GITHUB_OUTPUT
+          else
+            echo "::error::GoReleaser failed with exit code $?"
+            echo "release_success=false" >> $GITHUB_OUTPUT
+            # Don't exit with error here to allow post-release steps to run
+          fi
+
       - name: Commit RELEASE_NOTES.md
         if: success()
         run: |
@@ -291,18 +305,6 @@ jobs:
             fi
           else
             echo "RELEASE_NOTES.md not found or empty, skipping commit"
-          fi
-
-      - name: Check GoReleaser result
-        if: always()
-        run: |
-          if [[ "${{ job.status }}" == "success" ]]; then
-            echo "✅ GoReleaser completed successfully"
-            echo "release_success=true" >> $GITHUB_OUTPUT
-          else
-            echo "::error::GoReleaser failed with exit code $?"
-            echo "release_success=false" >> $GITHUB_OUTPUT
-            # Don't exit with error here to allow post-release steps to run
           fi
 
       - name: Upload release notes artifact
