@@ -217,6 +217,7 @@ jobs:
             RELEASE_NOTES.md
           draft: false
           prerelease: true
+          tag_name: ${{ env.GORELEASER_CURRENT_TAG }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
