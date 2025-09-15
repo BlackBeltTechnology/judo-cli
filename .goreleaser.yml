@@ -116,37 +116,37 @@ release:
     #### Linux (x86_64)
     ```bash
     # Using curl
-    curl -L https://github.com/BlackBeltTechnology/judo-cli/releases/latest/download/judo_Linux_x86_64.tar.gz | tar xz
+    curl -L https://github.com/BlackBeltTechnology/judo-cli/releases/{{ .Tag }}/download/judo_Linux_x86_64.tar.gz | tar xz
     sudo mv judo /usr/local/bin/
 
     # Using wget
-    wget https://github.com/BlackBeltTechnology/judo-cli/releases/latest/download/judo_Linux_x86_64.tar.gz
+    wget https://github.com/BlackBeltTechnology/judo-cli/releases/{{ .Tag }}/download/judo_Linux_x86_64.tar.gz
     tar xzf judo_Linux_x86_64.tar.gz
     sudo mv judo /usr/local/bin/
     ```
 
     #### Linux (ARM64)
     ```bash
-    curl -L https://github.com/BlackBeltTechnology/judo-cli/releases/latest/download/judo_Linux_arm64.tar.gz | tar xz
+    curl -L https://github.com/BlackBeltTechnology/judo-cli/releases/{{ .Tag }}/download/judo_Linux_arm64.tar.gz | tar xz
     sudo mv judo /usr/local/bin/
     ```
 
     #### macOS (Intel)
     ```bash
-    curl -L https://github.com/BlackBeltTechnology/judo-cli/releases/latest/download/judo_Darwin_x86_64.tar.gz | tar xz
+    curl -L https://github.com/BlackBeltTechnology/judo-cli/releases/{{ .Tag }}/download/judo_Darwin_x86_64.tar.gz | tar xz
     sudo mv judo /usr/local/bin/
     ```
 
     #### macOS (Apple Silicon)
     ```bash
-    curl -L https://github.com/BlackBeltTechnology/judo-cli/releases/latest/download/judo_Darwin_arm64.tar.gz | tar xz
+    curl -L https://github.com/BlackBeltTechnology/judo-cli/releases/{{ .Tag }}/download/judo_Darwin_arm64.tar.gz | tar xz
     sudo mv judo /usr/local/bin/
     ```
 
     #### Windows (x86_64)
     ```powershell
     # Using PowerShell
-    Invoke-WebRequest -Uri "https://github.com/BlackBeltTechnology/judo-cli/releases/latest/download/judo_Windows_x86_64.zip" -OutFile "judo.zip"
+    Invoke-WebRequest -Uri "https://github.com/BlackBeltTechnology/judo-cli/releases/{{ .Tag }}/download/judo_Windows_x86_64.zip" -OutFile "judo.zip"
     Expand-Archive judo.zip -DestinationPath .
     # Move judo.exe to a directory in your PATH
     ```
