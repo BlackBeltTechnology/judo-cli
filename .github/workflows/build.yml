@@ -462,6 +462,9 @@ jobs:
           if [[ "${{ needs.build-master.result }}" == "success" && "${{ needs.post-release.result }}" == "success" ]]; then
             echo "🎉 **Overall Status**: COMPLETE SUCCESS" >> $GITHUB_STEP_SUMMARY
             echo "Both release creation and version management completed successfully." >> $GITHUB_STEP_SUMMARY
+          elif [[ "${{ needs.build-snapshot.result }}" == "success" ]]; then
+            echo "🎉 **Overall Status**: COMPLETE SUCCESS" >> $GITHUB_STEP_SUMMARY
+            echo "Snapshot build completed successfully." >> $GITHUB_STEP_SUMMARY
           elif [[ "${{ needs.build-master.result }}" == "success" ]]; then
             echo "⚠️ **Overall Status**: PARTIAL SUCCESS" >> $GITHUB_STEP_SUMMARY
             echo "Release created successfully but post-release version management failed." >> $GITHUB_STEP_SUMMARY
