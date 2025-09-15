@@ -62,12 +62,12 @@ changelog:
   sort: desc
   use: git
   format: |
-    {{- with .PrevTag }}
-    ## [{{ $.Tag }}] - {{ $.Date }}
-    Previous tag: {{ . }}
+    {{- if .PreviousTag }}
+    ## [{{ .Tag }}] - {{ .Date }}
+    Previous tag: {{ .PreviousTag }}
     {{ else }}
     # Changelog
-    Initial release - {{ $.Date }}
+    Initial release - {{ .Date }}
     {{ end }}
     {{ .Major }}.{{ .Minor }}.{{ .Patch }} {{ if .IsPreRelease }}- Pre-release{{ end }}
     {{ range .Commits }}
