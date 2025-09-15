@@ -21,7 +21,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
+          fetch-tags: true # Ensure all tags are available
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
@@ -78,6 +78,7 @@ jobs:
 
           # Export environment variable for GoReleaser
           echo "GORELEASER_CURRENT_TAG=${TAG_NAME}" >> $GITHUB_ENV
+
       # - name: Generate release logs using git log
       #   id: create-release-logs
       #   run: |
@@ -100,7 +101,7 @@ jobs:
       #       git log --no-merges --no-decorate --pretty=format:"---%n%H%n%B" "$PREVIOUS_TAG..HEAD" > "$TEMP_FILE.body"
       #     else
       #       echo "No previous release tag found, generating recent changelog"
-      #       git log --no-merges --no-decorate --pretty=format:"---%n%H%n%B" -n 20 > "$TEMP_FILE.body"
+      #       git log --no-merges --no-decorate --pretty=format:"---%n%H%n%B" -n 100 > "$TEMP_FILE.body"
       #     fi
 
       #     # Build final release notes with a header
