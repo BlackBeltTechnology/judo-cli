@@ -165,7 +165,7 @@ func CreateStatusCommand() *cobra.Command {
 						fmt.Println("PostgreSQL is running")
 					} else {
 						fmt.Println("PostgreSQL is not running")
-						if docker.ContainerExists(pgName) {
+						if exists, _ := docker.ContainerExists(pgName); exists {
 							fmt.Println("PostgreSQL container exists")
 						} else {
 							fmt.Println("PostgreSQL container does not exist")
@@ -189,7 +189,7 @@ func CreateStatusCommand() *cobra.Command {
 					fmt.Println("Keycloak is running")
 				} else {
 					fmt.Println("Keycloak is not running")
-					if docker.ContainerExists(kcName) {
+					if exists, _ := docker.ContainerExists(kcName); exists {
 						fmt.Println("Keycloak container exists")
 					} else {
 						fmt.Println("Keycloak container does not exist")

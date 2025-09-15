@@ -575,20 +575,15 @@ func (s *Server) handleKarafStart(w http.ResponseWriter, r *http.Request) {
 	cfg := config.GetConfig() // Load config but don't use it directly here
 	log.Printf("Config loaded: AppName=%s, ModelDir=%s", cfg.AppName, cfg.ModelDir)
 
-	// Start Karaf service safely with panic recovery
+	// Start Karaf service with proper error handling
 	go func() {
-		defer func() {
-			if r := recover(); r != nil {
-				log.Printf("Karaf service failed to start (panic recovered): %v", r)
-				// Karaf cannot be started in local env due to project dependencies
-				// This is expected behavior, not an error
-			}
-		}()
-
 		log.Printf("Karaf service start attempted")
 		// Try to start Karaf, but expect it may fail due to local environment constraints
-		karaf.StartKaraf()
-		log.Printf("Karaf service start completed successfully")
+		if err := s.safeStartKaraf(); err != nil {
+			log.Printf("Karaf service failed to start: %v", err)
+		} else {
+			log.Printf("Karaf service start completed successfully")
+		}
 	}()
 
 	log.Printf("Sending response: Karaf service starting attempt...")
@@ -612,12 +607,11 @@ func (s *Server) handlePostgreSQLStart(w http.ResponseWriter, r *http.Request) {
 
 	// Start PostgreSQL service
 	go func() {
-		defer func() {
-			if r := recover(); r != nil {
-				log.Printf("PostgreSQL service failed to start: %v", r)
-			}
-		}()
-		docker.StartPostgres()
+		if err := s.safeStartPostgreSQL(); err != nil {
+			log.Printf("PostgreSQL service failed to start: %v", err)
+		} else {
+			log.Printf("PostgreSQL service start completed successfully")
+		}
 	}()
 
 	w.Header().Set("Content-Type", "application/json")
@@ -639,12 +633,11 @@ func (s *Server) handleKeycloakStart(w http.ResponseWriter, r *http.Request) {
 
 	// Start Keycloak service
 	go func() {
-		defer func() {
-			if r := recover(); r != nil {
-				log.Printf("Keycloak service failed to start: %v", r)
-			}
-		}()
-		docker.StartKeycloak()
+		if err := s.safeStartKeycloak(); err != nil {
+			log.Printf("Keycloak service failed to start: %v", err)
+		} else {
+			log.Printf("Keycloak service start completed successfully")
+		}
 	}()
 
 	w.Header().Set("Content-Type", "application/json")
@@ -663,11 +656,15 @@ func (s *Server) handleKarafStop(w http.ResponseWriter, r *http.Request) {
 	}
 
 	config.LoadProperties()
-	cfg := config.GetConfig()
+	_ = config.GetConfig() // Load config but don't use directly
 
 	// Stop Karaf service
 	go func() {
-		karaf.StopKaraf(cfg.KarafDir)
+		if err := s.safeStopKaraf(); err != nil {
+			log.Printf("Karaf service failed to stop: %v", err)
+		} else {
+			log.Printf("Karaf service stop completed successfully")
+		}
 	}()
 
 	w.Header().Set("Content-Type", "application/json")
@@ -685,12 +682,15 @@ func (s *Server) handlePostgreSQLStop(w http.ResponseWriter, r *http.Request) {
 	}
 
 	config.LoadProperties()
-	cfg := config.GetConfig()
+	_ = config.GetConfig() // Load config but don't use directly
 
 	// Stop PostgreSQL service
 	go func() {
-		pgName := "postgres-" + cfg.SchemaName
-		docker.StopDockerInstance(pgName)
+		if err := s.safeStopPostgreSQL(); err != nil {
+			log.Printf("PostgreSQL service failed to stop: %v", err)
+		} else {
+			log.Printf("PostgreSQL service stop completed successfully")
+		}
 	}()
 
 	w.Header().Set("Content-Type", "application/json")
@@ -708,12 +708,15 @@ func (s *Server) handleKeycloakStop(w http.ResponseWriter, r *http.Request) {
 	}
 
 	config.LoadProperties()
-	cfg := config.GetConfig()
+	_ = config.GetConfig() // Load config but don't use directly
 
 	// Stop Keycloak service
 	go func() {
-		kcName := "keycloak-" + cfg.KeycloakName
-		docker.StopDockerInstance(kcName)
+		if err := s.safeStopKeycloak(); err != nil {
+			log.Printf("Keycloak service failed to stop: %v", err)
+		} else {
+			log.Printf("Keycloak service stop completed successfully")
+		}
 	}()
 
 	w.Header().Set("Content-Type", "application/json")
@@ -734,4 +737,106 @@ func isMac() bool {
 
 func isLinux() bool {
 	return os.Getenv("GOOS") == "linux"
+}
+
+// Safe wrapper functions for service operations
+func (s *Server) safeStartKaraf() error {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("Recovered from panic in safeStartKaraf: %v", r)
+		}
+	}()
+
+	log.Printf("Attempting to start Karaf service...")
+	if err := karaf.StartKaraf(); err != nil {
+		log.Printf("Karaf service failed to start: %v", err)
+		return fmt.Errorf("karaf service failed to start: %v", err)
+	}
+	log.Printf("Karaf service started successfully")
+	return nil
+}
+
+func (s *Server) safeStartPostgreSQL() error {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("Recovered from panic in safeStartPostgreSQL: %v", r)
+		}
+	}()
+
+	log.Printf("Attempting to start PostgreSQL service...")
+	if err := docker.StartPostgres(); err != nil {
+		log.Printf("PostgreSQL service failed to start: %v", err)
+		return fmt.Errorf("postgresql service failed to start: %v", err)
+	}
+	log.Printf("PostgreSQL service started successfully")
+	return nil
+}
+
+func (s *Server) safeStartKeycloak() error {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("Recovered from panic in safeStartKeycloak: %v", r)
+		}
+	}()
+
+	log.Printf("Attempting to start Keycloak service...")
+	if err := docker.StartKeycloak(); err != nil {
+		log.Printf("Keycloak service failed to start: %v", err)
+		return fmt.Errorf("keycloak service failed to start: %v", err)
+	}
+	log.Printf("Keycloak service started successfully")
+	return nil
+}
+
+func (s *Server) safeStopKaraf() error {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("Recovered from panic in safeStopKaraf: %v", r)
+		}
+	}()
+
+	config.LoadProperties()
+	cfg := config.GetConfig()
+	log.Printf("Attempting to stop Karaf service...")
+	karaf.StopKaraf(cfg.KarafDir)
+	log.Printf("Karaf service stop attempted")
+	return nil
+}
+
+func (s *Server) safeStopPostgreSQL() error {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("Recovered from panic in safeStopPostgreSQL: %v", r)
+		}
+	}()
+
+	config.LoadProperties()
+	cfg := config.GetConfig()
+	log.Printf("Attempting to stop PostgreSQL service...")
+	pgName := "postgres-" + cfg.SchemaName
+	if err := docker.StopDockerInstance(pgName); err != nil {
+		log.Printf("PostgreSQL service failed to stop: %v", err)
+		return fmt.Errorf("postgresql service failed to stop: %v", err)
+	}
+	log.Printf("PostgreSQL service stopped successfully")
+	return nil
+}
+
+func (s *Server) safeStopKeycloak() error {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("Recovered from panic in safeStopKeycloak: %v", r)
+		}
+	}()
+
+	config.LoadProperties()
+	cfg := config.GetConfig()
+	log.Printf("Attempting to stop Keycloak service...")
+	kcName := "keycloak-" + cfg.KeycloakName
+	if err := docker.StopDockerInstance(kcName); err != nil {
+		log.Printf("Keycloak service failed to stop: %v", err)
+		return fmt.Errorf("keycloak service failed to stop: %v", err)
+	}
+	log.Printf("Keycloak service stopped successfully")
+	return nil
 }

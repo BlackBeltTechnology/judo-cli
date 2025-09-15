@@ -81,13 +81,14 @@ func pingOK(cli *client.Client) bool {
 	return err == nil
 }
 
-func pullImage(imageName string) {
+func pullImage(imageName string) error {
 	reader, err := cli.ImagePull(context.Background(), imageName, image.PullOptions{})
 	if err != nil {
-		log.Fatalf("Failed to pull image %s: %v", imageName, err)
+		return fmt.Errorf("failed to pull image %s: %v", imageName, err)
 	}
 	defer reader.Close()
 	io.Copy(os.Stdout, reader)
+	return nil
 }
 
 // IsDockerRunning checks if the Docker daemon is responsive.
@@ -124,20 +125,21 @@ func RemoveDockerInstance(name string) error {
 	}
 	return cli.ContainerRemove(context.Background(), name, container.RemoveOptions{Force: true})
 }
-func CreateDockerNetwork(name string) {
+func CreateDockerNetwork(name string) error {
 	networks, err := cli.NetworkList(context.Background(), network.ListOptions{})
 	if err != nil {
-		log.Fatalf("Failed to list Docker networks: %v", err)
+		return fmt.Errorf("failed to list Docker networks: %v", err)
 	}
 	for _, network := range networks {
 		if network.Name == name {
-			return
+			return nil
 		}
 	}
 	_, err = cli.NetworkCreate(context.Background(), name, network.CreateOptions{})
 	if err != nil {
-		log.Fatalf("Failed to create Docker network: %v", err)
+		return fmt.Errorf("failed to create Docker network: %v", err)
 	}
+	return nil
 }
 
 func RemoveDockerNetwork(name string) error {
@@ -195,25 +197,26 @@ func StopDockerInstance(name string) error {
 	return nil
 }
 
-func ContainerExists(name string) bool {
+func ContainerExists(name string) (bool, error) {
 	containers, err := cli.ContainerList(context.Background(), container.ListOptions{All: true})
 	if err != nil {
-		log.Fatalf("Failed to list Docker containers: %v", err)
+		return false, fmt.Errorf("failed to list Docker containers: %v", err)
 	}
 	for _, c := range containers {
 		for _, n := range c.Names {
 			if strings.TrimPrefix(n, "/") == name {
-				return true
+				return true, nil
 			}
 		}
 	}
-	return false
+	return false, nil
 }
 
-func StartContainer(name string) {
+func StartContainer(name string) error {
 	if err := cli.ContainerStart(context.Background(), name, container.StartOptions{}); err != nil {
-		log.Fatalf("Failed to start container %s: %v", name, err)
+		return fmt.Errorf("failed to start container %s: %v", name, err)
 	}
+	return nil
 }
 
 func StartCompose() {
@@ -225,15 +228,23 @@ func StartCompose() {
 	utils.CheckError(cmd.Run())
 }
 
-func StartPostgres() {
+func StartPostgres() error {
 	cfg := config.GetConfig()
 	fmt.Println("Starting PostgreSQL...")
 	name := "postgres-" + cfg.SchemaName
 	image := "postgres:16.2"
 
-	if !ContainerExists(name) {
-		pullImage(image)
-		CreateDockerNetwork(cfg.AppName)
+	exists, err := ContainerExists(name)
+	if err != nil {
+		return fmt.Errorf("failed to check if container exists: %v", err)
+	}
+	if !exists {
+		if err := pullImage(image); err != nil {
+			return fmt.Errorf("failed to pull image: %v", err)
+		}
+		if err := CreateDockerNetwork(cfg.AppName); err != nil {
+			return fmt.Errorf("failed to create network: %v", err)
+		}
 		resp, err := cli.ContainerCreate(context.Background(), &container.Config{
 			Image: image,
 			Env: []string{
@@ -264,29 +275,40 @@ func StartPostgres() {
 			},
 		}, &network.NetworkingConfig{}, nil, name)
 		if err != nil {
-			log.Fatalf("Failed to create PostgreSQL container: %v", err)
+			return fmt.Errorf("failed to create PostgreSQL container: %v", err)
 		}
 		if err := cli.ContainerStart(context.Background(), resp.ID, container.StartOptions{
 			// Ensure the container starts detached
 		}); err != nil {
-			log.Fatalf("Failed to start PostgreSQL container: %v", err)
+			return fmt.Errorf("failed to start PostgreSQL container: %v", err)
 		}
 	} else {
-		StartContainer(name)
+		if err := StartContainer(name); err != nil {
+			return fmt.Errorf("failed to start existing container: %v", err)
+		}
 	}
 	utils.WaitForPort("localhost", cfg.PostgresPort, 30*utils.TimeSecond)
+	return nil
 }
 
-func StartKeycloak() {
+func StartKeycloak() error {
 	cfg := config.GetConfig()
 	fmt.Println("Starting Keycloak...")
 	name := "keycloak-" + cfg.KeycloakName
 	image := "quay.io/keycloak/keycloak:23.0"
 
-	if !ContainerExists(name) {
-		pullImage(image)
+	exists, err := ContainerExists(name)
+	if err != nil {
+		return fmt.Errorf("failed to check if container exists: %v", err)
+	}
+	if !exists {
+		if err := pullImage(image); err != nil {
+			return fmt.Errorf("failed to pull image: %v", err)
+		}
 		if cfg.DBType == "postgresql" {
-			CreateDockerNetwork(cfg.AppName)
+			if err := CreateDockerNetwork(cfg.AppName); err != nil {
+				return fmt.Errorf("failed to create network: %v", err)
+			}
 		}
 		env := []string{
 			"KEYCLOAK_ADMIN=admin",
@@ -326,12 +348,12 @@ func StartKeycloak() {
 			},
 		}, &network.NetworkingConfig{}, nil, name)
 		if err != nil {
-			log.Fatalf("Failed to create Keycloak container: %v", err)
+			return fmt.Errorf("failed to create Keycloak container: %v", err)
 		}
 		if err := cli.ContainerStart(context.Background(), resp.ID, container.StartOptions{
 			// Ensure the container starts detached
 		}); err != nil {
-			log.Fatalf("Failed to start Keycloak container: %v", err)
+			return fmt.Errorf("failed to start Keycloak container: %v", err)
 		}
 		// Verify the container is running
 		time.Sleep(2 * time.Second) // Give it a moment to stabilize
@@ -339,16 +361,19 @@ func StartKeycloak() {
 			// If it's not running, get the logs to see why it failed.
 			reader, err := cli.ContainerLogs(context.Background(), name, container.LogsOptions{ShowStdout: true, ShowStderr: true})
 			if err != nil {
-				log.Fatalf("Failed to get Keycloak container logs: %v", err)
+				return fmt.Errorf("failed to get Keycloak container logs: %v", err)
 			}
 			defer reader.Close()
 			logs, _ := io.ReadAll(reader)
-			log.Fatalf("Keycloak container failed to start. Logs:\n%s", string(logs))
+			return fmt.Errorf("Keycloak container failed to start. Logs:\n%s", string(logs))
 		}
 	} else {
-		StartContainer(name)
+		if err := StartContainer(name); err != nil {
+			return fmt.Errorf("failed to start existing container: %v", err)
+		}
 	}
 	utils.WaitForPort("localhost", cfg.KeycloakPort, 30*utils.TimeSecond)
+	return nil
 }
 
 // IsPortUsedByKeycloak checks if a port is being used by the current Keycloak Docker container

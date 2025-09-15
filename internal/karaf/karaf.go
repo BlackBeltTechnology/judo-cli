@@ -32,7 +32,7 @@ func KarafRunning(karafDir string) bool {
 	return strings.Contains(out, "Running") && !strings.Contains(out, "Not")
 }
 
-func StartKaraf() {
+func StartKaraf() error {
 	cfg := config.GetConfig()
 	fmt.Println("Starting Karaf...")
 
@@ -61,7 +61,7 @@ func StartKaraf() {
 	)
 	// extract
 	if err := utils.UntarGz(tarPath, karafDir, 1); err != nil {
-		panic(fmt.Sprintf("Failed to extract Karaf archive: %v", err))
+		return fmt.Errorf("failed to extract Karaf archive: %v", err)
 	}
 
 	// Ensure karaf script is executable
@@ -89,8 +89,9 @@ func StartKaraf() {
 	ecmd.Stdout = consoleOut
 	ecmd.Stderr = consoleOut
 	if err := ecmd.Start(); err != nil {
-		panic(fmt.Sprintf("Failed to start Karaf: %v", err))
+		return fmt.Errorf("failed to start Karaf: %v", err)
 	}
 
 	fmt.Printf("Karaf started (pid %d). Logs: %s\n", ecmd.Process.Pid, consoleOut.Name())
+	return nil
 }
