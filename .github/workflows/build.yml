@@ -9,6 +9,9 @@ on:
     branches:
       - develop
 
+permissions:
+  contents: write # Needed for release creation and changelog
+
 jobs:
   test:
     name: Test
