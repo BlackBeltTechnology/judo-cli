@@ -1,0 +1,90 @@
+openapi: 3.0.0
+info:
+  title: JUDO CLI Server API
+  version: 1.0.0
+  description: API for the browser-based interactive CLI server.
+
+paths:
+  /api/status:
+    get:
+      summary: Get application status
+      responses:
+        '200':
+          description: Application status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+
+  /api/commands/{command}:
+    post:
+      summary: Execute a session or project command
+      parameters:
+        - name: command
+          in: path
+          required: true
+          schema:
+            type: string
+            enum:
+              - help
+              - exit
+              - quit
+              - clear
+              - history
+              - status
+              - doctor
+              - init
+              - build
+              - start
+              - stop
+              - clean
+              - generate
+              - dump
+              - import
+              - update
+              - prune
+              - reckless
+              - self-update
+      responses:
+        '200':
+          description: Command output
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  output:
+                    type: string
+                  error:
+                    type: string
+
+  /api/actions/start:
+    post:
+      summary: Start the application
+      responses:
+        '200':
+          description: Application started
+
+  /api/logs/{service}:
+    get:
+      summary: Tail the logs of a specific service
+      parameters:
+        - name: service
+          in: path
+          required: true
+          schema:
+            type: string
+            enum:
+              - postgresql
+              - karaf
+              - keycloak
+      responses:
+        '200':
+          description: A stream of log messages
+          content:
+            text/event-stream:
+              schema:
+                type: string
