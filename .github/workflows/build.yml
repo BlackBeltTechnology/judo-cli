@@ -470,11 +470,13 @@ jobs:
             echo "Release failed but version management completed successfully." >> $GITHUB_STEP_SUMMARY
           else
             echo "💥 **Overall Status**: COMPLETE FAILURE" >> $GITHUB_STEP_SUMMARY
-            echo "Both release creation and version management failed." >> $GITHUB_STEP_SUMMARY
+            echo "Both release creation and version management failed or were skipped." >> $GITHUB_STEP_SUMMARY
           fi
 
-          # Set final exit code based on release job status
-          if [[ "${{ needs.build-master.result }}" != "success" ]]; then
+          # Fail only if release job explicitly failed
+          if [[ "${{ needs.build-master.result }}" == "failure" ]]; then
             echo "::error::Release workflow failed"
             exit 1
+          else
+            echo "✅ Release job was either successful or skipped. No failure detected."
           fi
