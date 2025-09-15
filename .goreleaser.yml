@@ -69,11 +69,12 @@ changelog:
     # Changelog
     Initial release - {{ .Date }}
     {{ end }}
+
     Version: {{ .Major }}.{{ .Minor }}.{{ .Patch }}{{ if (contains .Tag "-") }} - Pre-release{{ end }}
-    {{ range .Commits }}
+
+    {{ range .Changelog.Commits }}
     ---
-    {{ .Message }}
-    {{ if .Author.Name }} ({{ .Author.Name }}){{ end }}
+    {{ .Message }}{{ if .Author.Name }} ({{ .Author.Name }}){{ end }}
     {{ end }}
     ---
 
