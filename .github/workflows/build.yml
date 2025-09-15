@@ -136,11 +136,12 @@ jobs:
           git tag -fa "$TAG" -m "Dev snapshot $TAG" "$(git rev-parse HEAD)"
           echo "GORELEASER_CURRENT_TAG=$TAG" >> $GITHUB_ENV
 
-      # - name: Push snapshot tag
-      #   run: |
-      #     git config user.name "github-actions[bot]"
-      #     git config user.email "github-actions[bot]@users.noreply.github.com"
-      #     git push origin ${{ steps.version.outputs.tag_name }}
+      - name: Push snapshot tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag ${{ steps.version.outputs.tag_name }}
+          git push origin ${{ steps.version.outputs.tag_name }}
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -374,6 +375,12 @@ jobs:
       #       dist/checksums.txt
       #       dist/homebrew/*.rb
       #       RELEASE_NOTES.md
+
+      - name: Remove remote tag on failure
+        if: failure() && steps.version.outputs.tag_name != ''
+        run: |
+          echo "GoReleaser failed, removing remote tag: ${{ steps.version.outputs.tag_name }}"
+          git push --delete origin ${{ steps.version.outputs.tag_name }} || echo "Tag already removed or not found"
 
       - name: Cleanup local tag if build failed
         if: failure()
