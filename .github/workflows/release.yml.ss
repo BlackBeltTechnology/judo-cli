@@ -26,8 +26,8 @@ jobs:
           # Fetch all tags for proper version validation
           fetch-tags: true
 
-      - name: Fetch all tags explicitly
-        run: git fetch --tags --force
+      # - name: Fetch all tags explicitly
+      #   run: git fetch --tags --force
 
       - name: Validate tag format and existence
         run: |
@@ -161,15 +161,15 @@ jobs:
             echo "$UNTRACKED"
           fi
 
-          # Verify tag points to current commit
-          TAG_NAME="${{ steps.tag_version.outputs.tag }}"
-          CURRENT_COMMIT=$(git rev-parse HEAD)
-          TAG_COMMIT=$(git rev-parse "$TAG_NAME")
+          # # Verify tag points to current commit
+          # TAG_NAME="${{ steps.tag_version.outputs.tag }}"
+          # CURRENT_COMMIT=$(git rev-parse HEAD)
+          # TAG_COMMIT=$(git rev-parse "$TAG_NAME")
 
-          if [[ "$CURRENT_COMMIT" != "$TAG_COMMIT" ]]; then
-            echo "::error::Current commit ($CURRENT_COMMIT) doesn't match tag commit ($TAG_COMMIT)"
-            exit 1
-          fi
+          # if [[ "$CURRENT_COMMIT" != "$TAG_COMMIT" ]]; then
+          #   echo "::error::Current commit ($CURRENT_COMMIT) doesn't match tag commit ($TAG_COMMIT)"
+          #   exit 1
+          # fi
 
           echo "✅ Git state is clean and ready for GoReleaser"
 
@@ -221,6 +221,15 @@ jobs:
           TAG_NAME="${{ steps.tag_version.outputs.tag }}"
           echo "Generating release notes for tag: $TAG_NAME"
 
+          # Check if RELEASE_NOTES.md was created and has content
+          if [[ -f "RELEASE_NOTES.md" && -s "RELEASE_NOTES.md" ]]; then
+            echo "Existing RELEASE_NOTES.md found, backing up to RELEASE_NOTES_PREV.md"
+            mv RELEASE_NOTES.md RELEASE_NOTES_PREV.md
+          else
+            echo "No existing RELEASE_NOTES_PREV.md found, creating new one"
+            echo "" > RELEASE_NOTES_PREV.md
+          fi
+
           # Get previous RELEASE tag (not snapshot) for changelog range
           # List all tags, filter out snapshots, sort by version, and get the one before current
           PREVIOUS_TAG=$(git tag -l "v*" | grep -E "^v[0-9]+\\.[0-9]+\\.[0-9]+$" | grep -v "snapshot" | sort -V | grep -B 1 "^$TAG_NAME$" | head -1)
@@ -240,7 +249,6 @@ jobs:
           echo "" >> temp_notes.md
           echo "## Changes" >> temp_notes.md
           echo "" >> temp_notes.md
-          cat RELEASE_NOTES.md >> temp_notes.md
           mv temp_notes.md RELEASE_NOTES.md
 
           echo "✅ RELEASE_NOTES.md generated successfully"
@@ -273,39 +281,50 @@ jobs:
             # Don't exit with error here to allow post-release steps to run
           fi
 
-      - name: Commit RELEASE_NOTES.md
-        if: success()
-        run: |
-          set -e
-          # Check if RELEASE_NOTES.md was created and has content
-          if [[ -f "RELEASE_NOTES.md" && -s "RELEASE_NOTES.md" ]]; then
-            echo "Committing RELEASE_NOTES.md..."
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: judo-build-${{ steps.version.outputs.base_version }}
+          path: |
+            dist/*.tar.gz
+            dist/*.zip
+            dist/checksums.txt
+            dist/homebrew/*.rb
+            RELEASE_NOTES.md
 
-            # Verify we're still on the correct commit (tag commit)
-            TAG_NAME="${{ steps.tag_version.outputs.tag }}"
-            EXPECTED_COMMIT=$(git rev-parse "$TAG_NAME")
-            CURRENT_COMMIT=$(git rev-parse HEAD)
+      # - name: Commit RELEASE_NOTES.md
+      #   if: success()
+      #   run: |
+      #     set -e
+      #     # Check if RELEASE_NOTES.md was created and has content
+      #     if [[ -f "RELEASE_NOTES.md" && -s "RELEASE_NOTES.md" ]]; then
+      #       echo "Committing RELEASE_NOTES.md..."
 
-            if [[ "$CURRENT_COMMIT" != "$EXPECTED_COMMIT" ]]; then
-              echo "::warning::Current commit ($CURRENT_COMMIT) doesn't match tag commit ($EXPECTED_COMMIT), skipping RELEASE_NOTES.md commit"
-              exit 0
-            fi
+      #       # Verify we're still on the correct commit (tag commit)
+      #       TAG_NAME="${{ steps.tag_version.outputs.tag }}"
+      #       EXPECTED_COMMIT=$(git rev-parse "$TAG_NAME")
+      #       CURRENT_COMMIT=$(git rev-parse HEAD)
 
-            git config --local user.email "action@github.com"
-            git config --local user.name "GitHub Action"
+      #       if [[ "$CURRENT_COMMIT" != "$EXPECTED_COMMIT" ]]; then
+      #         echo "::warning::Current commit ($CURRENT_COMMIT) doesn't match tag commit ($EXPECTED_COMMIT), skipping RELEASE_NOTES.md commit"
+      #         exit 0
+      #       fi
 
-            git add RELEASE_NOTES.md
+      #       git config --local user.email "action@github.com"
+      #       git config --local user.name "GitHub Action"
 
-            # Check if there are changes to commit
-            if ! git diff --cached --quiet; then
-              git commit -m "docs: update release notes from git log for ${{ steps.tag_version.outputs.tag }}"
-              echo "✅ Committed RELEASE_NOTES.md"
-            else
-              echo "No changes to RELEASE_NOTES.md to commit"
-            fi
-          else
-            echo "RELEASE_NOTES.md not found or empty, skipping commit"
-          fi
+      #       git add RELEASE_NOTES.md
+
+      #       # Check if there are changes to commit
+      #       if ! git diff --cached --quiet; then
+      #         git commit -m "docs: update release notes from git log for ${{ steps.tag_version.outputs.tag }}"
+      #         echo "✅ Committed RELEASE_NOTES.md"
+      #       else
+      #         echo "No changes to RELEASE_NOTES.md to commit"
+      #       fi
+      #     else
+      #       echo "RELEASE_NOTES.md not found or empty, skipping commit"
+      #     fi
 
       - name: Upload release notes artifact
         if: always()
@@ -313,6 +332,14 @@ jobs:
         with:
           name: release-notes
           path: RELEASE_NOTES.md
+          retention-days: 1
+
+      - name: Upload previous release notes artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-notes-previous
+          path: RELEASE_NOTES_PREV.md
           retention-days: 1
 
   post-release:
@@ -338,6 +365,12 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: release-notes
+          path: .
+
+      - name: Download release notes artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: release-notes-previous
           path: .
 
       - name: Extract current version from tag with fallback
@@ -421,7 +454,24 @@ jobs:
 
           echo "next_version=${NEXT_VERSION}" >> $GITHUB_OUTPUT
 
-      - name: Commit release notes to develop branch
+      - name: Append previous RELEASE_NOTES.md to current RELEASE_NOTES.md
+        run: |
+          set -e
+          if [[ -f "RELEASE_NOTES_PREV.md" && -s "RELEASE_NOTES_PREV.md" ]]; then
+            echo "Appending previous RELEASE_NOTES_PREV.md to current RELEASE_NOTES.md"
+            {
+              echo ""
+              echo ""
+              echo "###"
+              echo ""
+              cat RELEASE_NOTES_PREV.md
+            } >> RELEASE_NOTES.md
+            echo "✅ Appended previous release notes"
+          else
+            echo "No previous RELEASE_NOTES_PREV.md found or it's empty, skipping append"
+          fi
+
+      - name: Commit release notes and version to develop branch
         run: |
           set -e
           echo "Checking if RELEASE_NOTES.md should be committed to develop branch"

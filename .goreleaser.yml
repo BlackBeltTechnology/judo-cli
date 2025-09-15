@@ -59,9 +59,23 @@ snapshot:
 # using GoReleaser's changelog functionality
 
 changelog:
-  sort: desc
-  use: git
-
+  use: github
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:" # exclude documentation changes
+      - "^test:" # exclude test changes
+      - "^chore:" # exclude chores
+  groups:
+    - title: "🚀 Features"
+      regexp: '^feat(\(.+\))?:'
+      order: 0
+    - title: "🐛 Bug Fixes"
+      regexp: '^fix(\(.+\))?:'
+      order: 1
+    - title: "Other Changes"
+      order: 999
+  format: "{{ .SHA }}: {{ .Message }} ({{ with .AuthorUsername }}@{{ . }}{{ else }}{{ .AuthorName }} <{{ .AuthorEmail }}>{{ end }}))"
 release:
   # Repository to release to.
   github:
@@ -83,7 +97,7 @@ release:
 
   # Release footer template.
   footer: |
-    ## Docker Images
+    ## JUDO CLI {{ .Tag }}
 
     **Full Changelog**: https://github.com/BlackBeltTechnology/judo-cli/compare/{{ .PreviousTag }}...{{ .Tag }}
 
@@ -102,37 +116,37 @@ release:
     #### Linux (x86_64)
     ```bash
     # Using curl
-    curl -L https://github.com/BlackBeltTechnology/judo-cli/releases/latest/download/judo_Linux_x86_64.tar.gz | tar xz
+    curl -L https://github.com/BlackBeltTechnology/judo-cli/releases/{{ .Tag }}/download/judo_Linux_x86_64.tar.gz | tar xz
     sudo mv judo /usr/local/bin/
 
     # Using wget
-    wget https://github.com/BlackBeltTechnology/judo-cli/releases/latest/download/judo_Linux_x86_64.tar.gz
+    wget https://github.com/BlackBeltTechnology/judo-cli/releases/{{ .Tag }}/download/judo_Linux_x86_64.tar.gz
     tar xzf judo_Linux_x86_64.tar.gz
     sudo mv judo /usr/local/bin/
     ```
 
     #### Linux (ARM64)
     ```bash
-    curl -L https://github.com/BlackBeltTechnology/judo-cli/releases/latest/download/judo_Linux_arm64.tar.gz | tar xz
+    curl -L https://github.com/BlackBeltTechnology/judo-cli/releases/{{ .Tag }}/download/judo_Linux_arm64.tar.gz | tar xz
     sudo mv judo /usr/local/bin/
     ```
 
     #### macOS (Intel)
     ```bash
-    curl -L https://github.com/BlackBeltTechnology/judo-cli/releases/latest/download/judo_Darwin_x86_64.tar.gz | tar xz
+    curl -L https://github.com/BlackBeltTechnology/judo-cli/releases/{{ .Tag }}/download/judo_Darwin_x86_64.tar.gz | tar xz
     sudo mv judo /usr/local/bin/
     ```
 
     #### macOS (Apple Silicon)
     ```bash
-    curl -L https://github.com/BlackBeltTechnology/judo-cli/releases/latest/download/judo_Darwin_arm64.tar.gz | tar xz
+    curl -L https://github.com/BlackBeltTechnology/judo-cli/releases/{{ .Tag }}/download/judo_Darwin_arm64.tar.gz | tar xz
     sudo mv judo /usr/local/bin/
     ```
 
     #### Windows (x86_64)
     ```powershell
     # Using PowerShell
-    Invoke-WebRequest -Uri "https://github.com/BlackBeltTechnology/judo-cli/releases/latest/download/judo_Windows_x86_64.zip" -OutFile "judo.zip"
+    Invoke-WebRequest -Uri "https://github.com/BlackBeltTechnology/judo-cli/releases/{{ .Tag }}/download/judo_Windows_x86_64.zip" -OutFile "judo.zip"
     Expand-Archive judo.zip -DestinationPath .
     # Move judo.exe to a directory in your PATH
     ```
@@ -142,7 +156,7 @@ brews:
     repository:
       owner: BlackBeltTechnology
       name: homebrew-tap
-      branch: main
+      branch: master
       token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
     url_template: "https://github.com/BlackBeltTechnology/judo-cli/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
     commit_author:
@@ -155,8 +169,6 @@ brews:
     skip_upload: auto
     dependencies:
       - name: docker
-        type: optional
-      - name: maven
         type: optional
     install: |
       bin.install "judo"

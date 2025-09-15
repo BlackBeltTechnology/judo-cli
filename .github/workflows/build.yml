@@ -9,6 +9,9 @@ on:
     branches:
       - develop
 
+permissions:
+  contents: write # Needed for release creation and changelog
+
 jobs:
   test:
     name: Test
@@ -21,6 +24,13 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          fetch-tags: true # Ensure all tags are available
+
+      - name: Clean Go Module Cache
+        run: |
+          echo "Cleaning Go module cache to avoid conflicts..."
+          sudo chmod -R u+w /home/builder/go/pkg/mod || true
+          rm -rf /home/builder/go/pkg/mod
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -42,7 +52,7 @@ jobs:
           fi
 
   build-snapshot:
-    name: Build Snapshot (Develop)
+    name: Build Snapshot (Develop and Feature branches)
     runs-on: judong
     if: github.ref == 'refs/heads/develop'
     needs: test
@@ -51,172 +61,508 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          fetch-tags: true # Ensure all tags are available
+
+      - name: Get versions
+        id: version
+        run: |
+          chmod +x scripts/version.sh
+
+          # Get base version from your script
+          BASE_VERSION=$(scripts/version.sh get)
+
+          # Generate timestamp for snapshot version (UTC format: YYYYMMDDHHMMSS)
+          TIMESTAMP=$(date -u +"%Y%m%d%H%M%S")
+
+          # Construct snapshot version and tag name
+          SNAPSHOT_VERSION="${BASE_VERSION}-snapshot-${TIMESTAMP}"
+          TAG_NAME="v${SNAPSHOT_VERSION}"
+
+          echo "Base Version: ${BASE_VERSION}"
+          echo "Snapshot Version: ${SNAPSHOT_VERSION}"
+          echo "Tag Name: ${TAG_NAME}"
+
+          # Export to GitHub Actions outputs
+          echo "base_version=${BASE_VERSION}" >> $GITHUB_OUTPUT
+          echo "snapshot_version=${SNAPSHOT_VERSION}" >> $GITHUB_OUTPUT
+          echo "tag_name=${TAG_NAME}" >> $GITHUB_OUTPUT
+
+          # Export environment variable for GoReleaser
+          echo "GORELEASER_CURRENT_TAG=${TAG_NAME}" >> $GITHUB_ENV
+
+      - name: Fetch all tags
+        run: |
+          git fetch --prune --tags --force
+          git fetch --tags --force
+          git tag -l
+          git log --oneline --decorate -n 10
+
+      - name: Create local tag for GoReleaser
+        run: |
+          set -e
+          TAG="${{ steps.version.outputs.tag_name }}"
+          # Recreate the tag locally so it points to the current commit
+          git tag -fa "$TAG" -m "Dev snapshot $TAG" "$(git rev-parse HEAD)"
+          echo "GORELEASER_CURRENT_TAG=$TAG" >> $GITHUB_ENV
+
+      - name: Push snapshot tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Remove local tag if it already exists
+          git tag -d ${{ steps.version.outputs.tag_name }} 2>/dev/null || echo "No existing local tag"
+
+          # Create new tag
+          git tag ${{ steps.version.outputs.tag_name }}
+
+          # Push to remote (force overwrite if needed)
+          git push origin ${{ steps.version.outputs.tag_name }} --force
+
+      - name: Debug tags
+        run: |
+          git fetch --tags
+          echo "Tags after push:"
+          git tag -l
+          echo "Commits:"
+          # Get previous RELEASE tag (not snapshot or current tag) for changelog range
+          PREVIOUS_TAG=$(git tag -l "v*" | grep -E "^v[0-9]+\\.[0-9]+\\.[0-9]+$" \
+                         | grep -v "snapshot" \
+                         | grep -v "^$TAG_NAME$" \
+                         | sort -V | tail -1)
+
+          if [[ -n "$PREVIOUS_TAG" ]]; then
+            echo "Generating changelog from last release $PREVIOUS_TAG to current commit"
+            git log --no-merges --no-decorate --pretty=format:"---%n%H%n%B" "$PREVIOUS_TAG..HEAD"
+          else
+            echo "No previous release tag found, generating recent changelog"
+            git log --no-merges --no-decorate --pretty=format:"---%n%H%n%B" -n 100
+          fi
+
+      - name: Determine previous stable tag
+        id: previous_tag
+        run: |
+          # Find the last stable (non-snapshot) tag
+          PREVIOUS_TAG=$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' \
+                         | grep -v '\-snapshot' \
+                         | sort -V \
+                         | tail -1)
+
+          if [[ -z "$PREVIOUS_TAG" ]]; then
+            echo "No previous stable tag found."
+            PREVIOUS_TAG="v0.0.0" # Fallback for first release
+          fi
+
+          echo "Previous stable tag: $PREVIOUS_TAG"
+          echo "previous_tag=$PREVIOUS_TAG" >> $GITHUB_OUTPUT
+
+      - name: Clean Go Module Cache
+        run: |
+          echo "Cleaning Go module cache to avoid conflicts..."
+          sudo chmod -R u+w /home/builder/go/pkg/mod || true
+          rm -rf /home/builder/go/pkg/mod
 
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version: "1.25"
 
-      - name: Get base version
-        id: version
-        run: |
-          chmod +x scripts/version.sh
-          BASE_VERSION=$(scripts/version.sh get)
-          echo "base_version=${BASE_VERSION}" >> $GITHUB_OUTPUT
-          echo "GORELEASER_CURRENT_TAG=v${BASE_VERSION}" >> $GITHUB_ENV
+      - name: Run GoReleaser (Snapshot Release)
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: "~> v2"
+          args: release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GORELEASER_CURRENT_TAG: ${{ steps.version.outputs.tag_name }}
+          GORELEASER_PREVIOUS_TAG: ${{ steps.previous_tag.outputs.previous_tag }}
+          GORELEASER_LOG: debug # <-- Enable debug mode here
 
-      - name: Generate release notes using git log
+      # - name: Remove remote tag
+      #   if: always() && steps.version.outputs.tag_name != ''
+      #   run: |
+      #     echo "GoReleaser failed, removing remote tag: ${{ steps.version.outputs.tag_name }}"
+      #     git push --delete origin ${{ steps.version.outputs.tag_name }} || echo "Tag already removed or not found"
+
+      - name: Cleanup local tag if build failed
+        if: failure()
         run: |
           set -e
           BASE_VERSION="${{ steps.version.outputs.base_version }}"
           TAG_NAME="v${BASE_VERSION}"
-          echo "Generating release notes for version: $BASE_VERSION"
 
+          # Only delete if it's a local tag (not pushed to remote)
+          if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
+            # Check if tag exists on remote
+            if ! git ls-remote --tags origin "refs/tags/$TAG_NAME" | grep -q "$TAG_NAME"; then
+              echo "Deleting local tag $TAG_NAME (build failed)"
+              git tag -d "$TAG_NAME"
+            else
+              echo "Tag $TAG_NAME exists on remote, skipping cleanup"
+            fi
+          fi
+
+  build-master:
+    name: Build Release (Master Branch)
+    runs-on: judong
+    if: github.ref == 'refs/heads/master'
+    needs: test
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true # Ensure all tags are available
+
+      - name: Get versions
+        id: version
+        run: |
+          chmod +x scripts/version.sh
+
+          # Get base version from your script
+          BASE_VERSION=$(scripts/version.sh get)
+
+          # Generate timestamp for snapshot version (UTC format: YYYYMMDDHHMMSS)
+          TIMESTAMP=$(date -u +"%Y%m%d%H%M%S")
+
+          # Construct snapshot version and tag name
+          SNAPSHOT_VERSION="${BASE_VERSION}-snapshot-${TIMESTAMP}"
+          TAG_NAME="v${SNAPSHOT_VERSION}"
+
+          echo "Base Version: ${BASE_VERSION}"
+          echo "Snapshot Version: ${SNAPSHOT_VERSION}"
+          echo "Tag Name: ${TAG_NAME}"
+
+          # Export to GitHub Actions outputs
+          echo "base_version=${BASE_VERSION}" >> $GITHUB_OUTPUT
+          echo "snapshot_version=${SNAPSHOT_VERSION}" >> $GITHUB_OUTPUT
+          echo "tag_name=${TAG_NAME}" >> $GITHUB_OUTPUT
+
+          # Export environment variable for GoReleaser
+          echo "GORELEASER_CURRENT_TAG=${TAG_NAME}" >> $GITHUB_ENV
+
+      - name: Fetch all tags
+        run: |
+          git fetch --prune --tags --force
+          git fetch --tags --force
+          git tag -l
+          git log --oneline --decorate -n 10
+
+      - name: Create local tag for GoReleaser
+        run: |
+          set -e
+          TAG="${{ steps.version.outputs.tag_name }}"
+          # Recreate the tag locally so it points to the current commit
+          git tag -fa "$TAG" -m "Dev snapshot $TAG" "$(git rev-parse HEAD)"
+          echo "GORELEASER_CURRENT_TAG=$TAG" >> $GITHUB_ENV
+
+      - name: Push snapshot tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Remove local tag if it already exists
+          git tag -d ${{ steps.version.outputs.tag_name }} 2>/dev/null || echo "No existing local tag"
+
+          # Create new tag
+          git tag ${{ steps.version.outputs.tag_name }}
+
+          # Push to remote (force overwrite if needed)
+          git push origin ${{ steps.version.outputs.tag_name }} --force
+
+      - name: Debug tags
+        run: |
+          git fetch --tags
+          echo "Tags after push:"
+          git tag -l
+          echo "Commits:"
           # Get previous RELEASE tag (not snapshot or current tag) for changelog range
-          # List all tags, filter out snapshots and current tag, sort by version, and get the latest release
-          PREVIOUS_TAG=$(git tag -l "v*" | grep -E "^v[0-9]+\\.[0-9]+\\.[0-9]+$" | grep -v "snapshot" | grep -v "^$TAG_NAME$" | sort -V | tail -1)
+          PREVIOUS_TAG=$(git tag -l "v*" | grep -E "^v[0-9]+\\.[0-9]+\\.[0-9]+$" \
+                         | grep -v "snapshot" \
+                         | grep -v "^$TAG_NAME$" \
+                         | sort -V | tail -1)
 
           if [[ -n "$PREVIOUS_TAG" ]]; then
             echo "Generating changelog from last release $PREVIOUS_TAG to current commit"
-            git log --no-merges --no-decorate --pretty=format:"---%n%H%n%B" "$PREVIOUS_TAG..HEAD" > RELEASE_NOTES.md
+            git log --no-merges --no-decorate --pretty=format:"---%n%H%n%B" "$PREVIOUS_TAG..HEAD"
           else
             echo "No previous release tag found, generating recent changelog"
-            git log --no-merges --no-decorate --pretty=format:"---%n%H%n%B" -n 20 > RELEASE_NOTES.md
+            git log --no-merges --no-decorate --pretty=format:"---%n%H%n%B" -n 100
           fi
 
-          # Add header
-          echo "# Development Snapshot - $TAG_NAME" > temp_notes.md
-          echo "" >> temp_notes.md
-          echo "**Build Date**: $(date +%Y-%m-%d)" >> temp_notes.md
-          echo "**Branch**: develop" >> temp_notes.md
-          echo "" >> temp_notes.md
-          echo "## Recent Changes" >> temp_notes.md
-          echo "" >> temp_notes.md
-          cat RELEASE_NOTES.md >> temp_notes.md
-          mv temp_notes.md RELEASE_NOTES.md
+      - name: Determine previous stable tag
+        id: previous_tag
+        run: |
+          # Find the last stable (non-snapshot) tag
+          PREVIOUS_TAG=$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' \
+                         | grep -v '\-snapshot' \
+                         | sort -V \
+                         | tail -1)
 
-          echo "✅ RELEASE_NOTES.md generated successfully"
-          echo "Release notes content preview:"
-          head -20 RELEASE_NOTES.md
+          if [[ -z "$PREVIOUS_TAG" ]]; then
+            echo "No previous stable tag found."
+            PREVIOUS_TAG="v0.0.0" # Fallback for first release
+          fi
+
+          echo "Previous stable tag: $PREVIOUS_TAG"
+          echo "previous_tag=$PREVIOUS_TAG" >> $GITHUB_OUTPUT
+
+      - name: Clean Go Module Cache
+        run: |
+          echo "Cleaning Go module cache to avoid conflicts..."
+          sudo chmod -R u+w /home/builder/go/pkg/mod || true
+          rm -rf /home/builder/go/pkg/mod
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
 
       - name: Run GoReleaser (Snapshot Release)
         uses: goreleaser/goreleaser-action@v6
         with:
           distribution: goreleaser
           version: "~> v2"
-          args: release --snapshot --clean
+          args: release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GORELEASER_CURRENT_TAG: ${{ steps.version.outputs.tag_name }}
+          GORELEASER_PREVIOUS_TAG: ${{ steps.previous_tag.outputs.previous_tag }}
+          GORELEASER_LOG: debug # <-- Enable debug mode here
+
+      - name: Remove remote tag
+        if: always() && steps.version.outputs.tag_name != ''
+        run: |
+          echo "GoReleaser failed, removing remote tag: ${{ steps.version.outputs.tag_name }}"
+          git push --delete origin ${{ steps.version.outputs.tag_name }} || echo "Tag already removed or not found"
+
+      - name: Cleanup local tag if build failed
+        if: failure()
+        run: |
+          set -e
+          BASE_VERSION="${{ steps.version.outputs.base_version }}"
+          TAG_NAME="v${BASE_VERSION}"
+
+          # Only delete if it's a local tag (not pushed to remote)
+          if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
+            # Check if tag exists on remote
+            if ! git ls-remote --tags origin "refs/tags/$TAG_NAME" | grep -q "$TAG_NAME"; then
+              echo "Deleting local tag $TAG_NAME (build failed)"
+              git tag -d "$TAG_NAME"
+            else
+              echo "Tag $TAG_NAME exists on remote, skipping cleanup"
+            fi
+          fi
+
+  post-release:
+    name: Post-Release Version Increment
+    runs-on: judong
+    needs: build-master
+    if: github.ref == 'refs/heads/master'
+    steps:
+      - name: Checkout develop branch
+        uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure Git
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+
+      # - name: Download release notes artifact
+      #   uses: actions/download-artifact@v4
+      #   with:
+      #     name: release-notes
+      #     path: .
+
+      # - name: Download release notes artifact
+      #   uses: actions/download-artifact@v4
+      #   with:
+      #     name: release-notes-previous
+      #     path: .
+
+      - name: Extract current version from tag with fallback
+        id: current_version
+        run: |
+          set -e
+          # Try to get version from tag first
+          TAG_NAME="${GITHUB_REF#refs/tags/}"
+          if [[ -n "$TAG_NAME" ]]; then
+            VERSION="${TAG_NAME#v}"
+            echo "Using version from tag: $VERSION"
+          else
+            # Fallback to VERSION file if tag is not available
+            if [[ -f "VERSION" ]]; then
+              VERSION=$(cat VERSION | tr -d '[:space:]')
+              echo "Using version from VERSION file: $VERSION"
+            else
+              echo "::error::Cannot determine version - no tag and no VERSION file"
+              exit 1
+            fi
+          fi
+
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Increment version for next development cycle with validation
+        id: next_version
+        run: |
+          set -e
+          CURRENT_VERSION="${{ steps.current_version.outputs.version }}"
+
+          echo "Current version: $CURRENT_VERSION"
+          echo "Incrementing patch version for next development cycle..."
+
+          # Validate version.sh script
+          if [[ ! -f "scripts/version.sh" ]]; then
+            echo "::error::version.sh script not found"
+            exit 1
+          fi
+
+          chmod +x scripts/version.sh
+
+          # Set current version first
+          scripts/version.sh set "$CURRENT_VERSION"
+
+          # Verify current version was set correctly
+          VERIFIED_VERSION=$(scripts/version.sh get)
+          if [[ "$VERIFIED_VERSION" != "$CURRENT_VERSION" ]]; then
+            echo "::error::Failed to set current version. Expected: $CURRENT_VERSION, Got: $VERIFIED_VERSION"
+            exit 1
+          fi
+
+          # Increment patch version and capture only the version (last line of output)
+          NEXT_VERSION=$(scripts/version.sh increment patch --commit | tail -1)
+
+          # Verify increment worked and output is a valid version
+          if [[ -z "$NEXT_VERSION" || ! "$NEXT_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Version increment failed - invalid output from version.sh: '$NEXT_VERSION'"
+            exit 1
+          fi
+
+          echo "✅ Next development version: $NEXT_VERSION"
+
+          # Verify the new version is greater than the released version
+          RELEASED_VERSION="${{ steps.current_version.outputs.version }}"
+          echo "Released version: $RELEASED_VERSION"
+          echo "Next version: $NEXT_VERSION"
+
+          # Compare versions semantically
+          IFS='.' read -ra RELEASED_VER <<< "$RELEASED_VERSION"
+          IFS='.' read -ra NEXT_VER <<< "$NEXT_VERSION"
+
+          for i in 0 1 2; do
+            if [[ "${NEXT_VER[$i]}" -gt "${RELEASED_VER[$i]}" ]]; then
+              echo "✅ Version properly incremented: $RELEASED_VERSION -> $NEXT_VERSION"
+              break
+            elif [[ "${NEXT_VER[$i]}" -lt "${RELEASED_VER[$i]}" ]]; then
+              echo "::error::Version not properly incremented. Next version $NEXT_VERSION should be greater than released version $RELEASED_VERSION"
+              exit 1
+            fi
+          done
+
+          echo "next_version=${NEXT_VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Push version increment to develop with validation
+        run: |
+          set -e
+          echo "Pushing version increment to develop branch..."
+
+          # Verify we're on develop branch
+          CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+          if [[ "$CURRENT_BRANCH" != "develop" ]]; then
+            echo "::error::Expected to be on develop branch, but currently on: $CURRENT_BRANCH"
+            exit 1
+          fi
+
+          # Verify there are changes to push
+          if git diff --quiet origin/develop..HEAD; then
+            echo "No changes to push - version already up to date"
+          else
+            # Push with retry logic
+          for i in $(seq 1 ${{ env.MAX_RETRIES }}); do
+            echo "Push attempt $i/${{ env.MAX_RETRIES }}"
+            if git push origin develop; then
+              echo "✅ Successfully pushed to develop branch"
+              break
+            else
+              echo "::warning::Push failed (attempt $i/${{ env.MAX_RETRIES }}), retrying in ${{ env.RETRY_DELAY }} seconds..."
+              if [[ $i -eq ${{ env.MAX_RETRIES }} ]]; then
+                echo "::error::Failed to push to develop branch after ${{ env.MAX_RETRIES }} attempts"
+                exit 1
+              fi
+              sleep ${{ env.RETRY_DELAY }}
+            fi
+          done
+          fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Get snapshot version and create release
-        id: create-release
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const { owner, repo } = context.repo;
-            const fs = require('fs');
-            const commitSha = '${{ github.sha }}';
+      - name: Create comprehensive release summary
+        run: |
+          set -e
+          echo "## Release Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
 
-             // Generate snapshot version
-            const baseVersion = '${{ steps.version.outputs.base_version }}';
-            const timestamp = new Date().toISOString().replace(/[-:T]/g, '').substring(0, 14);
-            const snapshotVersion = `${baseVersion}-snapshot-${timestamp}`;
-            const tagName = `v${snapshotVersion}`;
+          if [[ "${{ needs.release.result }}" == "success" ]]; then
+            echo "✅ **Release Status**: SUCCESS" >> $GITHUB_STEP_SUMMARY
+            echo "- **Released Version**: ${{ steps.current_version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+            echo "- **Release Tag**: ${{ github.ref }}" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Release Status**: FAILED" >> $GITHUB_STEP_SUMMARY
+            echo "- **Attempted Version**: ${{ steps.current_version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+            echo "- **Error**: GoReleaser execution failed" >> $GITHUB_STEP_SUMMARY
+          fi
 
-            console.log(`Creating snapshot release: ${tagName}`);
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Development Cycle" >> $GITHUB_STEP_SUMMARY
+          echo "- **Next Development Version**: ${{ steps.next_version.outputs.next_version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Branch Updated**: develop" >> $GITHUB_STEP_SUMMARY
 
-            // Read RELEASE_NOTES.md content for release body
-            let releaseBody = `**⚠️ Development Snapshot Build**\n\n` +
-            `This is an automated development build from the \`develop\` branch.\n\n` +
-            `**Build Info:**\n` +
-            `- Version: ${tagName}\n` +
-            `- Branch: develop\n` +
-            `- Commit: ${commitSha}\n` +
-            `- Built: ${new Date().toISOString()}\n\n` +
-            `**⚠️ This is a pre-release version intended for testing and development only.**\n\n` +
-            `**Installation:**\n` +
-            `Download the appropriate binary for your platform from the assets below.`;
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Workflow Details" >> $GITHUB_STEP_SUMMARY
+          echo "- **Workflow Run**: [#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_STEP_SUMMARY
+          echo "- **Triggered By**: ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit**: [${{ github.sha }}](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})" >> $GITHUB_STEP_SUMMARY
 
-            try {
-              if (fs.existsSync('./RELEASE_NOTES.md')) {
-                const releaseNotes = fs.readFileSync('./RELEASE_NOTES.md', 'utf8');
-                if (releaseNotes.trim()) {
-                  releaseBody = releaseNotes;
-                  console.log('Using RELEASE_NOTES.md content as release body');
-                }
-              }
-            } catch (error) {
-              console.log('Could not read RELEASE_NOTES.md, using default body:', error.message);
-            }
+          # Add troubleshooting section if release failed
+          if [[ "${{ needs.release.result }}" != "success" ]]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Troubleshooting" >> $GITHUB_STEP_SUMMARY
+            echo "If the release failed, check the following:" >> $GITHUB_STEP_SUMMARY
+            echo "1. Verify GoReleaser configuration (.goreleaser.yaml)" >> $GITHUB_STEP_SUMMARY
+            echo "2. Check build artifacts and compilation errors" >> $GITHUB_STEP_SUMMARY
+            echo "3. Review GitHub Actions logs for detailed error messages" >> $GITHUB_STEP_SUMMARY
+            echo "4. Ensure all required secrets (GITHUB_TOKEN) are properly configured" >> $GITHUB_STEP_SUMMARY
+          fi
 
-            // Create the tag and release
-            const release = await github.rest.repos.createRelease({
-              owner,
-              repo,
-              tag_name: tagName,
-              name: `JUDO CLI ${tagName} (Development Snapshot)`,
-              body: releaseBody,
-              draft: false,
-              prerelease: true
-            });
-
-            // Store release info for later steps
-            core.setOutput('release_id', release.data.id);
-            core.setOutput('tag_name', tagName);
-            core.setOutput('snapshot_version', snapshotVersion);
-
-      - name: Upload binaries to release
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const { owner, repo } = context.repo;
-            const fs = require('fs');
-            const path = require('path');
-            const releaseId = '${{ steps.create-release.outputs.release_id }}';
-
-            // Find all files in dist directory
-            const distDir = './dist';
-            const files = fs.readdirSync(distDir);
-
-            for (const file of files) {
-              if (file.endsWith('.tar.gz') || file.endsWith('.zip') || file === 'checksums.txt') {
-                const filePath = path.join(distDir, file);
-                const fileContent = fs.readFileSync(filePath);
-
-                console.log(`Uploading ${file}...`);
-
-                await github.rest.repos.uploadReleaseAsset({
-                  owner,
-                  repo,
-                  release_id: releaseId,
-                  name: file,
-                  data: fileContent
-                });
-
-                console.log(`✓ Uploaded ${file}`);
-              }
-            }
-            await github.rest.repos.uploadReleaseAsset({
-                  owner,
-                  repo,
-                  release_id: releaseId,
-                  name: "RELEASE_NOTES.md",
-                  data: fs.readFileSync('./RELEASE_NOTES.md')
-                });
-
-            console.log(`✓ Uploaded RELEASE_NOTES.md`);
-
-      - name: Upload snapshot artifacts
+      - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: judo-snapshot-${{ steps.create-release.outputs.snapshot_version }}
+          name: judo-build-${{ steps.version.outputs.base_version }}
           path: |
             dist/*.tar.gz
             dist/*.zip
             dist/checksums.txt
+            dist/homebrew/*.rb
             RELEASE_NOTES.md
+
+  cleanup:
+    name: Final Status
+    runs-on: judong
+    needs: [build-master, build-snapshot, post-release]
+    if: |
+      always()
+      && contains(needs.*.result, 'success')
+      && !contains(needs.*.result, 'failure')
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Cleanup old develop releases
         uses: actions/github-script@v7
@@ -273,103 +619,33 @@ jobs:
               console.log(`Only ${snapshotReleases.length} snapshot releases found, no cleanup needed`);
             }
 
-  build-master:
-    name: Build Master Branch
-    runs-on: judong
-    if: github.ref == 'refs/heads/master'
-    needs: test
-    steps:
-      - name: Checkout code with tags
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          fetch-tags: true
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: "1.25"
-
-      - name: Fetch all tags explicitly
-        run: git fetch --tags --force
-
-      - name: Cleanup local tags which are not on remote
+      - name: Determine final workflow status
         run: |
           set -e
-          git fetch --prune origin "+refs/tags/*:refs/tags/*"
+          echo "## Final Workflow Status" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
 
-      - name: Generate build version and create tag
-        id: version
-        run: |
-          set -e
-          chmod +x scripts/version.sh
-          BASE_VERSION=$(scripts/version.sh get)
-          echo "base_version=${BASE_VERSION}" >> $GITHUB_OUTPUT
-
-          # Create the release tag locally for GoReleaser validation
-          TAG_NAME="v${BASE_VERSION}"
-          echo "Creating local tag: $TAG_NAME"
-
-          # Check if tag already exists locally or remotely
-          if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
-            echo "Tag $TAG_NAME already exists locally"
-            # Verify it points to the current commit
-            TAG_COMMIT=$(git rev-parse "$TAG_NAME")
-            CURRENT_COMMIT=$(git rev-parse HEAD)
-            if [[ "$TAG_COMMIT" != "$CURRENT_COMMIT" ]]; then
-              echo "::error::Tag $TAG_NAME exists but points to different commit ($TAG_COMMIT vs $CURRENT_COMMIT)"
-              exit 1
-            fi
+          if [[ "${{ needs.build-master.result }}" == "success" && "${{ needs.post-release.result }}" == "success" ]]; then
+            echo "🎉 **Overall Status**: COMPLETE SUCCESS" >> $GITHUB_STEP_SUMMARY
+            echo "Both release creation and version management completed successfully." >> $GITHUB_STEP_SUMMARY
+          elif [[ "${{ needs.build-snapshot.result }}" == "success" ]]; then
+            echo "🎉 **Overall Status**: COMPLETE SUCCESS" >> $GITHUB_STEP_SUMMARY
+            echo "Snapshot build completed successfully." >> $GITHUB_STEP_SUMMARY
+          elif [[ "${{ needs.build-master.result }}" == "success" ]]; then
+            echo "⚠️ **Overall Status**: PARTIAL SUCCESS" >> $GITHUB_STEP_SUMMARY
+            echo "Release created successfully but post-release version management failed." >> $GITHUB_STEP_SUMMARY
+          elif [[ "${{ needs.post-release.result }}" == "success" ]]; then
+            echo "⚠️ **Overall Status**: PARTIAL SUCCESS" >> $GITHUB_STEP_SUMMARY
+            echo "Release failed but version management completed successfully." >> $GITHUB_STEP_SUMMARY
           else
-            # Create the tag locally
-            git tag -a "$TAG_NAME" -m "Release version ${BASE_VERSION}"
-            echo "Created local tag: $TAG_NAME"
+            echo "💥 **Overall Status**: COMPLETE FAILURE" >> $GITHUB_STEP_SUMMARY
+            echo "Both release creation and version management failed or were skipped." >> $GITHUB_STEP_SUMMARY
           fi
 
-          echo "GORELEASER_CURRENT_TAG=${TAG_NAME}" >> $GITHUB_ENV
-
-      - name: Run GoReleaser (Build artifacts)
-        uses: goreleaser/goreleaser-action@v6
-        with:
-          distribution: goreleaser
-          version: "~> v2"
-          args: build --clean
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Push release tag to trigger release workflow
-        run: |
-          set -e
-          TAG_NAME="v${{ steps.version.outputs.base_version }}"
-          echo "Pushing release tag $TAG_NAME to trigger release workflow"
-          git push origin "$TAG_NAME"
-          echo "✅ Tag $TAG_NAME pushed - release workflow will now execute"
-
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: judo-build-${{ steps.version.outputs.base_version }}
-          path: |
-            dist/*.tar.gz
-            dist/*.zip
-            dist/checksums.txt
-            dist/homebrew/*.rb
-            RELEASE_NOTES.md
-
-      - name: Cleanup local tag if build failed
-        if: failure()
-        run: |
-          set -e
-          BASE_VERSION="${{ steps.version.outputs.base_version }}"
-          TAG_NAME="v${BASE_VERSION}"
-
-          # Only delete if it's a local tag (not pushed to remote)
-          if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
-            # Check if tag exists on remote
-            if ! git ls-remote --tags origin "refs/tags/$TAG_NAME" | grep -q "$TAG_NAME"; then
-              echo "Deleting local tag $TAG_NAME (build failed)"
-              git tag -d "$TAG_NAME"
-            else
-              echo "Tag $TAG_NAME exists on remote, skipping cleanup"
-            fi
+          # Fail only if release job explicitly failed
+          if [[ "${{ needs.build-master.result }}" == "failure" ]]; then
+            echo "::error::Release workflow failed"
+            exit 1
+          else
+            echo "✅ Release job was either successful or skipped. No failure detected."
           fi
