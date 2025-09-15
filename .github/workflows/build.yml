@@ -140,8 +140,15 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Remove local tag if it already exists
+          git tag -d ${{ steps.version.outputs.tag_name }} 2>/dev/null || echo "No existing local tag"
+
+          # Create new tag
           git tag ${{ steps.version.outputs.tag_name }}
-          git push origin ${{ steps.version.outputs.tag_name }}
+
+          # Push to remote (force overwrite if needed)
+          git push origin ${{ steps.version.outputs.tag_name }} --force
 
       - name: Set up Go
         uses: actions/setup-go@v5
