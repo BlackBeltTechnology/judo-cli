@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"io/fs"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
+	"strings"
 	"sync"
 	"time"
 
@@ -66,9 +68,45 @@ func NewServer(port int) *Server {
 }
 
 func (s *Server) Start() error {
-	log.Printf("Starting server on port %d", s.port)
+	originalPort := s.port
+	maxAttempts := 100 // Limit port search to prevent infinite loops
+
+	// Create a custom listener to handle port conflicts
+	var listener net.Listener
+	var err error
+
+	for attempt := 0; attempt < maxAttempts; attempt++ {
+		log.Printf("Starting server on port %d", s.port)
+
+		listener, err = net.Listen("tcp", fmt.Sprintf(":%d", s.port))
+		if err != nil {
+			if strings.Contains(err.Error(), "address already in use") {
+				// Port is in use, try next port
+				if attempt == 0 {
+					log.Printf("Port %d is already in use, searching for available port...", s.port)
+				}
+
+				// Increment port
+				s.port++
+				continue
+			}
+			// Other error, return it
+			return err
+		}
+		// Port is available, break the loop
+		break
+	}
+
+	// If we changed ports, log the final port
+	if s.port != originalPort {
+		log.Printf("Port %d was unavailable, using port %d instead", originalPort, s.port)
+	}
+
+	// Update server address and start serving
+	s.httpServer.Addr = fmt.Sprintf(":%d", s.port)
 	go s.openBrowser()
-	return s.httpServer.ListenAndServe()
+
+	return s.httpServer.Serve(listener)
 }
 
 func (s *Server) Stop() error {

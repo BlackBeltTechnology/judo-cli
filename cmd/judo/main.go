@@ -93,18 +93,22 @@ func createSessionCommand() *cobra.Command {
 
 // createServerCommand creates the server command
 func createServerCommand() *cobra.Command {
-	return &cobra.Command{
+	var port int
+	cmd := &cobra.Command{
 		Use:   "server",
 		Short: "Start JUDO CLI web server",
 		Long:  "Start a web server with browser-based interface for JUDO CLI",
 		Run: func(cmd *cobra.Command, args []string) {
-			server := server.NewServer(8080)
+			server := server.NewServer(port)
 			if err := server.Start(); err != nil {
 				fmt.Printf("Server error: %v\n", err)
 				os.Exit(1)
 			}
 		},
 	}
+
+	cmd.Flags().IntVarP(&port, "port", "p", 6969, "Port to run the server on")
+	return cmd
 }
 
 // createVersionCommand creates the version command

@@ -20,7 +20,8 @@
 As a JUDO CLI user, I want to run the CLI as a server and interact with it through a web browser. This will provide a user-friendly, graphical interface for executing commands, viewing logs, and managing the status of embedded Karaf, PostgreSQL, and Keycloak services, similar to a chat client, without needing to stay in a terminal.
 
 ### Acceptance Scenarios
-1. **Given** the JUDO CLI is not running, **When** I run `judo server`, **Then** the CLI should start a web server and open a new browser tab to the web UI.
+1. **Given** the JUDO CLI is not running, **When** I run `judo server`, **Then** the CLI should start a web server on port 6969 and open a new browser tab to the web UI.
+1.1 **Given** I want to use a specific port, **When** I run `judo server -p 8080`, **Then** the CLI should start the web server on port 8080.
 2. **Given** the web UI is open, **When** I look at the interface, **Then** I should see a command input area, an output display for command results, a real-time log viewer, and status buttons for `start`, `stop`, and `status`.
 3. **Given** the embedded services (Karaf, PostgreSQL, Keycloak) are stopped, **When** I click the "Start" button, **Then** the CLI should start all embedded services and the log viewer should show the services' startup logs in real-time.
 4. **Given** the application is running, **When** I type `judo build -q` into the command input and submit, **Then** the command should be executed, and the output should be displayed in the output area.
@@ -48,7 +49,8 @@ As a JUDO CLI user, I want to run the CLI as a server and interact with it throu
 - **FR-008**: The server MUST provide individual service control (start/stop/status) for Karaf, PostgreSQL, and Keycloak.
 - **FR-009**: The server MUST display individual service statuses and health indicators.
 - **FR-010**: The log viewer MUST support individual service log filtering (Karaf-only, PostgreSQL-only, Keycloak-only) and combined log display, with clear visual indicators for each service type.
-- **FR-011**: All frontend functionality, including command execution, log viewing, and status updates, MUST be covered by UI tests.
+- **FR-011**: The server command MUST support a `-p` or `--port` flag to specify the server port, with a default of 6969.
+- **FR-012**: All frontend functionality, including command execution, log viewing, and status updates, MUST be covered by UI tests.
 
 ### Key Entities
 - **CLI Server**: The Go application that runs the web server, manages embedded service state (Karaf, PostgreSQL, Keycloak), and executes commands.

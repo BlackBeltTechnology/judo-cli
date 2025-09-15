@@ -1,6 +1,8 @@
 package server
 
 import (
+	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -118,4 +120,43 @@ func TestOpenBrowserPlatformDetection(t *testing.T) {
 		t.Error("Linux detection failed")
 	}
 	os.Setenv("GOOS", originalGOOS)
+}
+
+func TestPortConflictHandling(t *testing.T) {
+	// Find an available port for testing
+	testPort := 18080
+
+	// Create a listener on a specific port to simulate port conflict
+	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", testPort))
+	if err != nil {
+		t.Skipf("Cannot test port conflict - port %d not available: %v", testPort, err)
+	}
+	defer listener.Close()
+
+	// Create server that will encounter port conflict
+	server := NewServer(testPort)
+
+	// Start server in goroutine
+	errChan := make(chan error, 1)
+	go func() {
+		errChan <- server.Start()
+	}()
+
+	// Give server time to handle port conflict
+	time.Sleep(100 * time.Millisecond)
+
+	// Stop the server
+	if err := server.Stop(); err != nil {
+		t.Errorf("Failed to stop server: %v", err)
+	}
+
+	// Server should have handled the port conflict gracefully
+	select {
+	case err := <-errChan:
+		if err != http.ErrServerClosed {
+			t.Errorf("Expected server closed error, got: %v", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Error("Server stop timeout")
+	}
 }
