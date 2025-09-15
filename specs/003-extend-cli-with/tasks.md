@@ -21,27 +21,32 @@
 - [ ] T011 Implement the `POST /api/commands/{command}` endpoint to execute commands using `os/exec`.
 - [ ] T012 [P] Implement handlers for all session commands (`help`, `exit`, `quit`, `clear`, `history`, `status`, `doctor`).
 - [ ] T013 [P] Implement handlers for all project commands (`init`, `build`, `start`, `stop`, `status`, `clean`, `generate`, `dump`, `import`, `update`, `prune`, `reckless`, `self-update`).
-- [ ] T015 Implement the `GET /api/logs/{service}` endpoint to tail logs from `postgresql`, `karaf`, and `keycloak`.
+- [ ] T015 Implement the `GET /api/logs/{service}` endpoint to tail individual service logs from `postgresql`, `karaf`, and `keycloak`.
+- [ ] T016 Implement service-specific status endpoints (`GET /api/services/karaf/status`, `GET /api/services/postgresql/status`, `GET /api/services/keycloak/status`).
+- [ ] T017 Implement service-specific control endpoints (`POST /api/services/karaf/start`, `POST /api/services/karaf/stop`, etc.).
 
 ## Phase 3.4: Core Implementation (Frontend)
-- [ ] T013 Implement API calls to the backend for status and actions.
-- [ ] T014 Implement a WebSocket client to receive and display logs.
-- [ ] T015 Implement the command input to send commands to the backend.
-- [ ] T016 Display command output received from the backend.
+- [ ] T018 Implement API calls to the backend for status and actions.
+- [ ] T019 Implement a WebSocket client to receive and display logs with service filtering.
+- [ ] T020 Implement service-specific log filtering UI (Karaf-only, PostgreSQL-only, Keycloak-only, combined).
+- [ ] T021 Implement individual service status display and control UI.
+- [ ] T022 Implement the command input to send commands to the backend.
+- [ ] T023 Display command output received from the backend.
 
 ## Phase 3.5: Integration
-- [ ] T017 [P] Add file embedding for the React frontend into the Go binary.
-- [ ] T018 [P] Configure the Go server to serve the embedded frontend.
-- [ ] T019 [P] Add a build script to `package.json` to build the frontend for production.
+- [ ] T024 [P] Add file embedding for the React frontend into the Go binary.
+- [ ] T025 [P] Configure the Go server to serve the embedded frontend.
+- [ ] T026 [P] Add a build script to `package.json` to build the frontend for production.
 
 ## Phase 3.6: Polish
-- [ ] T020 [P] Add error handling to the frontend and backend.
-- [ ] T021 [P] Style the frontend to be user-friendly.
-- [ ] T022 [P] Add unit tests for the backend.
-- [ ] T024 [P] Add UI tests for all frontend functionality.
+- [ ] T027 [P] Add error handling to the frontend and backend.
+- [ ] T028 [P] Style the frontend to be user-friendly with service-specific visual indicators.
+- [ ] T029 [P] Add unit tests for the backend service management functionality.
+- [ ] T030 [P] Add UI tests for service filtering and individual service controls.
 
 ## Dependencies
-- Backend setup (T001-T004) before backend implementation (T007-T012).
-- Frontend setup (T005-T006) before frontend implementation (T013-T016).
-- Core implementation (T007-T016) before integration (T017-T019).
-- Integration (T017-T019) before polish (T020-T023).
+- Backend setup (T001-T004) before backend implementation (T007-T017).
+- Frontend setup (T005-T006) before frontend implementation (T018-T023).
+- Service management implementation (T015-T017) before frontend service controls (T020-T021).
+- Core implementation (T007-T023) before integration (T024-T026).
+- Integration (T024-T026) before polish (T027-T030).

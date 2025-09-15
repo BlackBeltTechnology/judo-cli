@@ -13,16 +13,25 @@ interface Status {
   timestamp: string;
 }
 
+interface ServiceStatus {
+  service: string;
+  status: string;
+  timestamp: string;
+}
+
 function App() {
   const [input, setInput] = useState('');
   const [commands, setCommands] = useState<Command[]>([]);
   const [status, setStatus] = useState<Status>({ status: 'unknown', timestamp: '' });
+  const [serviceStatus, setServiceStatus] = useState<{[key: string]: ServiceStatus}>({});
   const [logs, setLogs] = useState<string[]>([]);
+  const [logFilter, setLogFilter] = useState<string>('all');
   const [isConnected, setIsConnected] = useState(false);
   const ws = useRef<WebSocket | null>(null);
 
   useEffect(() => {
     fetchStatus();
+    fetchServiceStatuses();
     connectWebSocket();
     
     return () => {
@@ -62,7 +71,25 @@ function App() {
       setStatus(response.data);
     } catch (error) {
       console.error('Failed to fetch status:', error);
-    };
+    }
+  };
+
+  const fetchServiceStatuses = async () => {
+    try {
+      const [karaf, postgres, keycloak] = await Promise.all([
+        axios.get('http://localhost:8080/api/services/karaf/status'),
+        axios.get('http://localhost:8080/api/services/postgresql/status'),
+        axios.get('http://localhost:8080/api/services/keycloak/status')
+      ]);
+      
+      setServiceStatus({
+        karaf: karaf.data,
+        postgresql: postgres.data,
+        keycloak: keycloak.data
+      });
+    } catch (error) {
+      console.error('Failed to fetch service statuses:', error);
+    }
   };
 
   const handleStart = async () => {
@@ -80,7 +107,34 @@ function App() {
       fetchStatus();
     } catch (error) {
       console.error('Failed to stop:', error);
-    };
+    }
+  };
+
+  const handleServiceStart = async (service: string) => {
+    try {
+      await axios.post(`http://localhost:8080/api/services/${service}/start`);
+      fetchServiceStatuses();
+    } catch (error) {
+      console.error(`Failed to start ${service}:`, error);
+    }
+  };
+
+  const handleServiceStop = async (service: string) => {
+    try {
+      await axios.post(`http://localhost:8080/api/services/${service}/stop`);
+      fetchServiceStatuses();
+    } catch (error) {
+      console.error(`Failed to stop ${service}:`, error);
+    }
+  };
+
+  const handleServiceStatus = async (service: string) => {
+    try {
+      await axios.get(`http://localhost:8080/api/services/${service}/status`);
+      fetchServiceStatuses();
+    } catch (error) {
+      console.error(`Failed to get ${service} status:`, error);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -115,11 +169,43 @@ function App() {
 
       <div className="main-content">
         <div className="control-panel">
-          <h2>Controls</h2>
+          <h2>Global Controls</h2>
           <div className="button-group">
-            <button onClick={handleStart} className="btn btn-start">Start</button>
-            <button onClick={handleStop} className="btn btn-stop">Stop</button>
+            <button onClick={handleStart} className="btn btn-start">Start All</button>
+            <button onClick={handleStop} className="btn btn-stop">Stop All</button>
             <button onClick={fetchStatus} className="btn btn-status">Refresh Status</button>
+          </div>
+          
+          <h3>Individual Services</h3>
+          <div className="service-controls">
+            {Object.entries(serviceStatus).map(([service, status]) => (
+              <div key={service} className="service-control">
+                <span className="service-name">{service}</span>
+                <span className={`service-status ${status.status}`}>{status.status}</span>
+                <div className="service-buttons">
+                  <button 
+                    onClick={() => handleServiceStart(service)}
+                    className="btn btn-service-start"
+                    disabled={status.status === 'starting' || status.status === 'running'}
+                  >
+                    Start
+                  </button>
+                  <button 
+                    onClick={() => handleServiceStop(service)}
+                    className="btn btn-service-stop"
+                    disabled={status.status === 'stopping' || status.status === 'stopped'}
+                  >
+                    Stop
+                  </button>
+                  <button 
+                    onClick={() => handleServiceStatus(service)}
+                    className="btn btn-service-status"
+                  >
+                    Refresh
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 
@@ -149,6 +235,33 @@ function App() {
 
         <div className="log-section">
           <h2>Real-time Logs</h2>
+          <div className="log-filter">
+            <span>Filter: </span>
+            <button 
+              className={logFilter === 'all' ? 'btn btn-filter active' : 'btn btn-filter'}
+              onClick={() => setLogFilter('all')}
+            >
+              All
+            </button>
+            <button 
+              className={logFilter === 'karaf' ? 'btn btn-filter active' : 'btn btn-filter'}
+              onClick={() => setLogFilter('karaf')}
+            >
+              Karaf
+            </button>
+            <button 
+              className={logFilter === 'postgresql' ? 'btn btn-filter active' : 'btn btn-filter'}
+              onClick={() => setLogFilter('postgresql')}
+            >
+              PostgreSQL
+            </button>
+            <button 
+              className={logFilter === 'keycloak' ? 'btn btn-filter active' : 'btn btn-filter'}
+              onClick={() => setLogFilter('keycloak')}
+            >
+              Keycloak
+            </button>
+          </div>
           <div className="log-viewer">
             {logs.map((log, index) => (
               <div key={index} className="log-entry">

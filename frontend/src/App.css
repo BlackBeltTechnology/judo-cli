@@ -93,6 +93,39 @@
   margin-left: 0.5rem;
 }
 
+.btn-service-start {
+  background: #48bb78;
+  color: white;
+  font-size: 0.8rem;
+  padding: 0.4rem 0.8rem;
+}
+
+.btn-service-stop {
+  background: #f56565;
+  color: white;
+  font-size: 0.8rem;
+  padding: 0.4rem 0.8rem;
+}
+
+.btn-service-status {
+  background: #4299e1;
+  color: white;
+  font-size: 0.8rem;
+  padding: 0.4rem 0.8rem;
+}
+
+.btn-filter {
+  background: #a0aec0;
+  color: white;
+  font-size: 0.8rem;
+  padding: 0.3rem 0.6rem;
+  margin: 0 0.2rem;
+}
+
+.btn-filter.active {
+  background: #667eea;
+}
+
 .command-form {
   display: flex;
   margin-bottom: 1rem;
@@ -139,6 +172,71 @@
   margin: 0.5rem 0 0 0;
   white-space: pre-wrap;
   word-break: break-all;
+}
+
+.service-controls {
+  margin-top: 1rem;
+}
+
+.service-control {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.5rem;
+  padding: 0.5rem;
+  background: #f7fafc;
+  border-radius: 6px;
+}
+
+.service-name {
+  font-weight: 600;
+  min-width: 100px;
+  text-transform: capitalize;
+}
+
+.service-status {
+  min-width: 80px;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+.service-status.running {
+  background: #c6f6d5;
+  color: #22543d;
+}
+
+.service-status.stopped {
+  background: #fed7d7;
+  color: #742a2a;
+}
+
+.service-status.starting {
+  background: #bee3f8;
+  color: #2c5282;
+}
+
+.service-status.stopping {
+  background: #feebcb;
+  color: #744210;
+}
+
+.service-buttons {
+  display: flex;
+  gap: 0.3rem;
+  margin-left: auto;
+}
+
+.log-filter {
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.log-filter span {
+  font-weight: 600;
+  color: #4a5568;
 }
 
 .log-viewer {

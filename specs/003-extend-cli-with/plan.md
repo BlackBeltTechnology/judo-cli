@@ -4,7 +4,7 @@
 **Input**: Feature specification from user description
 
 ## Summary
-This plan outlines the implementation of a `server` command for the JUDO CLI. This feature will provide a browser-based UI for interacting with the CLI, including command execution, log streaming, and status management. The frontend will be built with React, communicating with the Go backend via REST and WebSockets. The compiled frontend will be embedded in the final Go binary.
+This plan outlines the implementation of a `server` command for the JUDO CLI. This feature will provide a browser-based UI for interacting with the CLI, including command execution, individual service log streaming (Karaf, PostgreSQL, Keycloak), and embedded service status management. The frontend will be built with React, communicating with the Go backend via REST and WebSockets. The compiled frontend will be embedded in the final Go binary.
 
 ## Technical Context
 **Language/Version**: Go 1.25+, Node.js 18+ (for frontend)
@@ -13,7 +13,7 @@ This plan outlines the implementation of a `server` command for the JUDO CLI. Th
 **Testing**: Go testing, Jest/React Testing Library
 **Target Platform**: Local machine (browser-based UI)
 **Project Type**: Web (frontend + backend)
-**Performance Goals**: Real-time log streaming, responsive UI for command execution
+**Performance Goals**: Real-time log streaming for multiple services, responsive UI for command execution and service management
 **Constraints**: Frontend assets must be embeddable in the Go binary.
 
 ## Constitution Check
@@ -36,7 +36,7 @@ This plan outlines the implementation of a `server` command for the JUDO CLI. Th
 - Git commits show tests before implementation: Yes
 - Order: Contract→Integration→E2E→Unit strictly followed: Yes
 - Real dependencies used: Yes
-- Integration tests for: API endpoints, WebSocket communication.
+- Integration tests for: API endpoints, WebSocket communication, service management functionality.
 
 **Observability**:
 - Structured logging included: Yes, for the server component.
@@ -87,7 +87,8 @@ frontend/
 1. **Go & React Integration**: Research best practices for embedding a React frontend into a Go binary.
 2. **WebSocket Libraries**: Evaluate Gorilla WebSocket vs. other Go WebSocket libraries.
 3. **Command Execution**: Determine the best way to execute and stream output from Cobra commands.
-4. **Frontend State Management**: Decide on a state management library for React (e.g., Redux, Zustand).
+4. **Service Management**: Research how to control and monitor embedded Karaf, PostgreSQL, and Keycloak services individually.
+5. **Frontend State Management**: Decide on a state management library for React (e.g., Redux, Zustand).
 
 **Output**: `research.md` with decisions and best practices.
 

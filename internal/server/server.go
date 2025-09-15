@@ -43,6 +43,15 @@ func NewServer(port int) *Server {
 	mux.HandleFunc("/api/actions/stop", s.handleStop)
 	mux.HandleFunc("/api/commands/", s.handleCommand)
 	mux.HandleFunc("/api/logs/", s.handleLogs)
+	mux.HandleFunc("/api/services/karaf/status", s.handleKarafStatus)
+	mux.HandleFunc("/api/services/postgresql/status", s.handlePostgreSQLStatus)
+	mux.HandleFunc("/api/services/keycloak/status", s.handleKeycloakStatus)
+	mux.HandleFunc("/api/services/karaf/start", s.handleKarafStart)
+	mux.HandleFunc("/api/services/karaf/stop", s.handleKarafStop)
+	mux.HandleFunc("/api/services/postgresql/start", s.handlePostgreSQLStart)
+	mux.HandleFunc("/api/services/postgresql/stop", s.handlePostgreSQLStop)
+	mux.HandleFunc("/api/services/keycloak/start", s.handleKeycloakStart)
+	mux.HandleFunc("/api/services/keycloak/stop", s.handleKeycloakStop)
 	mux.HandleFunc("/ws/logs", s.handleWebSocket)
 	// Serve embedded frontend files
 	assetsFS, _ := fs.Sub(embeddedFiles, "assets")
@@ -177,7 +186,89 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	s.mu.Unlock()
 }
 
-// handleStatic is no longer needed as we use embedded filesystem
+// Service-specific status handlers
+func (s *Server) handleKarafStatus(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(`{"service": "karaf", "status": "stopped", "timestamp": "` + time.Now().Format(time.RFC3339) + `"}`))
+}
+
+func (s *Server) handlePostgreSQLStatus(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(`{"service": "postgresql", "status": "stopped", "timestamp": "` + time.Now().Format(time.RFC3339) + `"}`))
+}
+
+func (s *Server) handleKeycloakStatus(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(`{"service": "keycloak", "status": "stopped", "timestamp": "` + time.Now().Format(time.RFC3339) + `"}`))
+}
+
+// Service-specific start handlers
+func (s *Server) handleKarafStart(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(`{"service": "karaf", "status": "starting", "message": "Karaf service starting..."}`))
+}
+
+func (s *Server) handlePostgreSQLStart(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(`{"service": "postgresql", "status": "starting", "message": "PostgreSQL service starting..."}`))
+}
+
+func (s *Server) handleKeycloakStart(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(`{"service": "keycloak", "status": "starting", "message": "Keycloak service starting..."}`))
+}
+
+// Service-specific stop handlers
+func (s *Server) handleKarafStop(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(`{"service": "karaf", "status": "stopping", "message": "Karaf service stopping..."}`))
+}
+
+func (s *Server) handlePostgreSQLStop(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(`{"service": "postgresql", "status": "stopping", "message": "PostgreSQL service stopping..."}`))
+}
+
+func (s *Server) handleKeycloakStop(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(`{"service": "keycloak", "status": "stopping", "message": "Keycloak service stopping..."}`))
+}
 
 func isWindows() bool {
 	return os.Getenv("OS") == "Windows_NT" || os.Getenv("GOOS") == "windows"
