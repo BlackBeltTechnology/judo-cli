@@ -6,7 +6,7 @@ nav_order: 6
 description: "Common usage patterns and workflows with JUDO CLI"
 ---
 
-# Examples
+
 
 This page provides common usage patterns, workflows, and real-world examples for using JUDO CLI effectively.
 

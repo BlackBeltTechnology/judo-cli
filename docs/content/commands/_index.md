@@ -5,7 +5,7 @@ has_children: true
 description: "Complete reference for all JUDO CLI commands"
 ---
 
-# Command Reference
+
 
 Complete documentation for all JUDO CLI commands organized by category.
 

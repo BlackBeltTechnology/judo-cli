@@ -6,7 +6,7 @@ description: "Using JUDO CLI's interactive session mode"
 permalink: /session/
 ---
 
-# Interactive Session Mode
+
 
 JUDO CLI includes a powerful interactive session mode that provides enhanced productivity features for development workflows.
 

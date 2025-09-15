@@ -3,7 +3,7 @@ title: "Getting Started"
 description: "Installation and first steps with JUDO CLI"
 ---
 
-# Getting Started with JUDO CLI
+
 
 This guide will help you install and start using JUDO CLI to manage your JUDO applications.
 
