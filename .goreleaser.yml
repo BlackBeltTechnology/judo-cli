@@ -61,30 +61,6 @@ snapshot:
 changelog:
   sort: desc
   use: git
-  filters:
-    exclude:
-      - "^docs:"
-      - "^test:"
-
-  format: |
-    {{- if .PreviousTag }}
-    ## [{{ .Tag }}] - {{ .Date }}
-    Previous tag: {{ .PreviousTag }}
-    {{ else }}
-    # Changelog
-    Initial release - {{ .Date }}
-    {{ end }}
-
-    Version: {{ .Major }}.{{ .Minor }}.{{ .Patch }}{{ if (contains .Tag "-") }} - Pre-release{{ end }}
-
-    {{- if .Changelog }}
-    {{ range .Changelog.Entries }}
-    ---
-    {{ .Message }}{{ if .Author.Name }} ({{ .Author.Name }}){{ end }}
-    {{ end }}
-    {{ else }}
-    _No commits found between tags._
-    {{ end }}
 
 release:
   # Repository to release to.
