@@ -442,7 +442,7 @@ jobs:
   cleanup:
     name: Final Status
     runs-on: judong
-    needs: [release, post-release]
+    needs: [build-master, post-release]
     if: always()
     steps:
       - name: Checkout code
