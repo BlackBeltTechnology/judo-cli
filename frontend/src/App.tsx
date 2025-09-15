@@ -41,8 +41,15 @@ function App() {
     };
   }, []);
 
+  const getApiBaseUrl = () => {
+    const { protocol, hostname, port } = window.location;
+    return `${protocol}//${hostname}:${port}`;
+  };
+
   const connectWebSocket = () => {
-    ws.current = new WebSocket('ws://localhost:8080/ws/logs');
+    const { protocol, hostname, port } = window.location;
+    const wsProtocol = protocol === 'https:' ? 'wss:' : 'ws:';
+    ws.current = new WebSocket(`${wsProtocol}//${hostname}:${port}/ws/logs`);
     
     ws.current.onopen = () => {
       console.log('WebSocket connected');
@@ -67,7 +74,7 @@ function App() {
 
   const fetchStatus = async () => {
     try {
-      const response = await axios.get('http://localhost:8080/api/status');
+      const response = await axios.get(`${getApiBaseUrl()}/api/status`);
       setStatus(response.data);
     } catch (error) {
       console.error('Failed to fetch status:', error);
@@ -77,9 +84,9 @@ function App() {
   const fetchServiceStatuses = async () => {
     try {
       const [karaf, postgres, keycloak] = await Promise.all([
-        axios.get('http://localhost:8080/api/services/karaf/status'),
-        axios.get('http://localhost:8080/api/services/postgresql/status'),
-        axios.get('http://localhost:8080/api/services/keycloak/status')
+        axios.get(`${getApiBaseUrl()}/api/services/karaf/status`),
+        axios.get(`${getApiBaseUrl()}/api/services/postgresql/status`),
+        axios.get(`${getApiBaseUrl()}/api/services/keycloak/status`)
       ]);
       
       setServiceStatus({
@@ -94,7 +101,7 @@ function App() {
 
   const handleStart = async () => {
     try {
-      await axios.post('http://localhost:8080/api/actions/start');
+      await axios.post(`${getApiBaseUrl()}/api/actions/start`);
       fetchStatus();
     } catch (error) {
       console.error('Failed to start:', error);
@@ -103,7 +110,7 @@ function App() {
 
   const handleStop = async () => {
     try {
-      await axios.post('http://localhost:8080/api/actions/stop');
+      await axios.post(`${getApiBaseUrl()}/api/actions/stop`);
       fetchStatus();
     } catch (error) {
       console.error('Failed to stop:', error);
@@ -112,7 +119,7 @@ function App() {
 
   const handleServiceStart = async (service: string) => {
     try {
-      await axios.post(`http://localhost:8080/api/services/${service}/start`);
+      await axios.post(`${getApiBaseUrl()}/api/services/${service}/start`);
       fetchServiceStatuses();
     } catch (error) {
       console.error(`Failed to start ${service}:`, error);
@@ -121,7 +128,7 @@ function App() {
 
   const handleServiceStop = async (service: string) => {
     try {
-      await axios.post(`http://localhost:8080/api/services/${service}/stop`);
+      await axios.post(`${getApiBaseUrl()}/api/services/${service}/stop`);
       fetchServiceStatuses();
     } catch (error) {
       console.error(`Failed to stop ${service}:`, error);
@@ -130,7 +137,7 @@ function App() {
 
   const handleServiceStatus = async (service: string) => {
     try {
-      await axios.get(`http://localhost:8080/api/services/${service}/status`);
+      await axios.get(`${getApiBaseUrl()}/api/services/${service}/status`);
       fetchServiceStatuses();
     } catch (error) {
       console.error(`Failed to get ${service} status:`, error);
@@ -142,7 +149,7 @@ function App() {
     if (!input.trim()) return;
 
     try {
-      const response = await axios.post(`http://localhost:8080/api/commands/${encodeURIComponent(input)}`);
+      const response = await axios.post(`${getApiBaseUrl()}/api/commands/${encodeURIComponent(input)}`);
       setCommands(prev => [...prev, response.data]);
       setInput('');
     } catch (error) {
