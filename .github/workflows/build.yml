@@ -459,10 +459,10 @@ jobs:
           echo "## Final Workflow Status" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
-          if [[ "${{ needs.release.result }}" == "success" && "${{ needs.post-release.result }}" == "success" ]]; then
+          if [[ "${{ needs.build-master.result }}" == "success" && "${{ needs.post-release.result }}" == "success" ]]; then
             echo "🎉 **Overall Status**: COMPLETE SUCCESS" >> $GITHUB_STEP_SUMMARY
             echo "Both release creation and version management completed successfully." >> $GITHUB_STEP_SUMMARY
-          elif [[ "${{ needs.release.result }}" == "success" ]]; then
+          elif [[ "${{ needs.build-master.result }}" == "success" ]]; then
             echo "⚠️ **Overall Status**: PARTIAL SUCCESS" >> $GITHUB_STEP_SUMMARY
             echo "Release created successfully but post-release version management failed." >> $GITHUB_STEP_SUMMARY
           elif [[ "${{ needs.post-release.result }}" == "success" ]]; then
@@ -474,7 +474,7 @@ jobs:
           fi
 
           # Set final exit code based on release job status
-          if [[ "${{ needs.release.result }}" != "success" ]]; then
+          if [[ "${{ needs.build-master.result }}" != "success" ]]; then
             echo "::error::Release workflow failed"
             exit 1
           fi
