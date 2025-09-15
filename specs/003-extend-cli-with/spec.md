@@ -107,4 +107,39 @@ As a JUDO CLI user, I want to run the CLI as a server and interact with it throu
 
 ---
 
+## Spec Extension (2025-09-15)
+
+Summary
+- Services toggle: move to left edge; header button removed
+- Terminal names: Terminal A → Logs; Terminal B → JUDO Terminal
+- Project initialization: gate UI until initialized; modal prompt; 'No' shows clear notice that initialization is required to connect
+- JUDO Terminal behavior: identical to OS 'judo session'; browser provides TTY only
+
+Additional Acceptance Scenarios
+- On first load when the project is not initialized, the UI prompts: 'Initialize project now?'. Choosing 'Yes' starts initialization and, after success, enables Logs and JUDO Terminal. Choosing 'No' shows a non-blocking notice that initialization is required to connect, and both terminals remain disabled.
+- The Services toggle appears as a left-edge anchor that opens/closes the Services panel; the header contains no duplicate Services button.
+- The tabs read 'Logs' and 'JUDO Terminal', and switching preserves scrollback and state as before.
+- Commands typed in the JUDO Terminal behave exactly as in a native OS terminal running 'judo session', including control keys, history, prompts, and output formatting.
+
+Additional Requirements
+- FR-014: The Services toggle MUST be a left-edge control; the header MUST NOT include a redundant Services button.
+- FR-015: The terminal labels MUST be 'Logs' and 'JUDO Terminal'.
+- FR-016: If the project is not initialized, the application MUST prompt to initialize; selecting 'No' MUST present a clear notification that initialization is required to connect; until initialization completes, Logs and JUDO Terminal MUST be inactive.
+- FR-017: The JUDO Terminal MUST provide parity with a native 'judo session', acting as a pure TTY bridge in the browser.
+
+## Spec Extension (Test Model Project)
+
+Summary
+- A complete sample project is available under `test-model/` for end-to-end validation of the CLI and the browser-based server UI with real infrastructure (Karaf, PostgreSQL, Keycloak).
+- All core flows (generate, build, start, stop, dump, import, export) are expected to work inside `test-model/` without external dependencies beyond documented prerequisites.
+
+Additional Acceptance Scenarios
+- Given I am inside `test-model/`, when I run `judo build start`, then the application builds and services start successfully, and the web UI connects and streams logs from those services.
+- Given the environment was previously running, when I run `judo dump` followed by `judo import`, then the database is exported and restored correctly using the test-model configuration.
+- Given I run `judo server` from `test-model/`, then service controls and logs in the UI reflect the state of the test-model services.
+
+Additional Requirements
+- FR-018: Documentation MUST describe how to use `test-model/` for local testing with infrastructure.
+- FR-019: E2E/UI tests MUST target `test-model/` to ensure reproducible behavior.
+
 *Based on Constitution v2.2.0 - See `/memory/constitution.md`*

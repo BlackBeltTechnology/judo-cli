@@ -22,6 +22,17 @@ Complete documentation for all JUDO CLI commands organized by category.
 | [`judo clean`](clean/) | Clean environment |
 | [`judo session`](session/) | Interactive session mode |
 
+## Using the Included Test Model
+
+For hands-on practice and reliable demos, execute commands inside `test-model/` (bundled in this repo). It’s a complete project wired to real services (Karaf, PostgreSQL, Keycloak), suitable for build/start/stop and DB dump/import flows.
+
+```bash
+cd test-model
+judo build start
+judo status
+judo dump && judo import
+```
+
 ## Command Categories
 
 ### [System Commands](system/)

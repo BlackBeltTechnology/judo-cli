@@ -115,6 +115,27 @@ Once started, your application will typically be available at:
 - **Application**: http://localhost:8080
 - **Keycloak Admin**: http://localhost:8180 (if using Keycloak)
 
+## Try With the Included Test Model
+
+A fully featured sample project is included in this repository under `test-model/`. It is suitable for end‑to‑end testing of JUDO CLI with real infrastructure (Karaf, PostgreSQL, Keycloak).
+
+- Location: `test-model/`
+- Works with: generate, build, start, stop, dump, import, export
+- How to use:
+
+```bash
+cd test-model
+judo doctor -v
+judo build
+judo start --options "runtime=karaf,dbtype=postgresql"
+# Database workflows
+judo dump
+judo import
+# Stop and clean
+judo stop
+judo clean
+```
+
 ## Configuration
 
 JUDO CLI uses configuration files to manage different environments:

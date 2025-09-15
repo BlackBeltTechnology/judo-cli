@@ -91,3 +91,35 @@ paths:
             text/event-stream:
               schema:
                 type: string
+
+  /api/project/init/status:
+    get:
+      summary: Get project initialization status
+      responses:
+        '200':
+          description: Initialization status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  initialized:
+                    type: boolean
+                  message:
+                    type: string
+
+  /api/project/init:
+    post:
+      summary: Trigger project initialization
+      responses:
+        '200':
+          description: Initialization started
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  state:
+                    type: string
+                    enum:
+                      - started

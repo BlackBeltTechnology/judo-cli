@@ -42,6 +42,30 @@ The tool operates in two main runtime modes:
 - **karaf**: Local development with Karaf runtime + Docker services
 - **compose**: Full Docker Compose environment
 
+== Test Model Project
+
+The repository includes a fully functional reference project under `test-model/` that is suitable for end-to-end testing of `judo-cli` with real infrastructure elements (Karaf, PostgreSQL, Keycloak).
+
+- Location: `test-model/`
+- Capabilities: generate, build, start, stop, dump, import, export, prune/clean
+- Purpose: isolated, reproducible environment to validate CLI commands and the browser-based server UI
+- Usage: run all `judo` commands from inside `test-model/` to operate on the sample project
+
+Example
+[source,bash]
+----
+cd test-model
+judo doctor -v
+judo build
+judo start --options "runtime=karaf,dbtype=postgresql"
+# Work with DB
+judo dump
+judo import                  # restore latest dump
+# Stop and clean
+judo stop
+judo clean
+----
+
 == Command Reference
 
 === Global Flags

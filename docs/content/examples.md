@@ -10,6 +10,23 @@ description: "Common usage patterns and workflows with JUDO CLI"
 
 This page provides common usage patterns, workflows, and real-world examples for using JUDO CLI effectively.
 
+## Using the Included Test Model
+
+A full sample project lives in `test-model/` and is ideal for end‑to‑end testing with real infrastructure (Karaf, PostgreSQL, Keycloak).
+
+```bash
+cd test-model
+judo doctor -v
+judo build
+judo start --options "runtime=karaf,dbtype=postgresql"
+# Database workflows
+judo dump
+judo import
+# Stop and clean
+judo stop
+judo clean
+```
+
 ## Basic Workflows
 
 ### First Time Setup

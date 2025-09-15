@@ -53,3 +53,29 @@
 - Service management implementation (T015-T017) before frontend service controls (T020-T021).
 - Core implementation (T007-T023) before integration (T024-T026).
 - Integration (T024-T026) before polish (T027-T030).
+
+## Phase 3.7: Amendments (UI/Init/TTY)
+- [ ] T033 [P] Rename UI labels to 'Logs' and 'JUDO Terminal' across frontend and docs.
+- [ ] T034 [P] Move Services toggle to a left-edge control; remove header button.
+- [ ] T035 [P] Add GET `/api/project/init/status` endpoint returning initialized state.
+- [ ] T036 [P] Add POST `/api/project/init` endpoint to trigger initialization.
+- [ ] T037 [P] Frontend init gate: on load check init state; modal prompt (Yes/No); disable terminals until initialized.
+- [ ] T038 UI: Show non-blocking notice when user declines init; include 'Initialize now' action.
+- [ ] T039 [P] Session handshake: client `init` (term, cols, rows) and server PTY config; remove any client-side prompt injection.
+- [ ] T040 [P] PTY parity: ensure native 'judo session' behavior (Ctrl+C, resize, history, prompt) with no UI-added formatting.
+- [ ] T041 Tests: E2E for init flow, labels, Services toggle; integration tests for new endpoints.
+- [ ] T042 Docs: Update spec, plan, quickstart to reflect labels and init flow.
+
+### Additional Dependencies
+- Init endpoints (T035–T036) before frontend init gate (T037–T038).
+- Session handshake and PTY parity (T039–T040) before parity tests (T041).
+
+## Phase 3.8: Test-Model Integration
+- [ ] T043 [P] Document `test-model/` usage in README and developer docs (scope: generate, build, start, stop, dump, import, export).
+- [ ] T044 Ensure `judo server` works when launched from `test-model/` and reflects service state correctly in the UI.
+- [ ] T045 Add E2E test scripts to run against `test-model/` (build → start → server smoke-test → stop/clean).
+- [ ] T046 Add DB workflow tests in `test-model/` (dump → import → verify tables present).
+- [ ] T047 Update quickstart/examples with `test-model/` flows for reproducible demos.
+- [ ] T048 Add cleanup guidance for `test-model/` (stop, clean, prune) to ensure repeatability.
+- [ ] T049 Validate log sources map to Karaf/PostgreSQL/Keycloak in `test-model/` including Combined stream labels.
+- [ ] T050 Establish CI job matrix step that exercises `test-model/` flows on supported platforms.

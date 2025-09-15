@@ -59,3 +59,37 @@ Notes:
 - `ts` is in UTC and represents when the line was emitted.
 - `service` identifies the log source; values are strictly one of the three supported services.
 - `line` contains the raw message text; if the source already includes a timestamp, the server SHOULD strip it to avoid duplication.
+
+## Project Initialization
+
+### Endpoints
+- GET `/api/project/init/status`
+- POST `/api/project/init`
+
+### Status Response
+```json
+{ "initialized": true, "message": "optional detail" }
+```
+
+### Init Trigger Response
+```json
+{ "state": "started" }
+```
+
+## Interactive Session Handshake
+
+Immediately after connecting to `/ws/session`, the client sends an initialization message with terminal info.
+
+### Client → Server
+```json
+{ "type": "init", "term": "xterm-256color", "cols": 120, "rows": 30 }
+```
+
+### Server → Client
+```json
+{ "type": "status", "state": "ready" }
+```
+
+Notes:
+- Subsequent resizes continue to use the existing `resize` message.
+- No client-side prompt injection; all prompts/output originate from the `judo session` process.

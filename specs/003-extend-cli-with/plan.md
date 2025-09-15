@@ -145,4 +145,46 @@ N/A
 - [ ] Phase 5: Validation passed
 
 ---
+## Amendment (2025-09-15): UI Relabeling, Services Toggle, Init Gate, TTY Parity
+
+Scope
+- Relabel terminals to 'Logs' and 'JUDO Terminal'.
+- Move Services toggle to a left-edge control (remove header button).
+- Gate Logs/JUDO Terminal behind project initialization with a modal prompt and clear notice on decline.
+- Ensure JUDO Terminal parity with native 'judo session' (pure TTY bridge).
+
+Design & Contracts
+- REST: GET `/api/project/init/status` → `{ initialized: boolean, message?: string }`.
+- REST: POST `/api/project/init` → starts initialization and returns `{ state: 'started' }`; progress surfaced via existing logs and status polling.
+- WS Session handshake: client sends `init` with `{ term: 'xterm-256color', cols, rows }` immediately after connect; server configures PTY accordingly; subsequent `resize` updates dimensions. No client-side prompt injection.
+
+Frontend UX Flow
+- On load, fetch init status. If not initialized: show modal 'Initialize project now?'.
+  - Yes: call init endpoint; show progress (logs/status); enable terminals when complete.
+  - No: show non-blocking banner/toast explaining initialization is required to connect; keep terminals disabled until initialized.
+- Replace A/B labels with 'Logs' and 'JUDO Terminal'.
+- Replace header Services button with left-edge toggle.
+
+Testing
+- E2E: init gate prompt, decline notice, terminals disabled/enabled, labels, Services toggle placement.
+- Parity: compare `judo session` outputs and control behavior (Ctrl+C, history, prompt) between browser terminal and OS terminal.
+
+Tasks Reference
+- See tasks T033–T044.
+
+## Amendment (2025-09-15): Test Model Integration
+
+Test Environment
+- Use `test-model/` as the canonical environment for development, demos, and automated tests.
+- Run all end-to-end flows (generate, build, start, stop, dump, import, export) inside `test-model/`.
+
+Developer Flow
+- cd into `test-model/` and execute CLI commands; server UI features (logs, services, session) must reflect this project’s runtime state.
+
+Testing
+- Prefer `test-model/` for integration and E2E tests to avoid external project drift. Seed/cleanup via existing CLI commands (dump/import, stop/clean).
+
+Tasks Reference
+- See tasks T043–T050.
+
 *Based on Constitution v2.2.0 - See `/memory/constitution.md`*

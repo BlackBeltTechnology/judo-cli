@@ -16,6 +16,17 @@ JUDO CLI includes a powerful interactive session mode that provides enhanced pro
 judo session
 ```
 
+## Using the Included Test Model
+
+For a ready-to-use environment, run the session inside `test-model/` (included in this repo). It contains a full sample project wired to real infrastructure (Karaf, PostgreSQL, Keycloak).
+
+```bash
+cd test-model
+judo session
+```
+
+This lets you try history, completion, and the service-aware prompt against a working setup.
+
 ## Features
 
 ### Command History

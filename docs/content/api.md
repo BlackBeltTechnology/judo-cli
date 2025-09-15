@@ -126,6 +126,17 @@ JUDO CLI manages Docker containers for PostgreSQL and Keycloak services. The act
 | Build failed | Maven compilation errors | Check build logs and fix errors |
 | Service timeout | Service failed to start | Increase timeout or check service logs |
 
+## Server API (Browser UI)
+
+REST Endpoints
+- GET `/api/project/init/status` → `{ initialized: boolean, message?: string }`
+- POST `/api/project/init` → `{ state: "started" }`
+
+WebSocket Endpoints
+- `/ws/logs/combined` – combined service logs (Karaf, PostgreSQL, Keycloak)
+- `/ws/logs/service/{name}` – per-service logs
+- `/ws/session` – interactive `judo session` bridge (messages: `input`, `resize`, `control`; `output`, `status`)
+
 ## See Also
 
 - [Commands Reference](../commands/) - Command-line interface
