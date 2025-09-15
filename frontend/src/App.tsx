@@ -1,17 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
+import { Terminal } from '@xterm/xterm';
+import { FitAddon } from '@xterm/addon-fit';
+import { WebLinksAddon } from '@xterm/addon-web-links';
 import './App.css';
-
-interface Command {
-  command: string;
-  output: string;
-  success: boolean;
-}
-
-interface Status {
-  status: string;
-  timestamp: string;
-}
 
 interface ServiceStatus {
   service: string;
@@ -19,56 +11,182 @@ interface ServiceStatus {
   timestamp: string;
 }
 
+interface LogMessage {
+  ts: string;
+  service: string;
+  line: string;
+}
+
+interface SessionMessage {
+  type: string;
+  data?: string;
+  state?: string;
+  exitCode?: number;
+  cols?: number;
+  rows?: number;
+  action?: string;
+}
+
 function App() {
-  const [input, setInput] = useState('');
-  const [commands, setCommands] = useState<Command[]>([]);
-  const [status, setStatus] = useState<Status>({ status: 'unknown', timestamp: '' });
+  const [activeTerminal, setActiveTerminal] = useState<'A' | 'B'>('A');
+  const [terminalASource, setTerminalASource] = useState<string>('combined');
   const [serviceStatus, setServiceStatus] = useState<{[key: string]: ServiceStatus}>({});
-  const [logs, setLogs] = useState<string[]>([]);
-  const [logFilter, setLogFilter] = useState<string>('all');
-  const [isConnected, setIsConnected] = useState(false);
+  const [isServicePanelOpen, setIsServicePanelOpen] = useState(false);
   const [loadingServices, setLoadingServices] = useState<{[key: string]: boolean}>({});
-  const ws = useRef<WebSocket | null>(null);
+  
+  const terminalARef = useRef<HTMLDivElement>(null);
+  const terminalBRef = useRef<HTMLDivElement>(null);
+  const terminalAInstance = useRef<Terminal | null>(null);
+  const terminalBInstance = useRef<Terminal | null>(null);
+  const fitAddonA = useRef<FitAddon | null>(null);
+  const fitAddonB = useRef<FitAddon | null>(null);
+  
+  const logWs = useRef<WebSocket | null>(null);
+  const sessionWs = useRef<WebSocket | null>(null);
+  const isSessionRunning = useRef(false);
 
   const getApiBaseUrl = useCallback(() => {
     const { protocol, hostname, port } = window.location;
     return `${protocol}//${hostname}:${port}`;
   }, []);
 
-  const connectWebSocket = useCallback(() => {
+  const getWsBaseUrl = useCallback(() => {
     const { protocol, hostname, port } = window.location;
     const wsProtocol = protocol === 'https:' ? 'wss:' : 'ws:';
-    ws.current = new WebSocket(`${wsProtocol}//${hostname}:${port}/ws/logs`);
-    
-    ws.current.onopen = () => {
-      console.log('WebSocket connected');
-      setIsConnected(true);
-    };
-    
-    ws.current.onmessage = (event) => {
-      setLogs(prev => [...prev.slice(-100), event.data]);
-    };
-    
-    ws.current.onclose = () => {
-      console.log('WebSocket disconnected');
-      setIsConnected(false);
-      // Attempt to reconnect after 2 seconds
-      setTimeout(connectWebSocket, 2000);
-    };
-    
-    ws.current.onerror = (error) => {
-      console.error('WebSocket error:', error);
-    };
+    return `${wsProtocol}//${hostname}:${port}`;
   }, []);
 
-  const fetchStatus = useCallback(async () => {
-    try {
-      const response = await axios.get(`${getApiBaseUrl()}/api/status`);
-      setStatus(response.data);
-    } catch (error) {
-      console.error('Failed to fetch status:', error);
+  const initializeTerminal = (ref: React.RefObject<HTMLDivElement | null>, fitAddon: React.MutableRefObject<FitAddon | null>) => {
+    if (ref.current && !ref.current.children.length) {
+      const terminal = new Terminal({
+        theme: {
+          background: '#1a1a1a',
+          foreground: '#ffffff',
+          cursor: '#ffffff'
+        },
+        fontSize: 14,
+        fontFamily: 'Monaco, Menlo, "Ubuntu Mono", monospace',
+        cursorBlink: true
+      });
+
+      const fit = new FitAddon();
+      terminal.loadAddon(fit);
+      terminal.loadAddon(new WebLinksAddon());
+      
+      terminal.open(ref.current);
+      fit.fit();
+      
+      fitAddon.current = fit;
+      return terminal;
     }
-  }, [getApiBaseUrl]);
+    return null;
+  };
+
+  const connectLogWebSocket = useCallback((source: string) => {
+    if (logWs.current) {
+      logWs.current.close();
+    }
+
+    const wsUrl = source === 'combined' 
+      ? `${getWsBaseUrl()}/ws/logs/combined`
+      : `${getWsBaseUrl()}/ws/logs/service/${source}`;
+
+    logWs.current = new WebSocket(wsUrl);
+    
+    logWs.current.onopen = () => {
+      console.log('Log WebSocket connected');
+      if (terminalAInstance.current) {
+        terminalAInstance.current.write('\r\n\x1b[32m✓ Connected to log stream\x1b[0m\r\n');
+      }
+    };
+    
+    logWs.current.onmessage = (event) => {
+      try {
+        const logMessage: LogMessage = JSON.parse(event.data);
+        if (terminalAInstance.current && activeTerminal === 'A') {
+          const serviceColor = {
+            karaf: '\x1b[35m',
+            postgresql: '\x1b[36m',
+            keycloak: '\x1b[33m',
+            combined: '\x1b[37m'
+          }[logMessage.service] || '\x1b[37m';
+          
+          terminalAInstance.current.write(
+            `${serviceColor}[${logMessage.service.toUpperCase()}]\x1b[0m ${logMessage.line}\r\n`
+          );
+        }
+      } catch (error) {
+        console.error('Error parsing log message:', error);
+      }
+    };
+    
+    logWs.current.onclose = () => {
+      console.log('Log WebSocket disconnected');
+      if (terminalAInstance.current && activeTerminal === 'A') {
+        terminalAInstance.current.write('\r\n\x1b[31m✗ Log stream disconnected\x1b[0m\r\n');
+      }
+      setTimeout(() => connectLogWebSocket(source), 2000);
+    };
+    
+    logWs.current.onerror = (error) => {
+      console.error('Log WebSocket error:', error);
+    };
+  }, [getWsBaseUrl, activeTerminal]);
+
+  const connectSessionWebSocket = useCallback(() => {
+    if (sessionWs.current) {
+      sessionWs.current.close();
+    }
+
+    sessionWs.current = new WebSocket(`${getWsBaseUrl()}/ws/session`);
+    
+    sessionWs.current.onopen = () => {
+      console.log('Session WebSocket connected');
+      isSessionRunning.current = true;
+      if (terminalBInstance.current) {
+        terminalBInstance.current.write('\r\n\x1b[32m✓ Connected to JUDO session\x1b[0m\r\n');
+        terminalBInstance.current.write('\x1b[33mjudo> \x1b[0m');
+      }
+    };
+    
+    sessionWs.current.onmessage = (event) => {
+      try {
+        const message: SessionMessage = JSON.parse(event.data);
+        if (terminalBInstance.current && activeTerminal === 'B') {
+          if (message.type === 'output') {
+            terminalBInstance.current.write(message.data || '');
+          } else if (message.type === 'status' && message.state === 'exited') {
+            terminalBInstance.current.write(`\r\n\x1b[31mSession exited with code ${message.exitCode}\x1b[0m\r\n`);
+            isSessionRunning.current = false;
+          }
+        }
+      } catch (error) {
+        console.error('Error parsing session message:', error);
+      }
+    };
+    
+    sessionWs.current.onclose = () => {
+      console.log('Session WebSocket disconnected');
+      isSessionRunning.current = false;
+      if (terminalBInstance.current && activeTerminal === 'B') {
+        terminalBInstance.current.write('\r\n\x1b[31m✗ Session disconnected\x1b[0m\r\n');
+      }
+    };
+    
+    sessionWs.current.onerror = (error) => {
+      console.error('Session WebSocket error:', error);
+    };
+  }, [getWsBaseUrl, activeTerminal]);
+
+  const handleTerminalBInput = (data: string) => {
+    if (sessionWs.current && sessionWs.current.readyState === WebSocket.OPEN) {
+      const message: SessionMessage = {
+        type: 'input',
+        data: data
+      };
+      sessionWs.current.send(JSON.stringify(message));
+    }
+  };
 
   const fetchServiceStatuses = useCallback(async () => {
     try {
@@ -88,11 +206,10 @@ function App() {
     }
   }, [getApiBaseUrl]);
 
-const handleServiceStart = async (service: string) => {
+  const handleServiceStart = async (service: string) => {
     setLoadingServices(prev => ({ ...prev, [service]: true }));
     try {
       await axios.post(`${getApiBaseUrl()}/api/services/${service}/start`);
-      // Start polling for status updates
       startStatusPolling(service);
     } catch (error) {
       console.error(`Failed to start ${service}:`, error);
@@ -104,7 +221,6 @@ const handleServiceStart = async (service: string) => {
     setLoadingServices(prev => ({ ...prev, [service]: true }));
     try {
       await axios.post(`${getApiBaseUrl()}/api/services/${service}/stop`);
-      // Start polling for status updates
       startStatusPolling(service);
     } catch (error) {
       console.error(`Failed to stop ${service}:`, error);
@@ -113,72 +229,101 @@ const handleServiceStart = async (service: string) => {
   };
 
   const startStatusPolling = (service: string) => {
-    // Poll every 2 seconds for 30 seconds to track service state changes
     const pollInterval = setInterval(() => {
       fetchServiceStatuses();
     }, 2000);
     
-    // Stop polling after 30 seconds and clear loading state
     setTimeout(() => {
       clearInterval(pollInterval);
       setLoadingServices(prev => ({ ...prev, [service]: false }));
     }, 30000);
   };
 
-  const handleServiceStatus = async (service: string) => {
-    try {
-      await axios.get(`${getApiBaseUrl()}/api/services/${service}/status`);
-      fetchServiceStatuses();
-    } catch (error) {
-      console.error(`Failed to get ${service} status:`, error);
-    }
-  };
+  useEffect(() => {
+    // Initialize terminals
+    terminalAInstance.current = initializeTerminal(terminalARef, fitAddonA);
+    terminalBInstance.current = initializeTerminal(terminalBRef, fitAddonB);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim()) return;
+    // Connect to log WebSocket
+    connectLogWebSocket(terminalASource);
 
-    try {
-      const response = await axios.post(`${getApiBaseUrl()}/api/commands/${encodeURIComponent(input)}`);
-      setCommands(prev => [...prev, response.data]);
-      setInput('');
-    } catch (error) {
-      console.error('Command failed:', error);
-      setCommands(prev => [...prev, {
-        command: input,
-        output: 'Error executing command',
-        success: false
-      }]);
-      setInput('');
+    // Fetch service statuses
+    fetchServiceStatuses();
+
+    // Handle window resize
+    const handleResize = () => {
+      if (fitAddonA.current) fitAddonA.current.fit();
+      if (fitAddonB.current) fitAddonB.current.fit();
     };
-  };
+    
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      if (logWs.current) logWs.current.close();
+      if (sessionWs.current) sessionWs.current.close();
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [connectLogWebSocket, fetchServiceStatuses, terminalASource]);
 
   useEffect(() => {
-    fetchStatus();
-    fetchServiceStatuses();
-    connectWebSocket();
-    
-    return () => {
-      if (ws.current) {
-        ws.current.close();
-      }
-    };
-  }, [connectWebSocket, fetchServiceStatuses, fetchStatus]);
+    // Connect to session WebSocket when Terminal B becomes active
+    if (activeTerminal === 'B' && !isSessionRunning.current) {
+      connectSessionWebSocket();
+    }
+  }, [activeTerminal, connectSessionWebSocket]);
+
+  useEffect(() => {
+    // Reconnect log WebSocket when source changes
+    if (activeTerminal === 'A') {
+      connectLogWebSocket(terminalASource);
+    }
+  }, [terminalASource, activeTerminal, connectLogWebSocket]);
 
   return (
-    <div className="App">
+    <div className={`App ${isServicePanelOpen ? 'service-panel-open' : ''}`}>
       <header className="App-header">
         <h1>JUDO CLI Server</h1>
-        <div className="status-bar">
-          <span>Status: {status.status}</span>
-          <span>WebSocket: {isConnected ? 'Connected' : 'Disconnected'}</span>
-          <span>Last updated: {new Date(status.timestamp).toLocaleTimeString()}</span>
+        <div className="terminal-switcher">
+          <button 
+            className={activeTerminal === 'A' ? 'btn btn-terminal active' : 'btn btn-terminal'}
+            onClick={() => setActiveTerminal('A')}
+          >
+            Terminal A
+          </button>
+          <button 
+            className={activeTerminal === 'B' ? 'btn btn-terminal active' : 'btn btn-terminal'}
+            onClick={() => setActiveTerminal('B')}
+          >
+            Terminal B
+          </button>
         </div>
+        
+        {activeTerminal === 'A' && (
+          <div className="terminal-a-controls">
+            <span>Source: </span>
+            <select 
+              value={terminalASource} 
+              onChange={(e) => setTerminalASource(e.target.value)}
+              className="source-selector"
+            >
+              <option value="combined">Combined</option>
+              <option value="karaf">Karaf</option>
+              <option value="postgresql">PostgreSQL</option>
+              <option value="keycloak">Keycloak</option>
+            </select>
+          </div>
+        )}
+
+        <button 
+          className="btn btn-service-panel"
+          onClick={() => setIsServicePanelOpen(!isServicePanelOpen)}
+        >
+          {isServicePanelOpen ? '◀' : '▶'} Services
+        </button>
       </header>
 
       <div className="main-content">
-        <div className="grid-row">
-          <div className="control-panel">
+        <div className={`service-panel ${isServicePanelOpen ? 'open' : ''}`}>
           <h2>Services</h2>
           <div className="service-controls">
             {Object.entries(serviceStatus).map(([service, status]) => (
@@ -200,81 +345,21 @@ const handleServiceStart = async (service: string) => {
                   >
                     {loadingServices[service] ? 'Stopping...' : 'Stop'}
                   </button>
-                  <button 
-                    onClick={() => handleServiceStatus(service)}
-                    className="btn btn-service-status"
-                    disabled={loadingServices[service]}
-                  >
-                    Refresh
-                  </button>
                 </div>
               </div>
             ))}
           </div>
         </div>
 
-        <div className="command-section">
-          <h2>Command Input</h2>
-          <form onSubmit={handleSubmit} className="command-form">
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Enter JUDO CLI command..."
-              className="command-input"
-            />
-            <button type="submit" className="btn btn-execute">Execute</button>
-          </form>
-
-          <div className="command-output">
-            <h3>Command Results</h3>
-            {commands.map((cmd, index) => (
-              <div key={index} className={`command-result ${cmd.success ? 'success' : 'error'}`}>
-                <strong>$ {cmd.command}</strong>
-                <pre>{cmd.output}</pre>
-              </div>
-            ))}
-          </div>
-        </div>
-        
-        </div>
-
-        <div className="log-section">
-          <h2>Real-time Logs</h2>
-          <div className="log-filter">
-            <span>Filter: </span>
-            <button 
-              className={logFilter === 'all' ? 'btn btn-filter active' : 'btn btn-filter'}
-              onClick={() => setLogFilter('all')}
-            >
-              All
-            </button>
-            <button 
-              className={logFilter === 'karaf' ? 'btn btn-filter active' : 'btn btn-filter'}
-              onClick={() => setLogFilter('karaf')}
-            >
-              Karaf
-            </button>
-            <button 
-              className={logFilter === 'postgresql' ? 'btn btn-filter active' : 'btn btn-filter'}
-              onClick={() => setLogFilter('postgresql')}
-            >
-              PostgreSQL
-            </button>
-            <button 
-              className={logFilter === 'keycloak' ? 'btn btn-filter active' : 'btn btn-filter'}
-              onClick={() => setLogFilter('keycloak')}
-            >
-              Keycloak
-            </button>
-          </div>
-          <div className="log-viewer">
-            {logs.map((log, index) => (
-              <div key={index} className="log-entry">
-                {log}
-              </div>
-            ))}
-          </div>
+        <div className="terminal-container">
+          <div 
+            ref={terminalARef} 
+            className={`terminal terminal-a ${activeTerminal === 'A' ? 'active' : 'hidden'}`}
+          />
+          <div 
+            ref={terminalBRef} 
+            className={`terminal terminal-b ${activeTerminal === 'B' ? 'active' : 'hidden'}`}
+          />
         </div>
       </div>
     </div>

@@ -1,0 +1,459 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <artifactId>testproject-application</artifactId>
+        <groupId>hu.blaclbelt.judo</groupId>
+        <version>${revision}</version>
+    </parent>
+
+    <artifactId>testproject-application-docker</artifactId>
+    <packaging>jar</packaging>
+
+    <name>TestProject docker</name>
+    <description>TestProject Docker image in TestProject-application</description>
+    <properties>
+        <DOCKER_IMAGE_TAGS>dev</DOCKER_IMAGE_TAGS>
+    </properties>
+
+    <profiles>
+        <profile>
+            <id>prepare-docker-image</id>
+            <activation>
+                <property>
+                    <name>!skipDocker</name>
+                </property>
+            </activation>
+            <build>
+                <plugins>
+
+                    <!-- 1. Unpack offline zip for JIB -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-dependency-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>unpack-offline-overrides</id>
+                                <phase>prepare-package</phase>
+                                <goals>
+                                    <goal>unpack</goal>
+                                </goals>
+                                <configuration>
+                                    <artifactItems>
+                                        <artifactItem>
+                                            <groupId>hu.blaclbelt.judo</groupId>
+                                            <artifactId>testproject-application-karaf-offline</artifactId>
+                                            <type>zip</type>
+                                            <version>${project.version}</version>
+                                            <outputDirectory>target/assembly</outputDirectory>
+                                        </artifactItem>
+                                    </artifactItems>
+                                </configuration>
+                            </execution>
+
+
+
+                        </executions>
+                    </plugin>
+
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-resources-plugin</artifactId>
+                        <version>3.0.2</version>
+                        <executions>
+
+                            <execution>
+                                <id>copy-overrided-files</id>
+                                <phase>prepare-package</phase>
+                                <goals>
+                                    <goal>copy-resources</goal>
+                                </goals>
+                                <configuration>
+                                    <outputDirectory>target/assembly/testproject-application-karaf-offline-${project.version}</outputDirectory>
+                                    <resources>
+                                        <resource>
+                                            <directory>${project.basedir}/overrided</directory>
+                                            <filtering>true</filtering>
+                                        </resource>
+                                    </resources>
+                                </configuration>
+                            </execution>
+
+                        </executions>
+                    </plugin>
+
+                    <!-- 2. Delete earlier created friendly named directory -->
+                    <plugin>
+                        <artifactId>maven-clean-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>remove-docker-base-directory</id>
+                                <phase>prepare-package</phase>
+                                <goals>
+                                    <goal>clean</goal>
+                                </goals>
+                                <configuration>
+                                    <excludeDefaultDirectories>true</excludeDefaultDirectories>
+                                    <filesets>
+                                        <fileset>
+                                            <directory>${project.basedir}/target/assembly/testproject-application</directory>
+                                            <followSymlinks>false</followSymlinks>
+                                        </fileset>
+                                    </filesets>
+                                    <verbose>true</verbose>
+                                </configuration>
+
+                            </execution>
+                        </executions>
+                    </plugin>
+
+                    <!-- 3. rename unpacked assembly to be able to pack friendly named directory inside docker image -->
+                    <plugin>
+                        <groupId>com.coderplus.maven.plugins</groupId>
+                        <artifactId>copy-rename-maven-plugin</artifactId>
+                        <version>1.0</version>
+                        <executions>
+                            <execution>
+                                <id>rename-jib-image</id>
+                                <phase>prepare-package</phase>
+                                <goals>
+                                    <goal>rename</goal>
+                                </goals>
+                                <configuration>
+                                    <sourceFile>${project.basedir}/target/assembly/testproject-application-karaf-offline-${project.version}</sourceFile>
+                                    <destinationFile>${project.basedir}/target/assembly/testproject-application</destinationFile>
+                                </configuration>
+
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+            <dependencies>
+                <dependency>
+                    <groupId>hu.blaclbelt.judo</groupId>
+                    <artifactId>testproject-application-karaf-offline</artifactId>
+                    <type>zip</type>
+                    <version>${project.version}</version>
+                </dependency>
+            </dependencies>
+        </profile>
+
+
+        <profile>
+            <id>create-docker-image-x86_64</id>
+            <activation>
+                <property>
+                    <name>!skipDocker</name>
+                </property>
+				<os><arch>x86_64</arch></os>
+            </activation>
+            <build>
+                <plugins>
+                    <!-- 4. Create image -->
+                    <plugin>
+                        <groupId>com.google.cloud.tools</groupId>
+                        <artifactId>jib-maven-plugin</artifactId>
+                        <version>3.3.2</version>
+                        <executions>
+                            <execution>
+                                <id>build-platform-docker-x86_64</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>buildTar</goal>
+                                </goals>
+
+                                <configuration>
+                                    <from>
+                                        <image>azul/zulu-openjdk-debian:21-latest</image>
+                                        <platforms>
+                                            <platform>
+                                                <architecture>amd64</architecture>
+                                                <os>linux</os>
+                                            </platform>
+                                        </platforms>
+                                    </from>
+                                    <to>
+                                        <image>${project.parent.artifactId}</image>
+                                        <tags>${DOCKER_IMAGE_TAGS}</tags>
+                                    </to>
+                                    <container>
+                                        <creationTime>USE_CURRENT_TIMESTAMP</creationTime>
+                                        <entrypoint>/testproject-application/bin/karaf,run,clean</entrypoint>
+                                        <ports>
+                                            <port>8181</port>
+                                            <port>8081</port>
+                                            <port>1099</port>
+                                            <port>44444</port>
+                                            <port>5000</port>
+                                            <port>9090</port>
+                                            <port>5005</port>
+                                        </ports>
+                                        <format>Docker</format>
+                                        <volumes>
+                                            <volume>/testproject-application/deploy</volume>
+                                            <volume>/testproject-application/data</volume>
+                                        </volumes>
+                                    </container>
+                                    <outputPaths>
+                                        <tar>${basedir}/target/${project.parent.artifactId}-${project.version}_docker_image_x86_64.tar</tar>
+                                    </outputPaths>
+                                    <extraDirectories>
+                                        <paths>
+                                            <path>${project.basedir}/target/assembly</path>
+                                        </paths>
+                                        <permissions>
+                                            <permission>
+                                                <file>/testproject-application/bin/karaf</file>
+                                                <mode>755</mode> <!-- Read/write/execute for owner, read/execute for group/other -->
+                                            </permission>
+                                            <permission>
+                                                <file>/testproject-application/bin/setenv</file>
+                                                <mode>755</mode> <!-- Read/write/execute for owner, read/execute for group/other -->
+                                            </permission>
+                                        </permissions>
+                                    </extraDirectories>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+
+                    <!-- 5. Attach the artifact -->
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>build-helper-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>attach-artifacts-x86_64</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>attach-artifact</goal>
+                                </goals>
+                                <configuration>
+                                    <artifacts>
+                                        <artifact>
+                                            <file>${basedir}/target/${project.parent.artifactId}-${project.version}_docker_image_x86_64.tar</file>
+                                            <classifier>x86_64</classifier>
+                                            <type>tar</type>
+                                        </artifact>
+                                    </artifacts>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+         <profile>
+             <id>create-docker-image-amd64</id>
+             <activation>
+                 <property>
+                     <name>!skipDocker</name>
+                 </property>
+ 				<os><arch>amd64</arch></os>
+             </activation>
+             <build>
+                 <plugins>
+                     <!-- 4. Create image -->
+                     <plugin>
+                         <groupId>com.google.cloud.tools</groupId>
+                         <artifactId>jib-maven-plugin</artifactId>
+                         <version>3.3.2</version>
+                         <executions>
+                             <execution>
+                                 <id>build-platform-docker-amd64</id>
+                                 <phase>package</phase>
+                                 <goals>
+                                     <goal>buildTar</goal>
+                                 </goals>
+
+                                 <configuration>
+                                     <from>
+                                         <image>azul/zulu-openjdk-debian:21-latest</image>
+                                         <platforms>
+                                             <platform>
+                                                 <architecture>amd64</architecture>
+                                                 <os>linux</os>
+                                             </platform>
+                                         </platforms>
+                                     </from>
+                                     <to>
+                                         <image>${project.parent.artifactId}</image>
+                                         <tags>${DOCKER_IMAGE_TAGS}</tags>
+                                     </to>
+                                     <container>
+                                         <creationTime>USE_CURRENT_TIMESTAMP</creationTime>
+                                         <entrypoint>/testproject-application/bin/karaf,run,clean</entrypoint>
+                                         <ports>
+                                             <port>8181</port>
+                                             <port>8081</port>
+                                             <port>1099</port>
+                                             <port>44444</port>
+                                             <port>5000</port>
+                                             <port>9090</port>
+                                             <port>5005</port>
+                                         </ports>
+                                         <format>Docker</format>
+                                         <volumes>
+                                             <volume>/testproject-application/deploy</volume>
+                                             <volume>/testproject-application/data</volume>
+                                         </volumes>
+                                     </container>
+                                     <outputPaths>
+                                         <tar>${basedir}/target/${project.parent.artifactId}-${project.version}_docker_image_amd64.tar</tar>
+                                     </outputPaths>
+                                     <extraDirectories>
+                                         <paths>
+                                             <path>${project.basedir}/target/assembly</path>
+                                         </paths>
+                                         <permissions>
+                                             <permission>
+                                                 <file>/testproject-application/bin/karaf</file>
+                                                 <mode>755</mode> <!-- Read/write/execute for owner, read/execute for group/other -->
+                                             </permission>
+                                             <permission>
+                                                 <file>/testproject-application/bin/setenv</file>
+                                                 <mode>755</mode> <!-- Read/write/execute for owner, read/execute for group/other -->
+                                             </permission>
+                                         </permissions>
+                                     </extraDirectories>
+                                 </configuration>
+                             </execution>
+                         </executions>
+                     </plugin>
+
+                     <!-- 5. Attach the artifact -->
+                     <plugin>
+                         <groupId>org.codehaus.mojo</groupId>
+                         <artifactId>build-helper-maven-plugin</artifactId>
+                         <executions>
+                             <execution>
+                                 <id>attach-artifacts-amd64</id>
+                                 <phase>package</phase>
+                                 <goals>
+                                     <goal>attach-artifact</goal>
+                                 </goals>
+                                 <configuration>
+                                     <artifacts>
+                                         <artifact>
+                                             <file>${basedir}/target/${project.parent.artifactId}-${project.version}_docker_image_amd64.tar</file>
+                                             <classifier>amd64</classifier>
+                                             <type>tar</type>
+                                         </artifact>
+                                     </artifacts>
+                                 </configuration>
+                             </execution>
+                         </executions>
+                     </plugin>
+                 </plugins>
+             </build>
+         </profile>
+
+         <profile>
+            <id>create-docker-image-arm64</id>
+            <activation>
+                <property>
+                    <name>!skipDocker</name>
+                </property>
+				<os><arch>aarch64</arch></os>
+            </activation>
+            <build>
+                <plugins>
+                    <!-- 4. Create image -->
+                    <plugin>
+                        <groupId>com.google.cloud.tools</groupId>
+                        <artifactId>jib-maven-plugin</artifactId>
+                        <version>3.3.2</version>
+                        <executions>
+                            <execution>
+                                <id>build-platform-docker-arm64</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>buildTar</goal>
+                                </goals>
+
+                                <configuration>
+                                    <from>
+                                        <image>azul/zulu-openjdk-debian:21-latest</image>
+                                        <platforms>
+                                            <platform>
+                                                <architecture>arm64</architecture>
+                                                <os>linux</os>
+                                            </platform>
+                                        </platforms>
+                                    </from>
+                                    <to>
+                                        <image>${project.parent.artifactId}</image>
+                                        <tags>${DOCKER_IMAGE_TAGS}</tags>
+                                    </to>
+                                    <container>
+                                        <creationTime>USE_CURRENT_TIMESTAMP</creationTime>
+                                        <entrypoint>/testproject-application/bin/karaf,run,clean</entrypoint>
+                                        <ports>
+                                            <port>8181</port>
+                                            <port>8081</port>
+                                            <port>1099</port>
+                                            <port>44444</port>
+                                            <port>5000</port>
+                                            <port>9090</port>
+                                            <port>5005</port>
+                                        </ports>
+                                        <format>Docker</format>
+                                        <volumes>
+                                            <volume>/testproject-application/deploy</volume>
+                                            <volume>/testproject-application/data</volume>
+                                        </volumes>
+                                    </container>
+                                    <outputPaths>
+                                        <tar>${basedir}/target/${project.parent.artifactId}-${project.version}_docker_image_arm64.tar</tar>
+                                    </outputPaths>
+                                    <extraDirectories>
+                                        <paths>
+                                            <path>${project.basedir}/target/assembly</path>
+                                        </paths>
+                                        <permissions>
+                                            <permission>
+                                                <file>/testproject-application/bin/karaf</file>
+                                                <mode>755</mode> <!-- Read/write/execute for owner, read/execute for group/other -->
+                                            </permission>
+                                            <permission>
+                                                <file>/testproject-application/bin/setenv</file>
+                                                <mode>755</mode> <!-- Read/write/execute for owner, read/execute for group/other -->
+                                            </permission>
+                                        </permissions>
+                                    </extraDirectories>
+                                </configuration>
+                            </execution>
+
+                        </executions>
+                    </plugin>
+
+                    <!-- 5. Attach the artifact -->
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>build-helper-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>attach-artifacts-arm64</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>attach-artifact</goal>
+                                </goals>
+                                <configuration>
+                                    <artifacts>
+                                        <artifact>
+                                            <file>${basedir}/target/${project.parent.artifactId}-${project.version}_docker_image_arm64.tar</file>
+                                            <classifier>arm64</classifier>
+                                            <type>tar</type>
+                                        </artifact>
+                                    </artifacts>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+</project>

@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!-- To define create 'karaf-features/pom.xml.project-definition.fragment.hbs' file -->
+    <parent>
+        <artifactId>testproject-application</artifactId>
+        <groupId>hu.blaclbelt.judo</groupId>
+        <version>${revision}</version>
+    </parent>
+    
+    <artifactId>testproject-application-karaf-features</artifactId>
+    <name>TestProject karaf features</name>
+    <description>TestProject karaf features</description>
+    <!-- End of karaf-features/pom.xml.project-definition.fragment.hbs -->
+
+    <packaging>feature</packaging>
+
+    <properties>
+        <!-- To define create 'karaf-features/pom.xml.properties-definition.fragment.hbs' file -->
+        <!-- End of 'karaf-features/pom.xml.properties-definition.fragment.hbs' -->
+    </properties>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <!-- To define create 'karaf-features/pom.xml.extra-plugin-management.fragment.hbs' file -->
+                <!-- End of 'karaf-features/pom.xml.extra-plugin-management.fragment.hbs'  -->
+                
+                
+            </plugins>
+        </pluginManagement>
+
+        <resources>
+            <resource>
+                <directory>${project.basedir}/src/main/feature</directory>
+                <filtering>true</filtering>
+                <targetPath>${project.build.directory}/feature</targetPath>
+            </resource>
+        </resources>
+
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <version>3.0.2</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>resources</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.karaf.tooling</groupId>
+                <artifactId>karaf-maven-plugin</artifactId>
+                <extensions>true</extensions>
+                <configuration>
+                    <enableGeneration>true</enableGeneration>
+                    <aggregateFeatures>true</aggregateFeatures>
+                </configuration>
+            </plugin>
+
+            <!-- To define create 'karaf-features/pom.xml.extra-plugins.fragment.hbs' file -->
+            <!-- End of 'karaf-features/pom.xml.extra-plugins.fragment.hbs' -->
+            
+
+        </plugins>
+    </build>
+    <profiles>
+        <profile>
+            <id>verify-feature</id>
+            <activation>
+                <property>
+                    <name>!skipKarafFeature</name>
+                </property>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.karaf.tooling</groupId>
+                        <artifactId>karaf-maven-plugin</artifactId>
+                        <extensions>true</extensions>
+                        <configuration>
+                            <blacklistedRepositories>
+                                <repository>mvn:org.ops4j.pax.transx/pax-transx-features/0.4.4/xml/features</repository>
+                                <repository>mvn:org.ops4j.pax.transx/pax-transx-features/0.5.0/xml/features</repository>
+                            </blacklistedRepositories>
+                            <enableGeneration>true</enableGeneration>
+                            <aggregateFeatures>true</aggregateFeatures>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>feature-verify</id>
+                                <phase>process-resources</phase>
+                                <goals>
+                                    <goal>verify</goal>
+                                </goals>
+                                <configuration>
+                                    <descriptors>
+                                        <descriptor>mvn:hu.blackbelt.judo.platform/judo-platform-karaf-features/${judo-platform-version}/xml/features</descriptor>
+                                        <descriptor>mvn:hu.blackbelt.judo.platform/judo-platform-sdk-karaf-features/${judo-platform-version}/xml/features</descriptor>
+                                    </descriptors>
+                                    <distribution>org.apache.karaf.features:framework</distribution>
+                                    <javase>21</javase>
+                                    <framework>
+                                        <feature>framework</feature>
+                                        <feature>shell-compat</feature>
+                                        <feature>scr</feature>
+                                        <feature>eventadmin</feature>
+                                        <feature>webconsole</feature>
+                                    </framework>
+                                    <features>
+                                        <feature>testproject-application-judo-platform-prototype</feature>
+                                    </features>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+
+
+    <dependencies>
+        <dependency>
+            <groupId>hu.blackbelt.judo.platform</groupId>
+            <artifactId>judo-platform-karaf-features</artifactId>
+            <type>xml</type>
+            <classifier>features</classifier>
+            <scope>runtime</scope>
+            <version>${judo-platform-version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>hu.blackbelt.judo.platform</groupId>
+            <artifactId>judo-platform-sdk-karaf-features</artifactId>
+            <type>xml</type>
+            <classifier>features</classifier>
+            <scope>runtime</scope>
+            <version>${judo-platform-version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>hu.blaclbelt.judo</groupId>
+            <artifactId>testproject-application-model</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>hu.blaclbelt.judo</groupId>
+            <artifactId>testproject-application-sdk</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>hu.blaclbelt.judo</groupId>
+            <artifactId>testproject-application-internal</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>hu.blaclbelt.judo</groupId>
+            <artifactId>testproject-application-model</artifactId>
+            <version>${project.version}</version>
+            <classifier>script2operation</classifier>
+            <type>jar</type>
+        </dependency>
+
+        <dependency>
+            <groupId>hu.blaclbelt.judo</groupId>
+            <artifactId>testproject-application-rest</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>hu.blaclbelt.judo</groupId>
+            <artifactId>testproject-application-app</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+    <dependency>
+        <groupId>hu.blaclbelt.judo</groupId>
+        <artifactId>testproject-application-web-root</artifactId>
+        <version>${project.version}</version>
+    </dependency>
+
+
+        <!-- To define create 'karaf-features/pom.xml.extra-dependencies.fragment.hbs' file -->
+        <!-- End of 'karaf-features/pom.xml.extra-dependencies.fragment.hbs' -->
+
+    </dependencies>
+</project>

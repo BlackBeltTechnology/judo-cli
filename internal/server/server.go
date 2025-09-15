@@ -68,6 +68,11 @@ func NewServer(port int) *Server {
 	mux.HandleFunc("/api/services/keycloak/start", s.handleKeycloakStart)
 	mux.HandleFunc("/api/services/keycloak/stop", s.handleKeycloakStop)
 	mux.HandleFunc("/ws/logs", s.handleWebSocket)
+	mux.HandleFunc("/ws/logs/combined", s.handleCombinedLogsWebSocket)
+	mux.HandleFunc("/ws/logs/service/karaf", s.handleKarafLogsWebSocket)
+	mux.HandleFunc("/ws/logs/service/postgresql", s.handlePostgreSQLLogsWebSocket)
+	mux.HandleFunc("/ws/logs/service/keycloak", s.handleKeycloakLogsWebSocket)
+	mux.HandleFunc("/ws/session", s.handleSessionWebSocket)
 	// Serve embedded frontend files
 	assetsFS, _ := fs.Sub(embeddedFiles, "assets")
 	mux.Handle("/", http.FileServer(http.FS(assetsFS)))
@@ -839,4 +844,304 @@ func (s *Server) safeStopKeycloak() error {
 	}
 	log.Printf("Keycloak service stopped successfully")
 	return nil
+}
+
+// WebSocket handlers for specific log streams
+func (s *Server) handleCombinedLogsWebSocket(w http.ResponseWriter, r *http.Request) {
+	conn, err := s.upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Printf("WebSocket upgrade failed: %v", err)
+		return
+	}
+	defer conn.Close()
+
+	s.mu.Lock()
+	s.clients[conn] = true
+	s.mu.Unlock()
+
+	// Stream combined logs from all services
+	go s.streamCombinedLogs(conn)
+
+	// Keep connection alive
+	for {
+		_, _, err := conn.ReadMessage()
+		if err != nil {
+			break
+		}
+	}
+
+	s.mu.Lock()
+	delete(s.clients, conn)
+	s.mu.Unlock()
+}
+
+func (s *Server) handleKarafLogsWebSocket(w http.ResponseWriter, r *http.Request) {
+	conn, err := s.upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Printf("WebSocket upgrade failed: %v", err)
+		return
+	}
+	defer conn.Close()
+
+	s.mu.Lock()
+	s.clients[conn] = true
+	s.mu.Unlock()
+
+	// Stream Karaf logs only
+	go s.streamServiceLogs(conn, "karaf")
+
+	// Keep connection alive
+	for {
+		_, _, err := conn.ReadMessage()
+		if err != nil {
+			break
+		}
+	}
+
+	s.mu.Lock()
+	delete(s.clients, conn)
+	s.mu.Unlock()
+}
+
+func (s *Server) handlePostgreSQLLogsWebSocket(w http.ResponseWriter, r *http.Request) {
+	conn, err := s.upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Printf("WebSocket upgrade failed: %v", err)
+		return
+	}
+	defer conn.Close()
+
+	s.mu.Lock()
+	s.clients[conn] = true
+	s.mu.Unlock()
+
+	// Stream PostgreSQL logs only
+	go s.streamServiceLogs(conn, "postgresql")
+
+	// Keep connection alive
+	for {
+		_, _, err := conn.ReadMessage()
+		if err != nil {
+			break
+		}
+	}
+
+	s.mu.Lock()
+	delete(s.clients, conn)
+	s.mu.Unlock()
+}
+
+func (s *Server) handleKeycloakLogsWebSocket(w http.ResponseWriter, r *http.Request) {
+	conn, err := s.upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Printf("WebSocket upgrade failed: %v", err)
+		return
+	}
+	defer conn.Close()
+
+	s.mu.Lock()
+	s.clients[conn] = true
+	s.mu.Unlock()
+
+	// Stream Keycloak logs only
+	go s.streamServiceLogs(conn, "keycloak")
+
+	// Keep connection alive
+	for {
+		_, _, err := conn.ReadMessage()
+		if err != nil {
+			break
+		}
+	}
+
+	s.mu.Lock()
+	delete(s.clients, conn)
+	s.mu.Unlock()
+}
+
+func (s *Server) handleSessionWebSocket(w http.ResponseWriter, r *http.Request) {
+	conn, err := s.upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Printf("Session WebSocket upgrade failed: %v", err)
+		return
+	}
+	defer conn.Close()
+
+	// Start interactive session
+	go s.handleInteractiveSession(conn)
+
+	// Handle client messages
+	for {
+		messageType, message, err := conn.ReadMessage()
+		if err != nil {
+			break
+		}
+
+		if messageType == websocket.TextMessage {
+			// Handle session input
+			go s.handleSessionInput(conn, string(message))
+		}
+	}
+}
+
+func (s *Server) streamCombinedLogs(conn *websocket.Conn) {
+	// Implementation for streaming combined logs from all services
+	// This would tail logs from Karaf, PostgreSQL, and Keycloak
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		// Simulate combined log streaming
+		logMessage := map[string]interface{}{
+			"ts":      time.Now().Format(time.RFC3339),
+			"service": "combined",
+			"line":    fmt.Sprintf("Combined log message at %s", time.Now().Format(time.RFC3339)),
+		}
+
+		message, _ := json.Marshal(logMessage)
+		if err := conn.WriteMessage(websocket.TextMessage, message); err != nil {
+			break
+		}
+	}
+}
+
+func (s *Server) streamServiceLogs(conn *websocket.Conn, service string) {
+	// Implementation for streaming logs from a specific service
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		// Simulate service-specific log streaming
+		logMessage := map[string]interface{}{
+			"ts":      time.Now().Format(time.RFC3339),
+			"service": service,
+			"line":    fmt.Sprintf("[%s] Log message at %s", strings.ToUpper(service), time.Now().Format(time.RFC3339)),
+		}
+
+		message, _ := json.Marshal(logMessage)
+		if err := conn.WriteMessage(websocket.TextMessage, message); err != nil {
+			break
+		}
+	}
+}
+
+func (s *Server) handleInteractiveSession(conn *websocket.Conn) {
+	// Start an interactive judo session
+	cmd := exec.Command("./judo", "session")
+	cmd.Dir = "."
+
+	// Create PTY for interactive session
+	// This is a simplified implementation - in production would use proper PTY handling
+
+	if _, err := cmd.StdinPipe(); err != nil {
+		log.Printf("Error creating stdin pipe: %v", err)
+		return
+	}
+
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		log.Printf("Error creating stdout pipe: %v", err)
+		return
+	}
+
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		log.Printf("Error creating stderr pipe: %v", err)
+		return
+	}
+
+	// Start the command
+	if err := cmd.Start(); err != nil {
+		log.Printf("Error starting session: %v", err)
+		return
+	}
+
+	// Stream stdout to WebSocket
+	go func() {
+		buffer := make([]byte, 1024)
+		for {
+			n, err := stdout.Read(buffer)
+			if err != nil {
+				break
+			}
+			if n > 0 {
+				message := map[string]interface{}{
+					"type": "output",
+					"data": string(buffer[:n]),
+				}
+				msg, _ := json.Marshal(message)
+				conn.WriteMessage(websocket.TextMessage, msg)
+			}
+		}
+	}()
+
+	// Stream stderr to WebSocket
+	go func() {
+		buffer := make([]byte, 1024)
+		for {
+			n, err := stderr.Read(buffer)
+			if err != nil {
+				break
+			}
+			if n > 0 {
+				message := map[string]interface{}{
+					"type": "output",
+					"data": string(buffer[:n]),
+				}
+				msg, _ := json.Marshal(message)
+				conn.WriteMessage(websocket.TextMessage, msg)
+			}
+		}
+	}()
+
+	// Wait for command to complete
+	go func() {
+		err := cmd.Wait()
+		exitCode := 0
+		if err != nil {
+			if exitErr, ok := err.(*exec.ExitError); ok {
+				exitCode = exitErr.ExitCode()
+			}
+		}
+
+		message := map[string]interface{}{
+			"type":     "status",
+			"state":    "exited",
+			"exitCode": exitCode,
+		}
+		msg, _ := json.Marshal(message)
+		conn.WriteMessage(websocket.TextMessage, msg)
+	}()
+}
+
+func (s *Server) handleSessionInput(conn *websocket.Conn, input string) {
+	// Parse input message
+	var message map[string]interface{}
+	if err := json.Unmarshal([]byte(input), &message); err != nil {
+		log.Printf("Error parsing session input: %v", err)
+		return
+	}
+
+	// Handle different message types
+	switch message["type"] {
+	case "input":
+		// Send input to session process
+		// This would be implemented with proper PTY handling
+		log.Printf("Session input received: %s", message["data"])
+
+	case "resize":
+		// Handle terminal resize
+		cols, ok1 := message["cols"].(float64)
+		rows, ok2 := message["rows"].(float64)
+		if ok1 && ok2 {
+			log.Printf("Session resize: %dx%d", int(cols), int(rows))
+		}
+
+	case "control":
+		// Handle control messages like Ctrl+C
+		action, ok := message["action"].(string)
+		if ok && action == "interrupt" {
+			log.Printf("Session interrupt received")
+		}
+	}
 }

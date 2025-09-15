@@ -1,0 +1,61 @@
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.buildlog/
+.history
+.svn/
+
+# IntelliJ related
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# The .vscode folder contains launch configuration and tasks you configure in
+# VS Code which you may wish to be included in version control, so this line
+# is commented out by default.
+#.vscode/
+
+/build/
+
+# Symbolication related
+app.*.symbols
+
+# Obfuscation related
+app.*.map.json
+
+# React
+.nodejs
+
+# Target
+**/target
+
+# Karaf runtime
+.karaf
+
+# Maven
+.flattened-pom.xml
+# JUDO GENERATOR BLOCK START
+README.adoc
+docker/compose-develop/docker-compose.yml
+docker/compose-postgresql-https/docker-compose.yml
+docker/compose-postgresql-https/tls.yml
+docker/compose-postgresql-https/traefik.yml
+docker/overrided/bin/setenv
+frontend-react/README.adoc
+interceptors/src/main/java/hu/blaclbelt/judo/interceptors/LogAuthenticationInterceptor.java.default
+interceptors/src/main/java/hu/blaclbelt/judo/interceptors/LogOperationCallInterceptor.java.default
+schema/README.adoc
+web-root/src/main/resources/bootstrap-table-filter-control.min.js
+web-root/src/main/resources/bootstrap-table.min.css
+web-root/src/main/resources/bootstrap-table.min.js
+web-root/src/main/resources/bootstrap.min.css
+web-root/src/main/resources/bootstrap.min.js
+web-root/src/main/resources/index.html
+web-root/src/main/resources/jquery-3.2.1.slim.min.js
+web-root/src/main/resources/popper.min.js
+# JUDO GENERATOR BLOCK END

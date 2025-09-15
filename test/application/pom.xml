@@ -1,0 +1,465 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!-- To define create 'pom.xml.project-definition.fragment.hbs' file -->
+    <parent>
+        <groupId>hu.blaclbelt.judo</groupId>
+        <artifactId>testproject</artifactId>
+        <version>${revision}</version>
+    </parent>
+    
+    <artifactId>testproject-application</artifactId>
+    
+    <name>TestProject application</name>
+    <!-- End of 'pom.xml.project-definition.fragment.hbs' -->
+
+    <packaging>pom</packaging>
+
+    <properties>
+        <surefire-version>3.5.1</surefire-version>
+
+        <!--suppress UnresolvedMavenProperty -->
+        <logback-test-config>${maven.multiModuleProjectDirectory}/logback-test.xml</logback-test-config>
+
+        <slf4j-version>2.0.16</slf4j-version>
+        <karaf-version>4.4.7</karaf-version>
+
+        <!-- To redifine create 'pom.xml.model-properties-definition.fragment.hbs' override file -->
+        <model-groupId>hu.blaclbelt.judo</model-groupId>
+        <model-artifactId>testproject</model-artifactId>
+        <model-name>TestProject</model-name>
+        <model-version>${project.version}</model-version>
+        
+        <dialectList>postgresql,hsqldb</dialectList>
+        <ignoreOpenapi>true</ignoreOpenapi>
+        <validateModels>true</validateModels>
+        <useCache>false</useCache>
+        <validateChecksum>true</validateChecksum>
+        <karafOfflineZip>true</karafOfflineZip>
+        <!-- End of 'pom.xml.model-properties-definition.fragment.hbs' -->
+
+        <!-- To define create 'pom.xml.judo-properties-definition.fragment.hbs' file -->
+        <judo-runtime-core-version>1.0.6.20250820_080525_fc912113_develop</judo-runtime-core-version>
+        <judo-dao-api-version>1.0.4.20250605_192947_c2e81b28_develop</judo-dao-api-version>
+        <judo-dispatcher-api-version>1.0.3.20250605_191812_7164733f_develop</judo-dispatcher-api-version>
+        <judo-sdk-common-version>1.0.4.20250820_075117_76987b7b_develop</judo-sdk-common-version>
+        <mapper-version>1.0.4.20250605_193111_b7bd7398_develop</mapper-version>
+        
+        <judo-tatami-version>1.1.0.20250820_081058_671f8375_develop </judo-tatami-version>
+        <judo-platform-version>2.0.1.20250806_053339_4e60a7c8_develop</judo-platform-version>
+        <judo-rdbms-schema-version>1.0.0.20250820_080523_e40cfcea_develop</judo-rdbms-schema-version>
+        <judo-tatami-client-version>1.1.0.20250820_075705_368e30d9_develop</judo-tatami-client-version>
+        
+        <judo-meta-ui-version>1.1.0.20250820_074859_cf755111_develop</judo-meta-ui-version>
+        <judo-meta-psm-version>1.3.0.20250820_074850_332f8d0f_develop</judo-meta-psm-version>
+        <judo-psm-generator-sdk-core-version>1.0.0.20250820_075229_83789a2a_develop</judo-psm-generator-sdk-core-version>
+        <judo-psm-generator-jaxrs-version>1.0.0.20250820_075231_031e9215_develop</judo-psm-generator-jaxrs-version>
+        <cxf-jaxrs-application-manager-version>0.7.1.20250605_192721_8a952c0e_develop</cxf-jaxrs-application-manager-version>
+        <osgi-default-import>
+            org.osgi.framework;version="[1.8,2.0)",
+            !lombok,
+            javax.annotation;version="[1.0,2)",
+            org.slf4j;version="[1.6,3)"
+        </osgi-default-import>
+        <!-- End of 'pom.xml.judo-properties-definition.fragment.hbs' -->
+
+        <!-- To define create 'pom.xml.properties-definition.fragment.hbs' file -->
+        <!-- End of 'pom.xml.properties-definition.fragment.hbs' -->
+
+    </properties>
+
+    <build>
+
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-clean-plugin</artifactId>
+                    <version>3.2.0</version>
+                </plugin>
+
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <version>3.11.0</version>
+                    <configuration>
+                        <compilerId>eclipse</compilerId>
+                        <source>21</source>
+                        <target>21</target>
+                        <showWarnings>false</showWarnings>
+                        <showDeprecation>false</showDeprecation>
+                    </configuration>
+                    <dependencies>
+                        <dependency>
+                            <groupId>org.codehaus.plexus</groupId>
+                            <artifactId>plexus-compiler-eclipse</artifactId>
+                            <version>2.12.0</version>
+                        </dependency>
+                        <dependency>
+                            <groupId>org.eclipse.jdt</groupId>
+                            <artifactId>ecj</artifactId>
+                            <version>3.41.0</version>
+                        </dependency>
+                        <dependency>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>1.18.38</version>
+                        </dependency>
+                    </dependencies>
+                </plugin>
+
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-resources-plugin</artifactId>
+                    <version>3.3.1</version>
+                </plugin>
+
+                <plugin>
+                    <groupId>org.apache.karaf.tooling</groupId>
+                    <artifactId>karaf-maven-plugin</artifactId>
+                    <version>${karaf-version}</version>
+                </plugin>
+
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-install-plugin</artifactId>
+                    <version>3.1.1</version>
+                    <configuration>
+                        <allowIncompleteProjects>true</allowIncompleteProjects>
+                    </configuration>
+                </plugin>
+
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-deploy-plugin</artifactId>
+                    <version>2.8.2</version>
+                </plugin>
+
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-failsafe-plugin</artifactId>
+                    <version>${surefire-version}</version>
+                    <executions>
+                        <execution>
+                            <goals>
+                                <goal>integration-test</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                </plugin>
+
+                <plugin>
+                    <groupId>org.apache.felix</groupId>
+                    <artifactId>maven-bundle-plugin</artifactId>
+                    <extensions>true</extensions>
+                    <version>5.1.8</version>
+                    <configuration>
+                        <obrRepository>NONE</obrRepository>
+                        <instructions>
+                            <Bundle-SymbolicName>${project.groupId}.${project.artifactId}</Bundle-SymbolicName>
+                            <Import-Package>
+                                ${osgi-default-import}, *
+                            </Import-Package>
+                            <_invalidfilenames>\$Mft|\$MftMirr|\$LogFile|\$Volume|\$AttrDef|\$Bitmap|\$Boot|\$BadClus|\$Secure|\$Upcase|\$Extend|\$Quota|\$ObjId|\$Reparse</_invalidfilenames>
+                        </instructions>
+                    </configuration>
+                </plugin>
+
+                <plugin>
+                    <groupId>org.codehaus.mojo</groupId>
+                    <artifactId>build-helper-maven-plugin</artifactId>
+                    <version>3.3.0</version>
+                    <executions>
+                        <execution>
+                            <id>attach-artifacts</id>
+                            <phase>package</phase>
+                            <goals>
+                                <goal>attach-artifact</goal>
+                            </goals>
+                            <configuration>
+                                <artifacts>
+                                </artifacts>
+                            </configuration>
+                        </execution>
+                    </executions>
+                </plugin>
+
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <version>${surefire-version}</version>
+                    <configuration>
+                        <argLine>-Dfile.encoding=UTF-8</argLine>
+                        <trimStackTrace>false</trimStackTrace>
+                        <systemPropertyVariables>
+                            <logback.configurationFile>${logback-test-config}</logback.configurationFile>
+                        </systemPropertyVariables>
+                        <argLine>
+                            -Dfile.encoding=UTF-8
+                            --add-opens java.base/java.lang=ALL-UNNAMED
+                            --add-opens java.base/java.util=ALL-UNNAMED
+                            --add-opens java.base/java.time=ALL-UNNAMED
+                        </argLine>
+                    </configuration>
+                </plugin>
+                <!-- To define create 'pom.xml.extra-plugin-management.fragment.hbs' file -->
+                <!-- End of 'pom.xml.extra-plugin-management.fragment.hbs' -->
+            </plugins>
+        </pluginManagement>
+        <plugins>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>flatten-maven-plugin</artifactId>
+                <version>1.3.0</version>
+                <configuration>
+                    <updatePomFile>true</updatePomFile>
+                    <flattenMode>resolveCiFriendliesOnly</flattenMode>
+                    <pomElements>
+                        <dependencies>flatten</dependencies>
+                        <repositories>flatten</repositories>
+                    </pomElements>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>flatten</id>
+                        <phase>process-resources</phase>
+                        <goals>
+                            <goal>flatten</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>flatten.clean</id>
+                        <phase>clean</phase>
+                        <goals>
+                            <goal>clean</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Report active profiles on console. -->
+            <!--
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-help-plugin</artifactId>
+                <version>3.2.0</version>
+                <executions>
+                    <execution>
+                        <id>show-profiles</id>
+                        <phase>initialize</phase>
+                        <goals>
+                            <goal>active-profiles</goal>
+                        </goals>
+                        <inherited>false</inherited>
+                    </execution>
+                </executions>
+            </plugin>
+            -->
+            <!-- To define create 'pom.xml.extra-plugins.fragment.hbs' file -->
+            <!-- End of 'pom.xml.extra-plugins.fragment.hbs' -->
+        </plugins>
+    </build>
+
+    <profiles>
+        <profile>
+            <id>build-model</id>
+            <activation>
+                <property>
+                    <name>!skipBackendModels</name>
+                </property>
+            </activation>
+
+            <modules>
+                <module>model</module>
+            </modules>
+        </profile>
+
+        <profile>
+            <id>build-schema</id>
+            <activation>
+                <property>
+                    <name>!skipSchema</name>
+                </property>
+            </activation>
+
+            <modules>
+                <module>schema</module>
+            </modules>
+        </profile>
+
+
+        <profile>
+            <id>build-sdk</id>
+            <activation>
+                <property>
+                    <name>!skipSDK</name>
+                </property>
+            </activation>
+
+            <modules>
+                <module>sdk</module>
+                <module>internal</module>
+                <module>app</module>
+                <module>interceptors</module>
+                <module>rest</module>
+                <module>web-root</module>
+                <!-- To define create 'pom.xml.extra-modules.fragment.hbs' file -->
+                <!-- End of 'pom.xml.extra-modules.fragment.hbs' -->
+            </modules>
+        </profile>
+
+        <profile>
+            <id>build-frontend-react</id>
+            <activation>
+                <property>
+                        <name>!skipFrontendReact</name>
+                </property>
+            </activation>
+
+            <modules>
+                <module>frontend-react</module>
+            </modules>
+        </profile>
+
+
+        <profile>
+            <id>build-docker</id>
+            <activation>
+                <property>
+                    <name>!skipDocker</name>
+                </property>
+            </activation>
+
+            <modules>
+                <module>docker</module>
+            </modules>
+        </profile>
+
+        <profile>
+            <id>build-karaf</id>
+            <activation>
+                <property>
+                    <name>!skipKaraf</name>
+                </property>
+            </activation>
+
+            <modules>
+                <module>karaf-features</module>
+                <module>karaf-offline</module>
+            </modules>
+        </profile>
+
+        <profile>
+            <id>sign-artifacts</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.simplify4u.plugins</groupId>
+                        <artifactId>sign-maven-plugin</artifactId>
+                        <version>1.1.0</version>
+                        <executions>
+                            <execution>
+                                <goals>
+                                    <goal>sign</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <profile>
+            <id>release-dummy</id>
+            <distributionManagement>
+                <snapshotRepository>
+                    <id>dummy-distribution</id>
+                    <url>file:///tmp/${project.groupId}-${project.artifactId}-${project.version}/maven-snapshot/</url>
+                </snapshotRepository>
+                <repository>
+                    <id>dummy-distribution</id>
+                    <url>file:///tmp/${project.groupId}-${project.artifactId}-${project.version}/maven-release/</url>
+                </repository>
+            </distributionManagement>
+        </profile>
+
+        <!-- To define create 'pom.xml.extra-profiles.fragment.hbs' file -->
+        <!-- End of 'pom.xml.extra-profiles.fragment.hbs' -->
+    </profiles>
+    <repositories>
+        <!-- To define create 'pom.xml.repository-definition.fragment.hbs' file -->
+        <!-- End of 'pom.xml.repository-definition.fragment.hbs' -->
+    </repositories>
+    <distributionManagement>
+        <!-- To define create 'pom.xml.distribution-management.fragment.hbs' file -->
+        <!-- End of 'pom.xml.distribution-management.fragment.hbs' -->
+    </distributionManagement>
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>fr.jmini.ecentral</groupId>
+                <artifactId>eclipse-platform-dependencies</artifactId>
+                <version>4.18</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.junit.jupiter</groupId>
+                <artifactId>junit-jupiter</artifactId>
+                <version>5.8.0</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.slf4j</groupId>
+                <artifactId>jul-to-slf4j</artifactId>
+                <version>${slf4j-version}</version>
+                <scope>provided</scope>
+            </dependency>
+            <dependency>
+                <groupId>ch.qos.logback</groupId>
+                <artifactId>logback-classic</artifactId>
+                <version>1.5.12</version>
+            </dependency>
+            <!-- To define create 'pom.xml.extra-dependency-management.fragment.hbs' file -->
+            <!-- End of 'pom.xml.extra-dependency-management.fragment.hbs' -->
+        </dependencies>
+    </dependencyManagement>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.osgi</groupId>
+            <artifactId>osgi.core</artifactId>
+            <version>8.0.0</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.osgi</groupId>
+            <artifactId>osgi.annotation</artifactId>
+            <version>8.0.0</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.osgi</groupId>
+            <artifactId>org.osgi.service.component.annotations</artifactId>
+            <version>1.5.0</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.osgi</groupId>
+            <artifactId>org.osgi.namespace.service</artifactId>
+            <version>1.0.0</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.osgi</groupId>
+            <artifactId>osgi.cmpn</artifactId>
+            <version>7.0.0</version>
+            <scope>provided</scope>
+        </dependency>
+
+    </dependencies>
+</project>

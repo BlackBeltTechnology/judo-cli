@@ -1,0 +1,417 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!-- To define create 'pom.xml.project-definition.fragment.hbs' file -->
+    
+    <artifactId>testproject</artifactId>
+    <groupId>hu.blaclbelt.judo</groupId>
+    <version>${revision}</version>
+    
+    <name>TestProject model</name>
+    <!-- End of 'pom.xml.project-definition.fragment.hbs' -->
+
+    <packaging>pom</packaging>
+
+    <properties>
+        <revision>1.0.0-SNAPSHOT</revision>
+        <judo-meta-esm-version>1.2.0.20250820_074918_7d26b125_develop</judo-meta-esm-version>
+        <judo-esm-fullstack-project-template-version>1.0.0.20250820_081512_f6be5fbf_develop</judo-esm-fullstack-project-template-version>
+        <judo-version-updater-maven-plugin-version>1.0.0.20250605_192037_ea4d463c_develop</judo-version-updater-maven-plugin-version>
+
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <timestamp>${maven.build.timestamp}</timestamp>
+        <maven.build.timestamp.format>yyyyMMddHHmmss</maven.build.timestamp.format>
+        <maven.compiler.source>21</maven.compiler.source>
+        <maven.compiler.target>21</maven.compiler.target>
+
+        <!-- To redifine create 'pom.xml.model-properties-definition.fragment.hbs' override file -->
+        <!-- End of 'pom.xml.model-properties-definition.fragment.hbs' -->
+
+        <!-- To define create 'pom.xml.properties-definition.fragment.hbs' file -->
+        <!-- End of 'pom.xml.properties-definition.fragment.hbs' -->
+
+    </properties>
+
+    <build>
+
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-clean-plugin</artifactId>
+                    <version>3.2.0</version>
+                </plugin>
+
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <version>3.11.0</version>
+                    <configuration>
+                        <forceJavacCompilerUse>true</forceJavacCompilerUse>
+                    </configuration>
+                </plugin>
+
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-resources-plugin</artifactId>
+                    <version>3.3.1</version>
+                </plugin>
+
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-install-plugin</artifactId>
+                    <version>3.1.1</version>
+                    <configuration>
+                        <allowIncompleteProjects>true</allowIncompleteProjects>
+                    </configuration>
+                </plugin>
+
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-deploy-plugin</artifactId>
+                    <version>2.8.2</version>
+                </plugin>
+
+                <!-- To define create 'pom.xml.extra-plugin-management.fragment.hbs' file -->
+                <!-- End of 'pom.xml.extra-plugin-management.fragment.hbs' -->
+            </plugins>
+        </pluginManagement>
+        <plugins>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>flatten-maven-plugin</artifactId>
+                <version>1.5.0</version>
+                <configuration>
+                    <updatePomFile>true</updatePomFile>
+                    <flattenMode>resolveCiFriendliesOnly</flattenMode>
+                    <pomElements>
+                        <dependencies>flatten</dependencies>
+                        <repositories>flatten</repositories>
+                    </pomElements>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>flatten</id>
+                        <phase>process-resources</phase>
+                        <goals>
+                            <goal>flatten</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>flatten.clean</id>
+                        <phase>clean</phase>
+                        <goals>
+                            <goal>clean</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- To define create 'pom.xml.extra-plugins.fragment.hbs' file -->
+            <!-- End of 'pom.xml.extra-plugins.fragment.hbs' -->
+        </plugins>
+    </build>
+
+    <profiles>
+        <profile>
+            <id>build-application</id>
+            <activation>
+                <property>
+                    <name>!skipApplicationBuild</name>
+                </property>
+            </activation>
+            <modules>
+                <module>application</module>
+            </modules>
+        </profile>
+
+        <profile>
+            <id>update-version</id>
+            <activation>
+                <property>
+                    <name>updateJudoVersions</name>
+                </property>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>hu.blackbelt.judo</groupId>
+                        <artifactId>judo-version-updater-maven-plugin</artifactId>
+                        <version>${judo-version-updater-maven-plugin-version}</version>
+                        <executions>
+                            <execution>
+                                <goals>
+                                    <goal>update-judo-versions</goal>
+                                </goals>
+                                <configuration>
+                                    <versionsProperties>${basedir}/judo-version.properties</versionsProperties>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>generate-root</id>
+            <activation>
+                <property>
+                    <name>generateRoot</name>
+                </property>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>properties-maven-plugin</artifactId>
+                        <version>1.2.0</version>
+                        <executions>
+                            <execution>
+                                <id>read-judo-versions-root</id>
+                                <phase>initialize</phase>
+                                <goals>
+                                    <goal>read-project-properties</goal>
+                                </goals>
+                                <configuration>
+                                    <files>
+                                        <file>${basedir}/judo-version.properties</file>
+                                    </files>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+
+                    <plugin>
+                        <groupId>hu.blackbelt.judo.meta</groupId>
+                        <artifactId>judo-esm-generator-maven-plugin</artifactId>
+                        <version>${judo-meta-esm-version}</version>
+                        <executions>
+                            <execution>
+                                <id>generate-root</id>
+                                <phase>generate-sources</phase>
+                                <goals>
+                                    <goal>generate</goal>
+                                </goals>
+                                <configuration>
+                                    <uris>
+                                        <uri>mvn:hu.blackbelt.judo.template:judo-esm-fullstack-project-template-common:${judo-esm-fullstack-project-template-version}</uri>
+                                        <uri>mvn:hu.blackbelt.judo.template:judo-esm-fullstack-project-template-root:${judo-esm-fullstack-project-template-version}</uri>
+                                        <uri>${maven.multiModuleProjectDirectory}/generator-overrides</uri>
+                                    </uris>
+                                    <type>fullstack-project</type>
+                                    <esm>
+                                        ${basedir}/model/TestProject.model
+                                    </esm>
+                                    <parameterDirectory>${basedir}</parameterDirectory>
+                                    <destination>${basedir}</destination>
+                                    <templateParameters>
+                                        <createdModelName>TestProject</createdModelName>
+                                        <groupId>${project.groupId}</groupId>
+                                        <projectPostfix>-application</projectPostfix>
+                                        <version>${project.version}</version>
+                                        <modelGroupId>${project.groupId}</modelGroupId>
+                                        <modelArtifactId>${project.artifactId}</modelArtifactId>
+                                        <modelVersion>${project.version}</modelVersion>
+                                    </templateParameters>
+                                    <validateChecksum>${validateChecksum}</validateChecksum>
+                                </configuration>
+                            </execution>
+
+                            <execution>
+                                <id>synchronize-root-gitignore</id>
+                                <phase>process-sources</phase>
+                                <goals>
+                                    <goal>synchronizeGitignore</goal>
+                                </goals>
+                                <configuration>
+                                    <esm>
+                                        ${basedir}/model/TestProject.model
+                                    </esm>
+                                    <destination>${basedir}</destination>
+                                    <ignoredFiles>pom.xml,**/pom.xml,judo.sh,.mvn/jvm.config</ignoredFiles>
+                                </configuration>
+                            </execution>
+
+                            <execution>
+                                <id>reset-root-checksums</id>
+                                <phase>process-sources</phase>
+                                <goals>
+                                    <goal>resetChecksum</goal>
+                                </goals>
+                                <configuration>
+                                    <esm>
+                                        ${basedir}/model/TestProject.model
+                                    </esm>
+                                    <destination>${basedir}</destination>
+                                </configuration>
+                            </execution>
+
+                            <execution>
+                                <id>generate-root-checksum</id>
+                                <phase>compile</phase>
+                                <goals>
+                                    <goal>checksum</goal>
+                                </goals>
+                                <configuration>
+                                    <esm>
+                                        ${basedir}/model/TestProject.model
+                                    </esm>
+                                    <destination>${basedir}</destination>
+                                </configuration>
+                            </execution>
+
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <profile>
+            <id>generate-application</id>
+            <activation>
+                <property>
+                    <name>generateApplication</name>
+                </property>
+            </activation>
+
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>properties-maven-plugin</artifactId>
+                        <version>1.2.0</version>
+                        <executions>
+                            <execution>
+                                <id>read-judo-versions-application</id>
+                                <phase>initialize</phase>
+                                <goals>
+                                    <goal>read-project-properties</goal>
+                                </goals>
+                                <configuration>
+                                    <files>
+                                        <file>${basedir}/judo-version.properties</file>
+                                    </files>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+
+                    <plugin>
+                        <groupId>hu.blackbelt.judo.meta</groupId>
+                        <artifactId>judo-esm-generator-maven-plugin</artifactId>
+                        <version>${judo-meta-esm-version}</version>
+                        <executions>
+                            <execution>
+                                <id>generate-application</id>
+                                <phase>generate-sources</phase>
+                                <goals>
+                                    <goal>generate</goal>
+                                </goals>
+                                <configuration>
+                                    <uris>
+                                        <uri>mvn:hu.blackbelt.judo.template:judo-esm-fullstack-project-template-common:${judo-esm-fullstack-project-template-version}</uri>
+                                        <uri>mvn:hu.blackbelt.judo.template:judo-esm-fullstack-project-template-application:${judo-esm-fullstack-project-template-version}</uri>
+                                        <uri>${maven.multiModuleProjectDirectory}/application/generator-overrides</uri>
+                                    </uris>
+                                    <type>fullstack-project</type>
+                                    <esm>
+                                        ${basedir}/model/TestProject.model
+                                    </esm>
+                                    <parameterDirectory>${basedir}</parameterDirectory>
+                                    <destination>${basedir}/application</destination>
+                                    <templateParameters>
+                                        <createdModelName>TestProject</createdModelName>
+                                        <groupId>${project.groupId}</groupId>
+                                        <projectPostfix>-application</projectPostfix>
+                                        <version>${project.version}</version>
+                                        <modelGroupId>${project.groupId}</modelGroupId>
+                                        <modelArtifactId>${project.artifactId}</modelArtifactId>
+                                        <modelVersion>${project.version}</modelVersion>
+                                    </templateParameters>
+                                    <validateChecksum>${validateChecksum}</validateChecksum>
+                                </configuration>
+                            </execution>
+
+                            <execution>
+                                <id>synchronize-application-gitignore</id>
+                                <phase>process-sources</phase>
+                                <goals>
+                                    <goal>synchronizeGitignore</goal>
+                                </goals>
+                                <configuration>
+                                    <esm>
+                                        ${basedir}/model/TestProject.model
+                                    </esm>
+                                    <destination>${basedir}/application</destination>
+                                    <ignoredFiles>pom.xml,**/pom.xml,**/gitkeep,karaf-features/src/main/feature/feature.xml</ignoredFiles>
+                                </configuration>
+                            </execution>
+
+                            <execution>
+                                <id>reset-application-checksums</id>
+                                <phase>process-sources</phase>
+                                <goals>
+                                    <goal>resetChecksum</goal>
+                                </goals>
+                                <configuration>
+                                    <esm>
+                                        ${basedir}/model/TestProject.model
+                                    </esm>
+                                    <destination>${basedir}/application</destination>
+                                </configuration>
+                            </execution>
+
+                            <execution>
+                                <id>generate-application-checksum</id>
+                                <phase>compile</phase>
+                                <goals>
+                                    <goal>checksum</goal>
+                                </goals>
+                                <configuration>
+                                    <esm>
+                                        ${basedir}/model/TestProject.model
+                                    </esm>
+                                    <destination>${basedir}/application</destination>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <!-- To define create 'pom.xml.extra-profiles.fragment.hbs' file -->
+        <!-- End of 'pom.xml.extra-profiles.fragment.hbs' -->
+    </profiles>
+    <!-- To define create 'pom.xml.repository-definition.fragment.hbs' file -->
+    <repositories>
+        <repository>
+            <id>judo-ng</id>
+            <url>https://nexus.judo.technology/repository/maven-judong</url>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+        </repository>
+    </repositories>
+    
+    <pluginRepositories>
+        <pluginRepository>
+            <id>judo-ng</id>
+            <url>https://nexus.judo.technology/repository/maven-judong</url>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+        </pluginRepository>
+    </pluginRepositories>
+    <!-- End of 'pom.xml.repository-definition.fragment.hbs' -->
+    <distributionManagement>
+        <!-- To define create 'pom.xml.distribution-management.fragment.hbs' file -->
+        <!-- End of 'pom.xml.distribution-management.fragment.hbs' -->
+    </distributionManagement>
+</project>
