@@ -76,7 +76,7 @@ jobs:
 
           # Construct snapshot version and tag name
           SNAPSHOT_VERSION="${BASE_VERSION}-snapshot-${TIMESTAMP}"
-          TAG_NAME="v${BASE_VERSION}"
+          TAG_NAME="v${SNAPSHOT_VERSION}"
 
           echo "Base Version: ${BASE_VERSION}"
           echo "Snapshot Version: ${SNAPSHOT_VERSION}"
@@ -175,6 +175,7 @@ jobs:
           args: release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HOMEBREW_TAP_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GORELEASER_CURRENT_TAG: ${{ steps.version.outputs.tag_name }}
           GORELEASER_PREVIOUS_TAG: ${{ steps.previous_tag.outputs.previous_tag }}
           GORELEASER_LOG: debug # <-- Enable debug mode here
@@ -327,6 +328,7 @@ jobs:
           args: release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HOMEBREW_TAP_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GORELEASER_CURRENT_TAG: ${{ steps.version.outputs.tag_name }}
           GORELEASER_PREVIOUS_TAG: ${{ steps.previous_tag.outputs.previous_tag }}
           GORELEASER_LOG: debug # <-- Enable debug mode here
