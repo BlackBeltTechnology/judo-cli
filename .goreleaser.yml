@@ -66,31 +66,15 @@ changelog:
       - "^docs:" # exclude documentation changes
       - "^test:" # exclude test changes
       - "^chore:" # exclude chores
-  format: |
-    {{- $previous := .Env.GORELEASER_PREVIOUS_TAG }}
-    {{- if $previous }}
-    ## [{{ .Tag }}] - {{ .Date }}
-    Previous stable tag: {{ $previous }}
-    {{ else }}
-    # Changelog
-    Initial release - {{ .Date }}
-    {{ end }}
-
-    Version: {{ .Major }}.{{ .Minor }}.{{ .Patch }}{{ if (contains .Tag "-") }} - Pre-release{{ end }}
-
-    {{- if .Entries }}
-    {{ range .Entries }}
-    ---
-    * {{ .Title }}
-    {{- if .Body }}
-    {{ .Body }}
-    {{- end }}
-    {{ if .Author.Name }} ({{ .Author.Name }}){{ end }}
-    {{ end }}
-    ---
-    {{ else }}
-    _No commits found between tags._
-    {{ end }}
+  groups:
+    - title: "🚀 Features"
+      regexp: '^feat(\(.+\))?:'
+      order: 0
+    - title: "🐛 Bug Fixes"
+      regexp: '^fix(\(.+\))?:'
+      order: 1
+    - title: "Other Changes"
+      order: 999
 
 release:
   # Repository to release to.
