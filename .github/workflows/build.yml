@@ -25,6 +25,12 @@ jobs:
         with:
           fetch-depth: 0
           fetch-tags: true # Ensure all tags are available
+
+      - name: Clean Go Module Cache
+        run: |
+          echo "Cleaning Go module cache to avoid conflicts..."
+          rm -rf ~/go/pkg/mod
+
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
@@ -160,6 +166,11 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: "1.25"
+
+      - name: Clean Go Module Cache
+        run: |
+          echo "Cleaning Go module cache to avoid conflicts..."
+          rm -rf ~/go/pkg/mod
 
       - name: Run GoReleaser (Snapshot Release)
         uses: goreleaser/goreleaser-action@v6
