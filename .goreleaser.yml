@@ -156,7 +156,7 @@ brews:
     repository:
       owner: BlackBeltTechnology
       name: homebrew-tap
-      branch: master
+      branch: main
       token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
     url_template: "https://github.com/BlackBeltTechnology/judo-cli/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
     commit_author:
