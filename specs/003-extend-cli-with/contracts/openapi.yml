@@ -21,7 +21,8 @@ paths:
 
   /api/commands/{command}:
     post:
-      summary: Execute a session or project command
+      summary: DEPRECATED - No longer used by UI; endpoint will be removed
+      deprecated: true
       parameters:
         - name: command
           in: path
@@ -68,9 +69,11 @@ paths:
         '200':
           description: Application started
 
-  /api/logs/{service}:
+   /api/logs/{service}:
     get:
-      summary: Tail the logs of a specific service
+      summary: DEPRECATED - Replaced by WebSocket endpoints `/ws/logs/*`
+      deprecated: true
+
       parameters:
         - name: service
           in: path

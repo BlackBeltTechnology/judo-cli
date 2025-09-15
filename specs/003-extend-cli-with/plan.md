@@ -4,11 +4,11 @@
 **Input**: Feature specification from user description
 
 ## Summary
-This plan outlines the implementation of a `server` command for the JUDO CLI. This feature will provide a browser-based UI for interacting with the CLI, including command execution, individual service log streaming (Karaf, PostgreSQL, Keycloak), and embedded service status management. The frontend will be built with React, communicating with the Go backend via REST and WebSockets. The compiled frontend will be embedded in the final Go binary.
+This plan outlines the implementation of a `server` command for the JUDO CLI that provides a browser-based UI focused on real-time service logs and an interactive session. The UI presents two terminals (A: logs with source selector; B: interactive `judo session`) with an A/B switch and a collapsible left-side Service panel. The frontend will be built with React, communicating with the Go backend via REST (status/actions) and WebSockets (logs and session). The compiled frontend will be embedded in the final Go binary.
 
 ## Technical Context
 **Language/Version**: Go 1.25+, Node.js 18+ (for frontend)
-**Primary Dependencies**: Go (Cobra, Gorilla WebSocket), React (Create React App)
+**Primary Dependencies**: Go (Cobra, Gorilla WebSocket), React (Create React App, Xterm.js)
 **Storage**: N/A (state is managed in memory by the CLI server)
 **Testing**: Go testing, Jest/React Testing Library
 **Target Platform**: Local machine (browser-based UI)
@@ -94,13 +94,15 @@ frontend/
 
 ## Phase 1: Design & Contracts
 1. **Data Model**: Define the JSON structures for commands, responses, and log messages in `data-model.md`.
-2. **API Contracts**: Create an OpenAPI 3.0 specification for the REST endpoints in `/contracts/openapi.yml`.
-   - `GET /api/status`: Get application status.
-   - `POST /api/commands`: Execute a command.
-   - `POST /api/actions/start`: Start the application.
-   - `POST /api/actions/stop`: Stop the application.
-3. **WebSocket Contracts**: Define the WebSocket message structure for log streaming.
-   - Server-to-client: `{"type": "log", "payload": "log message"}`
+2. **API Contracts**: Create an OpenAPI 3.0 specification for REST endpoints in `/contracts/openapi.yml`.
+    - `GET /api/status`: Get application status.
+    - `POST /api/actions/start`: Start the application.
+    - `POST /api/actions/stop`: Stop the application.
+ 3. **WebSocket Contracts**: Define endpoints and message structure for log streaming and interactive session.
+    - Log endpoints: `/ws/logs/combined`, `/ws/logs/service/{name}` where `{name} ∈ {karaf, postgresql, keycloak}`.
+    - Log message: `{ "ts": "ISO-8601", "service": "karaf|postgresql|keycloak", "line": "..." }`
+    - Session endpoint: `/ws/session` (one session per connection).
+    - Session messages: client→server `{type: input|resize|control, ...}`, server→client `{type: output|status, ...}`
 4. **Quickstart Guide**: Write a `quickstart.md` with setup, build, and run instructions.
 5. **Agent File Update**: N/A for this feature.
 
@@ -111,14 +113,15 @@ frontend/
 - **Backend**:
   - Setup server framework and routing.
   - Implement REST endpoints for status and actions.
-  - Implement WebSocket for log streaming.
-  - Implement command execution endpoint.
+  - Implement WebSocket for log streaming and interactive session.
+  - Implement combined and per-service log streams.
+  - Implement interactive session PTY bridge (`/ws/session`) with input/output, resize, and interrupt handling.
   - Add file embedding for the frontend.
 - **Frontend**:
   - Set up React project with Create React App.
-  - Create components for command input, output, logs, and status buttons.
+  - Create components for dual terminals (A: logs with source selector; B: interactive session), A/B switch, and Service panel with status buttons.
   - Implement API calls to the backend.
-  - Implement WebSocket client for log streaming.
+  - Implement WebSocket clients for logs and session; use Xterm.js with fit addon and message batching.
   - Set up build process for production assets.
 
 **Ordering Strategy**:
