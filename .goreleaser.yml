@@ -156,7 +156,7 @@ brews:
     repository:
       owner: BlackBeltTechnology
       name: homebrew-tap
-      branch: main
+      branch: master
       token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
     url_template: "https://github.com/BlackBeltTechnology/judo-cli/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
     commit_author:
@@ -169,8 +169,6 @@ brews:
     skip_upload: auto
     dependencies:
       - name: docker
-        type: optional
-      - name: maven
         type: optional
     install: |
       bin.install "judo"
