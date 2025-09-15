@@ -1,0 +1,177 @@
+.App {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #333;
+}
+
+.App-header {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  padding: 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.App-header h1 {
+  margin: 0;
+  color: white;
+  font-size: 2rem;
+  font-weight: 600;
+}
+
+.status-bar {
+  display: flex;
+  gap: 2rem;
+  justify-content: center;
+  margin-top: 1rem;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.main-content {
+  display: grid;
+  grid-template-columns: 1fr 2fr 1fr;
+  gap: 2rem;
+  padding: 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.control-panel, .command-section, .log-section {
+  background: white;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.control-panel h2, .command-section h2, .log-section h2 {
+  margin-top: 0;
+  color: #4a5568;
+  font-size: 1.3rem;
+  border-bottom: 2px solid #e2e8f0;
+  padding-bottom: 0.5rem;
+}
+
+.button-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.btn {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.9rem;
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.btn-start {
+  background: #48bb78;
+  color: white;
+}
+
+.btn-stop {
+  background: #f56565;
+  color: white;
+}
+
+.btn-status {
+  background: #4299e1;
+  color: white;
+}
+
+.btn-execute {
+  background: #667eea;
+  color: white;
+  margin-left: 0.5rem;
+}
+
+.command-form {
+  display: flex;
+  margin-bottom: 1rem;
+}
+
+.command-input {
+  flex: 1;
+  padding: 0.75rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.command-input:focus {
+  border-color: #667eea;
+}
+
+.command-output {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.command-result {
+  background: #f7fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 0.5rem;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 0.8rem;
+}
+
+.command-result.success {
+  border-left: 4px solid #48bb78;
+}
+
+.command-result.error {
+  border-left: 4px solid #f56565;
+}
+
+.command-result pre {
+  margin: 0.5rem 0 0 0;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.log-viewer {
+  max-height: 400px;
+  overflow-y: auto;
+  background: #1a202c;
+  color: #a0aec0;
+  border-radius: 8px;
+  padding: 1rem;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.log-entry {
+  margin-bottom: 0.25rem;
+  border-bottom: 1px solid #2d3748;
+  padding-bottom: 0.25rem;
+}
+
+.log-entry:last-child {
+  border-bottom: none;
+}
+
+@media (max-width: 1024px) {
+  .main-content {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    padding: 1rem;
+  }
+  
+  .status-bar {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+}

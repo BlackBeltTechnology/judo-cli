@@ -73,3 +73,10 @@ gha-creds-*.json
 
 # Hugo build output
 docs/public/
+
+# Frontend build artifacts
+frontend/build/
+frontend/node_modules/
+
+# Server assets (embedded frontend)
+internal/server/assets/

@@ -20,6 +20,7 @@ import (
 	"judo-cli-module/internal/config"
 	"judo-cli-module/internal/docker"
 	"judo-cli-module/internal/help"
+	"judo-cli-module/internal/server"
 	"judo-cli-module/internal/session"
 )
 
@@ -68,6 +69,7 @@ func main() {
 		commands.CreateInitCommand(),
 		commands.CreateSelfUpdateCommand(version),
 		createSessionCommand(),
+		createServerCommand(),
 		createVersionCommand(),
 	)
 
@@ -85,6 +87,22 @@ func createSessionCommand() *cobra.Command {
 		Long:  "Start an interactive session with command history, auto-completion, and persistent state",
 		Run: func(cmd *cobra.Command, args []string) {
 			session.StartInteractiveSession()
+		},
+	}
+}
+
+// createServerCommand creates the server command
+func createServerCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "server",
+		Short: "Start JUDO CLI web server",
+		Long:  "Start a web server with browser-based interface for JUDO CLI",
+		Run: func(cmd *cobra.Command, args []string) {
+			server := server.NewServer(8080)
+			if err := server.Start(); err != nil {
+				fmt.Printf("Server error: %v\n", err)
+				os.Exit(1)
+			}
 		},
 	}
 }
