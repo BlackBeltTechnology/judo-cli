@@ -8,6 +8,6 @@ compose-full.properties,c56464d83f5580050b763f714832b88e
 generator-overrides/.gitignore,68b329da9893e34099c7d8ad5cb9c940
 generator-parameter.properties,a9c5e85cfc033712844d708dfa1142a4
 judo-karaf.env,4d9f997e256857904c970006d45fe942
-judo.properties,a5027d669c40a959d0688ab308390292
+judo.properties,abbfc02637494a8a0d7a1123b48fbeec
 judo.sh,f6c42021147e6a4718a0fdaf3e36c3a3
 pom.xml,60c53207a438cc327c5f88570852cfb4
