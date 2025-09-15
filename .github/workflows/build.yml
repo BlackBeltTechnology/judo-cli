@@ -442,8 +442,11 @@ jobs:
   cleanup:
     name: Final Status
     runs-on: judong
-    needs: [build-master, post-release]
-    if: always()
+    needs: [build-master, build-snapshot, post-release]
+    if: |
+      always()
+      && contains(needs.*.result, 'success')
+      && !contains(needs.*.result, 'failure')
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
