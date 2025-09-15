@@ -76,7 +76,7 @@ jobs:
 
           # Construct snapshot version and tag name
           SNAPSHOT_VERSION="${BASE_VERSION}-snapshot-${TIMESTAMP}"
-          TAG_NAME="v${BASE_VERSION}"
+          TAG_NAME="v${SNAPSHOT_VERSION}"
 
           echo "Base Version: ${BASE_VERSION}"
           echo "Snapshot Version: ${SNAPSHOT_VERSION}"
