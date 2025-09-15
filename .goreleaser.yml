@@ -59,8 +59,38 @@ snapshot:
 # using GoReleaser's changelog functionality
 
 changelog:
-  sort: desc
   use: git
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:" # exclude documentation changes
+      - "^test:" # exclude test changes
+      - "^chore:" # exclude chores
+  template: |
+    {{- $previous := .Env.GORELEASER_PREVIOUS_TAG }}
+    {{- if $previous }}
+    ## [{{ .Tag }}] - {{ .Date }}
+    Previous stable tag: {{ $previous }}
+    {{ else }}
+    # Changelog
+    Initial release - {{ .Date }}
+    {{ end }}
+
+    Version: {{ .Major }}.{{ .Minor }}.{{ .Patch }}{{ if (contains .Tag "-") }} - Pre-release{{ end }}
+
+    {{- if .Entries }}
+    {{ range .Entries }}
+    ---
+    * {{ .Title }}
+    {{- if .Body }}
+    {{ .Body }}
+    {{- end }}
+    {{ if .Author.Name }} ({{ .Author.Name }}){{ end }}
+    {{ end }}
+    ---
+    {{ else }}
+    _No commits found between tags._
+    {{ end }}
 
 release:
   # Repository to release to.
