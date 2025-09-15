@@ -133,6 +133,16 @@
   border: 1px solid #3a3d4a;
 }
 
+.parallel-controls {
+  background: #2d3748;
+  border: 2px solid #4299e1;
+}
+
+.parallel-controls .service-name {
+  color: #4299e1;
+  font-weight: 700;
+}
+
 .service-name {
   display: block;
   font-weight: 600;

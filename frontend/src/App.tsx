@@ -190,19 +190,34 @@ function App() {
 
   const fetchServiceStatuses = useCallback(async () => {
     try {
-      const [karaf, postgres, keycloak] = await Promise.all([
-        axios.get(`${getApiBaseUrl()}/api/services/karaf/status`),
-        axios.get(`${getApiBaseUrl()}/api/services/postgresql/status`),
-        axios.get(`${getApiBaseUrl()}/api/services/keycloak/status`)
-      ]);
+      // Use concurrent status endpoint for better performance
+      const response = await axios.get(`${getApiBaseUrl()}/api/services/status`);
+      const statuses = response.data;
       
-      setServiceStatus({
-        karaf: karaf.data,
-        postgresql: postgres.data,
-        keycloak: keycloak.data
+      const statusMap: {[key: string]: ServiceStatus} = {};
+      statuses.forEach((status: ServiceStatus) => {
+        statusMap[status.service] = status;
       });
+      
+      setServiceStatus(statusMap);
     } catch (error) {
       console.error('Failed to fetch service statuses:', error);
+      // Fallback to individual endpoints
+      try {
+        const [karaf, postgres, keycloak] = await Promise.all([
+          axios.get(`${getApiBaseUrl()}/api/services/karaf/status`),
+          axios.get(`${getApiBaseUrl()}/api/services/postgresql/status`),
+          axios.get(`${getApiBaseUrl()}/api/services/keycloak/status`)
+        ]);
+        
+        setServiceStatus({
+          karaf: karaf.data,
+          postgresql: postgres.data,
+          keycloak: keycloak.data
+        });
+      } catch (fallbackError) {
+        console.error('Fallback status fetch also failed:', fallbackError);
+      }
     }
   }, [getApiBaseUrl]);
 
@@ -225,6 +240,28 @@ function App() {
     } catch (error) {
       console.error(`Failed to stop ${service}:`, error);
       setLoadingServices(prev => ({ ...prev, [service]: false }));
+    }
+  };
+
+  const handleAllServicesStart = async () => {
+    setLoadingServices(prev => ({ ...prev, all: true }));
+    try {
+      await axios.post(`${getApiBaseUrl()}/api/services/start`);
+      startStatusPolling('all');
+    } catch (error) {
+      console.error('Failed to start all services:', error);
+      setLoadingServices(prev => ({ ...prev, all: false }));
+    }
+  };
+
+  const handleAllServicesStop = async () => {
+    setLoadingServices(prev => ({ ...prev, all: true }));
+    try {
+      await axios.post(`${getApiBaseUrl()}/api/services/stop`);
+      startStatusPolling('all');
+    } catch (error) {
+      console.error('Failed to stop all services:', error);
+      setLoadingServices(prev => ({ ...prev, all: false }));
     }
   };
 
@@ -326,6 +363,28 @@ function App() {
         <div className={`service-panel ${isServicePanelOpen ? 'open' : ''}`}>
           <h2>Services</h2>
           <div className="service-controls">
+            {/* Parallel controls */}
+            <div className="service-control parallel-controls">
+              <span className="service-name">All Services</span>
+              <div className="service-buttons">
+                <button 
+                  onClick={handleAllServicesStart}
+                  className="btn btn-service-start"
+                  disabled={loadingServices.all}
+                >
+                  {loadingServices.all ? 'Starting All...' : 'Start All'}
+                </button>
+                <button 
+                  onClick={handleAllServicesStop}
+                  className="btn btn-service-stop"
+                  disabled={loadingServices.all}
+                >
+                  {loadingServices.all ? 'Stopping All...' : 'Stop All'}
+                </button>
+              </div>
+            </div>
+            
+            {/* Individual service controls */}
             {Object.entries(serviceStatus).map(([service, status]) => (
               <div key={service} className="service-control">
                 <span className="service-name">{service}</span>
@@ -334,14 +393,14 @@ function App() {
                   <button 
                     onClick={() => handleServiceStart(service)}
                     className="btn btn-service-start"
-                    disabled={status.status === 'starting' || status.status === 'running' || loadingServices[service]}
+                    disabled={status.status === 'starting' || status.status === 'running' || loadingServices[service] || loadingServices.all}
                   >
                     {loadingServices[service] ? 'Starting...' : 'Start'}
                   </button>
                   <button 
                     onClick={() => handleServiceStop(service)}
                     className="btn btn-service-stop"
-                    disabled={status.status === 'stopping' || status.status === 'stopped' || loadingServices[service]}
+                    disabled={status.status === 'stopping' || status.status === 'stopped' || loadingServices[service] || loadingServices.all}
                   >
                     {loadingServices[service] ? 'Stopping...' : 'Stop'}
                   </button>

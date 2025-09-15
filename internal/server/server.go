@@ -25,6 +25,56 @@ import (
 	"judo-cli-module/internal/karaf"
 )
 
+// connectionPool manages a pool of WebSocket connections
+type connectionPool struct {
+	mu       sync.Mutex
+	conns    map[*websocket.Conn]bool
+	maxConns int
+}
+
+func newConnectionPool(maxConns int) *connectionPool {
+	return &connectionPool{
+		conns:    make(map[*websocket.Conn]bool),
+		maxConns: maxConns,
+	}
+}
+
+func (p *connectionPool) add(conn *websocket.Conn) bool {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	if len(p.conns) >= p.maxConns {
+		return false
+	}
+
+	p.conns[conn] = true
+	return true
+}
+
+func (p *connectionPool) remove(conn *websocket.Conn) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	delete(p.conns, conn)
+}
+
+func (p *connectionPool) broadcast(message []byte) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	for conn := range p.conns {
+		if err := conn.WriteMessage(websocket.TextMessage, message); err != nil {
+			// Remove broken connections
+			delete(p.conns, conn)
+		}
+	}
+}
+
+func (p *connectionPool) count() int {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return len(p.conns)
+}
+
 //go:embed assets/*
 var embeddedFiles embed.FS
 
@@ -34,6 +84,10 @@ type Server struct {
 	mu         sync.Mutex
 	clients    map[*websocket.Conn]bool
 	upgrader   websocket.Upgrader
+
+	// Connection pools
+	logPool     *connectionPool
+	sessionPool *connectionPool
 }
 
 func NewServer(port int) *Server {
@@ -45,6 +99,8 @@ func NewServer(port int) *Server {
 				return true
 			},
 		},
+		logPool:     newConnectionPool(100), // Max 100 log connections
+		sessionPool: newConnectionPool(50),  // Max 50 session connections
 	}
 
 	mux := http.NewServeMux()
@@ -67,6 +123,9 @@ func NewServer(port int) *Server {
 	mux.HandleFunc("/api/services/postgresql/stop", s.handlePostgreSQLStop)
 	mux.HandleFunc("/api/services/keycloak/start", s.handleKeycloakStart)
 	mux.HandleFunc("/api/services/keycloak/stop", s.handleKeycloakStop)
+	mux.HandleFunc("/api/services/start", s.handleServicesStart)
+	mux.HandleFunc("/api/services/stop", s.handleServicesStop)
+	mux.HandleFunc("/api/services/status", s.handleServicesStatus)
 	mux.HandleFunc("/ws/logs", s.handleWebSocket)
 	mux.HandleFunc("/ws/logs/combined", s.handleCombinedLogsWebSocket)
 	mux.HandleFunc("/ws/logs/service/karaf", s.handleKarafLogsWebSocket)
@@ -460,37 +519,54 @@ func (s *Server) getServiceStatusSummary() string {
 	config.LoadProperties()
 	cfg := config.GetConfig()
 
-	status := ""
+	var status string
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+
+	// Check services status in parallel
+	checkService := func(name string, checkFunc func() bool) {
+		defer wg.Done()
+		if checkFunc() {
+			mu.Lock()
+			status += name + ":running "
+			mu.Unlock()
+		} else {
+			mu.Lock()
+			status += name + ":stopped "
+			mu.Unlock()
+		}
+	}
+
+	wg.Add(3) // Karaf, PostgreSQL, Keycloak
 
 	// Check Karaf status
-	if cfg.Runtime == "karaf" {
-		karafDir := filepath.Join(cfg.ModelDir, "application", ".karaf")
-		if karaf.KarafRunning(karafDir) {
-			status += "Karaf:running "
+	go func() {
+		if cfg.Runtime == "karaf" {
+			karafDir := filepath.Join(cfg.ModelDir, "application", ".karaf")
+			checkService("Karaf", func() bool { return karaf.KarafRunning(karafDir) })
 		} else {
-			status += "Karaf:stopped "
+			wg.Done()
 		}
-	}
+	}()
 
 	// Check PostgreSQL status
-	if cfg.DBType == "postgresql" {
-		pgName := "postgres-" + cfg.SchemaName
-		if docker.DockerInstanceRunning(pgName) {
-			status += "PostgreSQL:running "
+	go func() {
+		if cfg.DBType == "postgresql" {
+			pgName := "postgres-" + cfg.SchemaName
+			checkService("PostgreSQL", func() bool { return docker.DockerInstanceRunning(pgName) })
 		} else {
-			status += "PostgreSQL:stopped "
+			wg.Done()
 		}
-	}
+	}()
 
 	// Check Keycloak status
-	kcName := "keycloak-" + cfg.KeycloakName
-	if docker.DockerInstanceRunning(kcName) {
-		status += "Keycloak:running"
-	} else {
-		status += "Keycloak:stopped"
-	}
+	go func() {
+		kcName := "keycloak-" + cfg.KeycloakName
+		checkService("Keycloak", func() bool { return docker.DockerInstanceRunning(kcName) })
+	}()
 
-	return status
+	wg.Wait()
+	return strings.TrimSpace(status)
 }
 
 // Service-specific status handlers
@@ -651,6 +727,220 @@ func (s *Server) handleKeycloakStart(w http.ResponseWriter, r *http.Request) {
 		"status":  "starting",
 		"message": "Keycloak service starting...",
 	})
+}
+
+// Parallel service operations
+func (s *Server) handleServicesStart(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	config.LoadProperties()
+	_ = config.GetConfig()
+
+	// Start all services in parallel
+	go func() {
+		var wg sync.WaitGroup
+		services := []string{"karaf", "postgresql", "keycloak"}
+		results := make(map[string]error)
+		var mu sync.Mutex
+
+		for _, service := range services {
+			wg.Add(1)
+			go func(svc string) {
+				defer wg.Done()
+				var err error
+
+				switch svc {
+				case "karaf":
+					err = s.safeStartKaraf()
+				case "postgresql":
+					err = s.safeStartPostgreSQL()
+				case "keycloak":
+					err = s.safeStartKeycloak()
+				}
+
+				mu.Lock()
+				results[svc] = err
+				mu.Unlock()
+
+				if err != nil {
+					log.Printf("%s service failed to start: %v", svc, err)
+				} else {
+					log.Printf("%s service start completed successfully", svc)
+				}
+			}(service)
+		}
+
+		wg.Wait()
+
+		// Log overall results
+		for svc, err := range results {
+			if err != nil {
+				log.Printf("Parallel start: %s failed: %v", svc, err)
+			} else {
+				log.Printf("Parallel start: %s succeeded", svc)
+			}
+		}
+	}()
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"service": "all",
+		"status":  "starting",
+		"message": "All services starting in parallel...",
+	})
+}
+
+func (s *Server) handleServicesStop(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	config.LoadProperties()
+	_ = config.GetConfig()
+
+	// Stop all services in parallel
+	go func() {
+		var wg sync.WaitGroup
+		services := []string{"karaf", "postgresql", "keycloak"}
+		results := make(map[string]error)
+		var mu sync.Mutex
+
+		for _, service := range services {
+			wg.Add(1)
+			go func(svc string) {
+				defer wg.Done()
+				var err error
+
+				switch svc {
+				case "karaf":
+					err = s.safeStopKaraf()
+				case "postgresql":
+					err = s.safeStopPostgreSQL()
+				case "keycloak":
+					err = s.safeStopKeycloak()
+				}
+
+				mu.Lock()
+				results[svc] = err
+				mu.Unlock()
+
+				if err != nil {
+					log.Printf("%s service failed to stop: %v", svc, err)
+				} else {
+					log.Printf("%s service stop completed successfully", svc)
+				}
+			}(service)
+		}
+
+		wg.Wait()
+
+		// Log overall results
+		for svc, err := range results {
+			if err != nil {
+				log.Printf("Parallel stop: %s failed: %v", svc, err)
+			} else {
+				log.Printf("Parallel stop: %s succeeded", svc)
+			}
+		}
+	}()
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"service": "all",
+		"status":  "stopping",
+		"message": "All services stopping in parallel...",
+	})
+}
+
+// Concurrent service status handler
+func (s *Server) handleServicesStatus(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	config.LoadProperties()
+	cfg := config.GetConfig()
+
+	type serviceResult struct {
+		Service   string `json:"service"`
+		Status    string `json:"status"`
+		Timestamp string `json:"timestamp"`
+		Error     string `json:"error,omitempty"`
+	}
+
+	var results []serviceResult
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+
+	// Check each service in parallel
+	checkService := func(service string, checkFunc func() (string, error)) {
+		defer wg.Done()
+		status, err := checkFunc()
+		result := serviceResult{
+			Service:   service,
+			Status:    status,
+			Timestamp: time.Now().Format(time.RFC3339),
+		}
+		if err != nil {
+			result.Error = err.Error()
+		}
+		mu.Lock()
+		results = append(results, result)
+		mu.Unlock()
+	}
+
+	wg.Add(3) // Karaf, PostgreSQL, Keycloak
+
+	// Check Karaf status
+	go func() {
+		if cfg.Runtime == "karaf" {
+			checkService("karaf", func() (string, error) {
+				karafDir := filepath.Join(cfg.ModelDir, "application", ".karaf")
+				if karaf.KarafRunning(karafDir) {
+					return "running", nil
+				}
+				return "stopped", nil
+			})
+		} else {
+			wg.Done()
+		}
+	}()
+
+	// Check PostgreSQL status
+	go func() {
+		if cfg.DBType == "postgresql" {
+			checkService("postgresql", func() (string, error) {
+				pgName := "postgres-" + cfg.SchemaName
+				if docker.DockerInstanceRunning(pgName) {
+					return "running", nil
+				}
+				return "stopped", nil
+			})
+		} else {
+			wg.Done()
+		}
+	}()
+
+	// Check Keycloak status
+	go func() {
+		checkService("keycloak", func() (string, error) {
+			kcName := "keycloak-" + cfg.KeycloakName
+			if docker.DockerInstanceRunning(kcName) {
+				return "running", nil
+			}
+			return "stopped", nil
+		})
+	}()
+
+	wg.Wait()
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(results)
 }
 
 // Service-specific stop handlers
@@ -855,9 +1145,14 @@ func (s *Server) handleCombinedLogsWebSocket(w http.ResponseWriter, r *http.Requ
 	}
 	defer conn.Close()
 
-	s.mu.Lock()
-	s.clients[conn] = true
-	s.mu.Unlock()
+	// Add to connection pool
+	if !s.logPool.add(conn) {
+		log.Printf("Log connection pool full, rejecting connection")
+		conn.WriteMessage(websocket.CloseMessage,
+			websocket.FormatCloseMessage(websocket.ClosePolicyViolation, "Connection pool full"))
+		return
+	}
+	defer s.logPool.remove(conn)
 
 	// Stream combined logs from all services
 	go s.streamCombinedLogs(conn)
@@ -869,10 +1164,6 @@ func (s *Server) handleCombinedLogsWebSocket(w http.ResponseWriter, r *http.Requ
 			break
 		}
 	}
-
-	s.mu.Lock()
-	delete(s.clients, conn)
-	s.mu.Unlock()
 }
 
 func (s *Server) handleKarafLogsWebSocket(w http.ResponseWriter, r *http.Request) {
@@ -883,9 +1174,14 @@ func (s *Server) handleKarafLogsWebSocket(w http.ResponseWriter, r *http.Request
 	}
 	defer conn.Close()
 
-	s.mu.Lock()
-	s.clients[conn] = true
-	s.mu.Unlock()
+	// Add to connection pool
+	if !s.logPool.add(conn) {
+		log.Printf("Log connection pool full, rejecting connection")
+		conn.WriteMessage(websocket.CloseMessage,
+			websocket.FormatCloseMessage(websocket.ClosePolicyViolation, "Connection pool full"))
+		return
+	}
+	defer s.logPool.remove(conn)
 
 	// Stream Karaf logs only
 	go s.streamServiceLogs(conn, "karaf")
@@ -897,10 +1193,6 @@ func (s *Server) handleKarafLogsWebSocket(w http.ResponseWriter, r *http.Request
 			break
 		}
 	}
-
-	s.mu.Lock()
-	delete(s.clients, conn)
-	s.mu.Unlock()
 }
 
 func (s *Server) handlePostgreSQLLogsWebSocket(w http.ResponseWriter, r *http.Request) {
@@ -911,9 +1203,14 @@ func (s *Server) handlePostgreSQLLogsWebSocket(w http.ResponseWriter, r *http.Re
 	}
 	defer conn.Close()
 
-	s.mu.Lock()
-	s.clients[conn] = true
-	s.mu.Unlock()
+	// Add to connection pool
+	if !s.logPool.add(conn) {
+		log.Printf("Log connection pool full, rejecting connection")
+		conn.WriteMessage(websocket.CloseMessage,
+			websocket.FormatCloseMessage(websocket.ClosePolicyViolation, "Connection pool full"))
+		return
+	}
+	defer s.logPool.remove(conn)
 
 	// Stream PostgreSQL logs only
 	go s.streamServiceLogs(conn, "postgresql")
@@ -925,10 +1222,6 @@ func (s *Server) handlePostgreSQLLogsWebSocket(w http.ResponseWriter, r *http.Re
 			break
 		}
 	}
-
-	s.mu.Lock()
-	delete(s.clients, conn)
-	s.mu.Unlock()
 }
 
 func (s *Server) handleKeycloakLogsWebSocket(w http.ResponseWriter, r *http.Request) {
@@ -939,9 +1232,14 @@ func (s *Server) handleKeycloakLogsWebSocket(w http.ResponseWriter, r *http.Requ
 	}
 	defer conn.Close()
 
-	s.mu.Lock()
-	s.clients[conn] = true
-	s.mu.Unlock()
+	// Add to connection pool
+	if !s.logPool.add(conn) {
+		log.Printf("Log connection pool full, rejecting connection")
+		conn.WriteMessage(websocket.CloseMessage,
+			websocket.FormatCloseMessage(websocket.ClosePolicyViolation, "Connection pool full"))
+		return
+	}
+	defer s.logPool.remove(conn)
 
 	// Stream Keycloak logs only
 	go s.streamServiceLogs(conn, "keycloak")
@@ -953,10 +1251,6 @@ func (s *Server) handleKeycloakLogsWebSocket(w http.ResponseWriter, r *http.Requ
 			break
 		}
 	}
-
-	s.mu.Lock()
-	delete(s.clients, conn)
-	s.mu.Unlock()
 }
 
 func (s *Server) handleSessionWebSocket(w http.ResponseWriter, r *http.Request) {
@@ -966,6 +1260,15 @@ func (s *Server) handleSessionWebSocket(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	defer conn.Close()
+
+	// Add to session connection pool
+	if !s.sessionPool.add(conn) {
+		log.Printf("Session connection pool full, rejecting connection")
+		conn.WriteMessage(websocket.CloseMessage,
+			websocket.FormatCloseMessage(websocket.ClosePolicyViolation, "Session pool full"))
+		return
+	}
+	defer s.sessionPool.remove(conn)
 
 	// Start interactive session
 	go s.handleInteractiveSession(conn)
@@ -999,6 +1302,11 @@ func (s *Server) streamCombinedLogs(conn *websocket.Conn) {
 		}
 
 		message, _ := json.Marshal(logMessage)
+
+		// Broadcast to all connections in the log pool
+		s.logPool.broadcast(message)
+
+		// Also send to this specific connection
 		if err := conn.WriteMessage(websocket.TextMessage, message); err != nil {
 			break
 		}
