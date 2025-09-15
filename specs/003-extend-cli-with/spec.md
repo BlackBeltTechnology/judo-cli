@@ -3,7 +3,7 @@
 **Feature Branch**: `003-extend-cli-with-a-server-function`  
 **Created**: 2025-09-15  
 **Status**: Draft  
-**Input**: User description: "I would like to extend the CLI tool with a 'server' function, which has same functionality as session, but it can work in a browser with embedded server. The frontend have a command window, like in terminal. Very similar to LLM chat clients. It have to include statuses as buttons, where the server's start / stop can be performed. The server's log have to be accessed as tailing log. The server function have to be embedded in current cli program. The compiled frontend have to be included in binary release."
+**Input**: User description: "I would like to extend the CLI tool with a 'server' function, which has same functionality as session, but it can work in a browser with embedded server. The frontend have a command window, like in terminal. Very similar to LLM chat clients. It have to include statuses as buttons, where the server's start / stop can be performed. The server function controls the embedded karaf, postgresql and keycloak services. The server's log have to be accessed as tailing log. The server function have to be embedded in current cli program. The compiled frontend have to be included in binary release."
 
 ---
 
@@ -17,14 +17,14 @@
 ## User Scenarios & Testing *(mandatory)*
 
 ### Primary User Story
-As a JUDO CLI user, I want to run the CLI as a server and interact with it through a web browser. This will provide a user-friendly, graphical interface for executing commands, viewing logs, and managing the application's status, similar to a chat client, without needing to stay in a terminal.
+As a JUDO CLI user, I want to run the CLI as a server and interact with it through a web browser. This will provide a user-friendly, graphical interface for executing commands, viewing logs, and managing the status of embedded Karaf, PostgreSQL, and Keycloak services, similar to a chat client, without needing to stay in a terminal.
 
 ### Acceptance Scenarios
 1. **Given** the JUDO CLI is not running, **When** I run `judo server`, **Then** the CLI should start a web server and open a new browser tab to the web UI.
 2. **Given** the web UI is open, **When** I look at the interface, **Then** I should see a command input area, an output display for command results, a real-time log viewer, and status buttons for `start`, `stop`, and `status`.
-3. **Given** the application is stopped, **When** I click the "Start" button, **Then** the CLI should execute the `start` command and the log viewer should show the application's startup logs in real-time.
+3. **Given** the embedded services (Karaf, PostgreSQL, Keycloak) are stopped, **When** I click the "Start" button, **Then** the CLI should start all embedded services and the log viewer should show the services' startup logs in real-time.
 4. **Given** the application is running, **When** I type `judo build -q` into the command input and submit, **Then** the command should be executed, and the output should be displayed in the output area.
-5. **Given** I want to view the server logs, **When** I look at the log viewer, **Then** I should see a continuously updated tail of the server's log output.
+5. **Given** I want to view the service logs, **When** I look at the log viewer, **Then** I should see a continuously updated tail of the Karaf, PostgreSQL, and Keycloak service logs, with the ability to filter by service.
 6. **Given** the compiled frontend is ready, **When** a new release of the CLI is built, **Then** the frontend assets MUST be embedded into the final binary.
 
 ### Edge Cases
@@ -38,17 +38,22 @@ As a JUDO CLI user, I want to run the CLI as a server and interact with it throu
 - **FR-001**: The CLI MUST include a new `server` command that starts a local web server.
 - **FR-002**: The `server` command MUST serve a single-page web application to the browser.
 - **FR-003**: The web UI MUST provide a terminal-like interface for command input and output.
-- **FR-004**: The web UI MUST display status buttons to `start`, `stop`, and check the `status` of the application.
-- **FR-005**: The web UI MUST include a log viewer that tails the server's output in real-time.
+- **FR-004**: The web UI MUST display status buttons to `start`, `stop`, and check the `status` of the embedded Karaf, PostgreSQL, and Keycloak services.
+- **FR-005**: The web UI MUST include a log viewer that tails the service outputs in real-time, with filtering capability for each service (Karaf, PostgreSQL, Keycloak).
 - **FR-006**: The CLI server MUST handle command execution and stream output back to the web UI.
 - **FR-007**: The compiled frontend assets MUST be embedded into the Go binary for distribution.
+- **FR-008**: The server MUST provide individual service control (start/stop/status) for Karaf, PostgreSQL, and Keycloak.
+- **FR-009**: The server MUST display individual service statuses and health indicators.
+- **FR-010**: The log viewer MUST support service-specific log filtering and display.
 - **FR-011**: All frontend functionality, including command execution, log viewing, and status updates, MUST be covered by UI tests.
 
 ### Key Entities
-- **CLI Server**: The Go application that runs the web server, manages application state, and executes commands.
-- **Web UI**: The single-page application served to the browser, providing the user interface.
+- **CLI Server**: The Go application that runs the web server, manages embedded service state (Karaf, PostgreSQL, Keycloak), and executes commands.
+- **Web UI**: The single-page application served to the browser, providing the user interface for service management.
 - **Command Executor**: The component responsible for running CLI commands and capturing their output.
-- **Log Streamer**: The component that tails logs and sends them to the UI in real-time.
+- **Log Streamer**: The component that tails service logs (Karaf, PostgreSQL, Keycloak) and sends them to the UI in real-time.
+- **Service Manager**: The component that controls the lifecycle of embedded Karaf, PostgreSQL, and Keycloak services.
+- **Service Monitor**: The component that tracks and reports the status and health of each embedded service.
 
 ---
 
