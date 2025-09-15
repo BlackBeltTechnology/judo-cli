@@ -116,6 +116,11 @@ jobs:
       #     # Convert to a single line for GitHub output
       #     NOTES=$(sed ':a;N;$!ba;s/\n/\\n/g' "$TEMP_FILE")
       #     echo "logs=$NOTES" >> "$GITHUB_OUTPUT"
+
+      - name: Fetch all tags
+        run: |
+          git fetch --prune --tags --force
+
       - name: Create local tag for GoReleaser
         run: |
           set -e
