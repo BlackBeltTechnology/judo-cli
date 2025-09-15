@@ -73,14 +73,14 @@ changelog:
     Version: {{ .Major }}.{{ .Minor }}.{{ .Patch }}{{ if (contains .Tag "-") }} - Pre-release{{ end }}
 
     {{- if .Changelog }}
-    {{ range .Changelog.Commits }}
+    {{ range .Changelog.Entries }}
     ---
     {{ .Message }}{{ if .Author.Name }} ({{ .Author.Name }}){{ end }}
     {{ end }}
     {{ else }}
     _No commits found between tags._
     {{ end }}
-    ---
+
 release:
   # Repository to release to.
   github:
