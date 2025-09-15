@@ -1,50 +1,62 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+# JUDO CLI Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Simplicity & Single Responsibility
+- Keep the project as a single Go CLI application with cohesive internal packages (`internal/*`) and a separate Hugo documentation site in `docs/`.
+- Avoid unnecessary abstraction and patterns. Prefer direct usage of standard library and well‑established libraries (Cobra) over custom frameworks.
+- Changes must be narrowly scoped; do not couple CLI features with documentation pipeline changes unless required.
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+### II. Consistent CLI UX (Cobra)
+- Every command must define `Use`, `Short`, `Long`, and follow kebab‑case flags.
+- Commands return non‑zero exit codes on failure and human‑readable errors to stderr.
+- Backward compatibility is prioritized: do not break existing flags/commands without a deprecation path and release notes.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+### III. Test‑First Discipline (Non‑negotiable)
+- Use Go’s `testing` with table‑driven tests and `testify` where appropriate.
+- Enforce `go fmt` and `go vet`. CI runs `go test ./...`, vet, and formatting checks.
+- Write focused tests close to the changed code. Prefer integration tests for behavior that spans packages.
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+### IV. Versioning & Releases
+- Semantic Versioning (MAJOR.MINOR.PATCH).
+- `scripts/version.sh` is the single source of truth for the working version in `VERSION`.
+- Snapshot builds originate from `develop` with tags like `vX.Y.Z-snapshot-YYYYMMDDHHMMSS` and never publish Homebrew updates.
+- Stable releases are cut from `master` with tags `vX.Y.Z` and are published via GoReleaser.
+- Homebrew formula updates happen only for stable releases; snapshots must not touch the tap.
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### V. Observability & Error Handling
+- Use clear, contextual errors wrapped with `fmt.Errorf("context: %w", err)`.
+- Prefer structured log lines for non‑interactive diagnostics; keep CLI output concise by default.
+- Ensure deterministic exit codes: 0 success; non‑zero for categorized failures.
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+### VI. Documentation (Hugo) & Deployment
+- Hugo site lives in `docs/` and builds with the pinned Hugo and Node versions in CI (Hugo 0.150.x, Node 18).
+- GitHub Pages deploys via `.github/workflows/hugo.yml`; dependency caching uses `docs/package-lock.json`.
+- Pages environment name: `pages`. The workflow must not be blocked by environment rules intended for `github-pages`.
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+### VII. Security & Secrets
+- All tokens (e.g., `HOMEBREW_TAP_TOKEN`) are provided via GitHub Secrets in workflows; never commit secrets.
+- Least privilege: use `GITHUB_TOKEN` unless repository scoping requires a PAT.
+- Validate third‑party actions by pinning major versions and reviewing deprecations.
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+## Development Workflow
+- Default branch: `develop`; release branch: `master`.
+- CI:
+  - Build/Test workflow validates formatting, vetting, and tests on pushes/PRs.
+  - Snapshot builds (develop) may create snapshot tags but must not update Homebrew.
+  - Release builds (master) create a GitHub Release and update the Homebrew tap (branch `main`).
+- Documentation is deployed from the current default branch per `hugo.yml` triggers; baseURL configured via `configure-pages` output.
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+## Additional Constraints
+- Supported platforms: darwin (amd64, arm64), linux (amd64, arm64), windows (amd64).
+- Minimum Go toolchain per CI: 1.25.
+- Avoid breaking CLI UX; when unavoidable, provide deprecations and update `internal/help` and docs.
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
+- This constitution governs engineering practice for judo‑cli. Amendments require:
+  1) updating this file, 2) syncing templates and helper guides, 3) noting the change in the checklist,
+  4) adjusting workflows and docs if affected.
+- PR reviews verify compliance with CLI UX rules, testing discipline, versioning, and documentation updates.
+- Use conventional, meaningful commit messages focused on the “why”.
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
-
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+**Version**: 2.2.0 | **Ratified**: 2025-09-15 | **Last Amended**: 2025-09-15

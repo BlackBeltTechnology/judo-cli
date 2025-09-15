@@ -37,7 +37,7 @@
 **Alternatives**: Minimal build optimization would miss Hugo performance benefits
 
 ### Deployment Strategy
-**Decision**: GitHub Actions with Hugo deployment
+**Decision**: GitHub Actions with Hugo deployment via `.github/workflows/hugo.yml` (Hugo 0.150.0, Node 18, environment `pages`)
 **Rationale**: Seamless integration with existing workflow
 **Alternatives**: Netlify or other platforms would require new configuration
 

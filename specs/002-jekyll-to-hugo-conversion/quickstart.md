@@ -50,7 +50,7 @@ hugo --buildDrafts --buildFuture
 name: Deploy Hugo site to Pages
 on:
   push:
-    branches: [main]
+    branches: [master]
   workflow_dispatch:
 
 jobs:
@@ -72,7 +72,7 @@ jobs:
   command = "hugo --gc --minify"
 
 [build.environment]
-  HUGO_VERSION = "0.120.4"
+  HUGO_VERSION = "0.150.0"
   HUGO_ENABLEGITINFO = "true"
 
 [context.production.environment]
@@ -82,13 +82,13 @@ jobs:
 ## Testing
 ```bash
 # Run visual regression tests
-npm test:visual
+npm run test:visual
 
 # Execute browser tests
-npm test:browser
+npm run test:browser
 
 # Validate build output
-npm test:build
+npm run test:build
 ```
 
 ## Troubleshooting

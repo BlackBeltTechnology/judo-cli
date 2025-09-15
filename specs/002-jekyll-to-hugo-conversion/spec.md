@@ -39,7 +39,7 @@ As a JUDO CLI user, I want to access documentation that maintains the same visua
 - **FR-003**: All interactive components MUST work identically (install tabs, copy buttons, mobile navigation)
 - **FR-004**: Content structure and navigation MUST remain unchanged from current Jekyll implementation
 - **FR-005**: Site MUST maintain responsive design for all screen sizes
-- **FR-006**: Build process MUST integrate with existing GitHub Actions workflows
+- **FR-006**: Build process MUST integrate with existing GitHub Actions workflows (build.yml for CLI; hugo.yml for docs)
 - **FR-007**: Documentation URLs and permalinks MUST remain stable to avoid broken links
 
 ### Key Entities

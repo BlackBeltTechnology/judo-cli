@@ -7,7 +7,7 @@
 Convert the existing Jekyll-based documentation site to Hugo while preserving all custom design elements, interactive features, and content structure. Hugo provides better integration with the Go-based CLI tool and improved build performance.
 
 ## Technical Context
-**Language/Version**: Go 1.21+, Hugo 0.120+  
+**Language/Version**: Go 1.25, Hugo 0.150.0  
 **Primary Dependencies**: Hugo framework, Sass/SCSS, JavaScript (ES6+)  
 **Storage**: File-based content (Markdown, assets)  
 **Testing**: Browser testing, build validation, visual regression testing  
