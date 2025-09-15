@@ -99,25 +99,7 @@ function App() {
     }
   };
 
-  const handleStart = async () => {
-    try {
-      await axios.post(`${getApiBaseUrl()}/api/actions/start`);
-      fetchStatus();
-    } catch (error) {
-      console.error('Failed to start:', error);
-    };
-  };
-
-  const handleStop = async () => {
-    try {
-      await axios.post(`${getApiBaseUrl()}/api/actions/stop`);
-      fetchStatus();
-    } catch (error) {
-      console.error('Failed to stop:', error);
-    }
-  };
-
-  const handleServiceStart = async (service: string) => {
+const handleServiceStart = async (service: string) => {
     try {
       await axios.post(`${getApiBaseUrl()}/api/services/${service}/start`);
       fetchServiceStatuses();
@@ -175,15 +157,9 @@ function App() {
       </header>
 
       <div className="main-content">
-        <div className="control-panel">
-          <h2>Global Controls</h2>
-          <div className="button-group">
-            <button onClick={handleStart} className="btn btn-start">Start All</button>
-            <button onClick={handleStop} className="btn btn-stop">Stop All</button>
-            <button onClick={fetchStatus} className="btn btn-status">Refresh Status</button>
-          </div>
-          
-          <h3>Individual Services</h3>
+        <div className="grid-row">
+          <div className="control-panel">
+          <h2>Services</h2>
           <div className="service-controls">
             {Object.entries(serviceStatus).map(([service, status]) => (
               <div key={service} className="service-control">
@@ -238,6 +214,8 @@ function App() {
               </div>
             ))}
           </div>
+        </div>
+        
         </div>
 
         <div className="log-section">

@@ -28,12 +28,18 @@
 }
 
 .main-content {
-  display: grid;
-  grid-template-columns: 1fr 2fr 1fr;
+  display: flex;
+  flex-direction: column;
   gap: 2rem;
   padding: 2rem;
   max-width: 1400px;
   margin: 0 auto;
+}
+
+.grid-row {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 2rem;
 }
 
 .control-panel, .command-section, .log-section {
