@@ -90,44 +90,6 @@ jobs:
           # Export environment variable for GoReleaser
           echo "GORELEASER_CURRENT_TAG=${TAG_NAME}" >> $GITHUB_ENV
 
-      # - name: Generate release logs using git log
-      #   id: create-release-logs
-      #   run: |
-      #     set -e
-      #     BASE_VERSION="${{ steps.version.outputs.base_version }}"
-      #     TAG_NAME="${{ steps.version.outputs.tag_name }}"
-      #     echo "Generating release notes for version: $BASE_VERSION"
-
-      #     # Create a secure temporary file
-      #     TEMP_FILE=$(mktemp)
-
-      #     # Get previous RELEASE tag (not snapshot or current tag) for changelog range
-      #     PREVIOUS_TAG=$(git tag -l "v*" | grep -E "^v[0-9]+\\.[0-9]+\\.[0-9]+$" \
-      #                    | grep -v "snapshot" \
-      #                    | grep -v "^$TAG_NAME$" \
-      #                    | sort -V | tail -1)
-
-      #     if [[ -n "$PREVIOUS_TAG" ]]; then
-      #       echo "Generating changelog from last release $PREVIOUS_TAG to current commit"
-      #       git log --no-merges --no-decorate --pretty=format:"---%n%H%n%B" "$PREVIOUS_TAG..HEAD" > "$TEMP_FILE.body"
-      #     else
-      #       echo "No previous release tag found, generating recent changelog"
-      #       git log --no-merges --no-decorate --pretty=format:"---%n%H%n%B" -n 100 > "$TEMP_FILE.body"
-      #     fi
-
-      #     # Build final release notes with a header
-      #     {
-      #       cat "$TEMP_FILE.body"
-      #     } > "$TEMP_FILE"
-
-      #     echo "✅ Release notes generated successfully at $TEMP_FILE"
-      #     echo "Preview:"
-      #     head -20 "$TEMP_FILE"
-
-      #     # Convert to a single line for GitHub output
-      #     NOTES=$(sed ':a;N;$!ba;s/\n/\\n/g' "$TEMP_FILE")
-      #     echo "logs=$NOTES" >> "$GITHUB_OUTPUT"
-
       - name: Fetch all tags
         run: |
           git fetch --prune --tags --force
@@ -199,8 +161,8 @@ jobs:
           GORELEASER_CURRENT_TAG: ${{ steps.version.outputs.tag_name }}
           GORELEASER_LOG: debug # <-- Enable debug mode here
 
-      - name: Remove remote tag on failure
-        if: failure() && steps.version.outputs.tag_name != ''
+      - name: Remove remote tag
+        if: always() && steps.version.outputs.tag_name != ''
         run: |
           echo "GoReleaser failed, removing remote tag: ${{ steps.version.outputs.tag_name }}"
           git push --delete origin ${{ steps.version.outputs.tag_name }} || echo "Tag already removed or not found"
@@ -222,137 +184,6 @@ jobs:
               echo "Tag $TAG_NAME exists on remote, skipping cleanup"
             fi
           fi
-
-      # - name: Create release body
-      #   id: create-release-body
-      #   uses: actions/github-script@v7
-      #   with:
-      #     github-token: ${{ secrets.GITHUB_TOKEN }}
-      #     script: |
-      #       const { owner, repo } = context.repo;
-      #       const fs = require('fs');
-      #       const commitSha = '${{ github.sha }}';
-
-      #        // Generate snapshot version
-      #       const baseVersion = '${{ steps.version.outputs.base_version }}';
-      #       const snapshotVersion = '${{ steps.version.outputs.snapshot_version }}';
-      #       const tagName = '${{ steps.version.outputs.tag_name }}';
-
-      #       console.log(`Creating snapshot release: ${tagName}`);
-
-      #       // Read RELEASE_NOTES.md content for release body
-      #       let releaseBody = `**⚠️ Development Snapshot Build**\n\n` +
-      #       `This is an automated development build from the \`develop\` branch.\n\n` +
-      #       `**Build Info:**\n` +
-      #       `- Version: ${tagName}\n` +
-      #       `- Branch: develop\n` +
-      #       `- Commit: ${commitSha}\n` +
-      #       `- Built: ${new Date().toISOString()}\n\n` +
-      #       `**⚠️ This is a pre-release version intended for testing and development only.**\n\n` +
-      #       `**Installation:**\n` +
-      #       `Download the appropriate binary for your platform from the assets below.\n\n`;
-      #       // Export as step output
-      #       core.setOutput('release_body', releaseBody);
-
-      # # Step 3: Combine RELEASE_NOTES.md + calculated body using mktemp
-      # - name: Combine release notes and calculated body
-      #   id: create-final-release-body
-      #   run: |
-      #     COMBINED_FILE=$(mktemp)
-      #     {
-      #       echo "${{ steps.calculated_body.outputs.body }}" | sed 's/\\n/\n/g'
-      #       echo ""
-      #       echo "---"
-      #       echo ""
-      #       echo "${{ steps.calculated_body.outputs.body }}" | sed 's/\\n/\n/g'
-      #     } > "$COMBINED_FILE"
-
-      #     echo "✅ Combined release body:"
-      #     cat "$COMBINED_FILE"
-
-      #     # Escape newlines for GitHub output
-      #     COMBINED=$(sed ':a;N;$!ba;s/\n/\\n/g' "$COMBINED_FILE")
-      #     echo "combined=$COMBINED" >> "$GITHUB_OUTPUT"
-
-      # - name: Create GitHub Release
-      #   uses: softprops/action-gh-release@v2
-      #   with:
-      #     files: |
-      #       dist/*.tar.gz
-      #       dist/*.zip
-      #       dist/checksums.txt
-      #       RELEASE_NOTES.md
-      #     draft: false
-      #     prerelease: true
-      #     body: ${{ steps.create-release-note.outputs.release_body }}
-      #     tag_name: ${{ steps.version.outputs.tag_name }}
-      #   env:
-      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      # - name: Upload snapshot artifacts
-      #   uses: actions/upload-artifact@v4
-      #   with:
-      #     name: judo-snapshot-${{ steps.create-release.outputs.snapshot_version }}
-      #     path: |
-      #       dist/*.tar.gz
-      #       dist/*.zip
-      #       dist/checksums.txt
-      #       RELEASE_NOTES.md
-
-      # - name: Cleanup old develop releases
-      #   uses: actions/github-script@v7
-      #   with:
-      #     github-token: ${{ secrets.GITHUB_TOKEN }}
-      #     script: |
-      #       const { owner, repo } = context.repo;
-
-      #       // Get all releases
-      #       const releases = await github.rest.repos.listReleases({
-      #         owner,
-      #         repo,
-      #         per_page: 100
-      #       });
-
-      #       // Filter snapshot releases (contain 'snapshot' in tag name)
-      #       const snapshotReleases = releases.data.filter(release =>
-      #         release.tag_name.includes('snapshot') && release.prerelease
-      #       );
-
-      #       console.log(`Found ${snapshotReleases.length} snapshot releases`);
-
-      #       // Sort by creation date (newest first)
-      #       snapshotReleases.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-
-      #       // Keep only the latest 3 snapshots, delete the rest
-      #       if (snapshotReleases.length > 3) {
-      #         const toDelete = snapshotReleases.slice(3);
-
-      #         console.log(`Keeping ${Math.min(3, snapshotReleases.length)} latest snapshots, deleting ${toDelete.length} old ones`);
-
-      #         for (const release of toDelete) {
-      #           console.log(`Deleting old snapshot release: ${release.tag_name} (created: ${release.created_at})`);
-      #           try {
-      #             await github.rest.repos.deleteRelease({
-      #               owner,
-      #               repo,
-      #               release_id: release.id
-      #             });
-
-      #             // Also delete the tag
-      #             await github.rest.git.deleteRef({
-      #               owner,
-      #               repo,
-      #               ref: `tags/${release.tag_name}`
-      #             });
-
-      #             console.log(`Successfully deleted: ${release.tag_name}`);
-      #           } catch (error) {
-      #             console.log(`Failed to delete release ${release.tag_name}: ${error.message}`);
-      #           }
-      #         }
-      #       } else {
-      #         console.log(`Only ${snapshotReleases.length} snapshot releases found, no cleanup needed`);
-      #       }
 
   build-master:
     name: Build Release (Master Branch)
@@ -379,36 +210,6 @@ jobs:
           set -e
           git fetch --prune origin "+refs/tags/*:refs/tags/*"
 
-      # - name: Generate build version and create tag
-      #   id: version
-      #   run: |
-      #     set -e
-      #     chmod +x scripts/version.sh
-      #     BASE_VERSION=$(scripts/version.sh get)
-      #     echo "base_version=${BASE_VERSION}" >> $GITHUB_OUTPUT
-
-      #     # Create the release tag locally for GoReleaser validation
-      #     TAG_NAME="v${BASE_VERSION}"
-      #     echo "Creating local tag: $TAG_NAME"
-
-      #     # Check if tag already exists locally or remotely
-      #     if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
-      #       echo "Tag $TAG_NAME already exists locally"
-      #       # Verify it points to the current commit
-      #       TAG_COMMIT=$(git rev-parse "$TAG_NAME")
-      #       CURRENT_COMMIT=$(git rev-parse HEAD)
-      #       if [[ "$TAG_COMMIT" != "$CURRENT_COMMIT" ]]; then
-      #         echo "::error::Tag $TAG_NAME exists but points to different commit ($TAG_COMMIT vs $CURRENT_COMMIT)"
-      #         exit 1
-      #       fi
-      #     else
-      #       # Create the tag locally
-      #       git tag -a "$TAG_NAME" -m "Release version ${BASE_VERSION}"
-      #       echo "Created local tag: $TAG_NAME"
-      #     fi
-
-      #     echo "GORELEASER_CURRENT_TAG=${TAG_NAME}" >> $GITHUB_ENV
-
       - name: Run GoReleaser (Build artifacts)
         uses: goreleaser/goreleaser-action@v6
         with:
@@ -418,29 +219,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # - name: Push release tag to trigger release workflow
-      #   run: |
-      #     set -e
-      #     TAG_NAME="v${{ steps.version.outputs.base_version }}"
-      #     echo "Setup OSS PAT"
-      #     git remote set-url origin https://x-access-token:${{ secrets.OSS_PAT }}@github.
-      #     com/OWNER/REPO.git
-      #     echo "Pushing release tag $TAG_NAME to trigger release workflow"
-      #     git push origin "$TAG_NAME"
-
-      #     echo "✅ Tag $TAG_NAME pushed - release workflow will now execute"
-
-      # - name: Upload build artifacts
-      #   uses: actions/upload-artifact@v4
-      #   with:
-      #     name: judo-build-${{ steps.version.outputs.base_version }}
-      #     path: |
-      #       dist/*.tar.gz
-      #       dist/*.zip
-      #       dist/checksums.txt
-      #       dist/homebrew/*.rb
-      #       RELEASE_NOTES.md
-
+      # - name
       - name: Remove remote tag on failure
         if: failure() && steps.version.outputs.tag_name != ''
         run: |
@@ -463,4 +242,236 @@ jobs:
             else
               echo "Tag $TAG_NAME exists on remote, skipping cleanup"
             fi
+          fi
+
+  post-release:
+    name: Post-Release Version Increment
+    runs-on: judong
+    needs: build-master
+    if: github.ref == 'refs/heads/master'
+    steps:
+      - name: Checkout develop branch
+        uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure Git
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+
+      # - name: Download release notes artifact
+      #   uses: actions/download-artifact@v4
+      #   with:
+      #     name: release-notes
+      #     path: .
+
+      # - name: Download release notes artifact
+      #   uses: actions/download-artifact@v4
+      #   with:
+      #     name: release-notes-previous
+      #     path: .
+
+      - name: Extract current version from tag with fallback
+        id: current_version
+        run: |
+          set -e
+          # Try to get version from tag first
+          TAG_NAME="${GITHUB_REF#refs/tags/}"
+          if [[ -n "$TAG_NAME" ]]; then
+            VERSION="${TAG_NAME#v}"
+            echo "Using version from tag: $VERSION"
+          else
+            # Fallback to VERSION file if tag is not available
+            if [[ -f "VERSION" ]]; then
+              VERSION=$(cat VERSION | tr -d '[:space:]')
+              echo "Using version from VERSION file: $VERSION"
+            else
+              echo "::error::Cannot determine version - no tag and no VERSION file"
+              exit 1
+            fi
+          fi
+
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Increment version for next development cycle with validation
+        id: next_version
+        run: |
+          set -e
+          CURRENT_VERSION="${{ steps.current_version.outputs.version }}"
+
+          echo "Current version: $CURRENT_VERSION"
+          echo "Incrementing patch version for next development cycle..."
+
+          # Validate version.sh script
+          if [[ ! -f "scripts/version.sh" ]]; then
+            echo "::error::version.sh script not found"
+            exit 1
+          fi
+
+          chmod +x scripts/version.sh
+
+          # Set current version first
+          scripts/version.sh set "$CURRENT_VERSION"
+
+          # Verify current version was set correctly
+          VERIFIED_VERSION=$(scripts/version.sh get)
+          if [[ "$VERIFIED_VERSION" != "$CURRENT_VERSION" ]]; then
+            echo "::error::Failed to set current version. Expected: $CURRENT_VERSION, Got: $VERIFIED_VERSION"
+            exit 1
+          fi
+
+          # Increment patch version and capture only the version (last line of output)
+          NEXT_VERSION=$(scripts/version.sh increment patch --commit | tail -1)
+
+          # Verify increment worked and output is a valid version
+          if [[ -z "$NEXT_VERSION" || ! "$NEXT_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Version increment failed - invalid output from version.sh: '$NEXT_VERSION'"
+            exit 1
+          fi
+
+          echo "✅ Next development version: $NEXT_VERSION"
+
+          # Verify the new version is greater than the released version
+          RELEASED_VERSION="${{ steps.current_version.outputs.version }}"
+          echo "Released version: $RELEASED_VERSION"
+          echo "Next version: $NEXT_VERSION"
+
+          # Compare versions semantically
+          IFS='.' read -ra RELEASED_VER <<< "$RELEASED_VERSION"
+          IFS='.' read -ra NEXT_VER <<< "$NEXT_VERSION"
+
+          for i in 0 1 2; do
+            if [[ "${NEXT_VER[$i]}" -gt "${RELEASED_VER[$i]}" ]]; then
+              echo "✅ Version properly incremented: $RELEASED_VERSION -> $NEXT_VERSION"
+              break
+            elif [[ "${NEXT_VER[$i]}" -lt "${RELEASED_VER[$i]}" ]]; then
+              echo "::error::Version not properly incremented. Next version $NEXT_VERSION should be greater than released version $RELEASED_VERSION"
+              exit 1
+            fi
+          done
+
+          echo "next_version=${NEXT_VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Push version increment to develop with validation
+        run: |
+          set -e
+          echo "Pushing version increment to develop branch..."
+
+          # Verify we're on develop branch
+          CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+          if [[ "$CURRENT_BRANCH" != "develop" ]]; then
+            echo "::error::Expected to be on develop branch, but currently on: $CURRENT_BRANCH"
+            exit 1
+          fi
+
+          # Verify there are changes to push
+          if git diff --quiet origin/develop..HEAD; then
+            echo "No changes to push - version already up to date"
+          else
+            # Push with retry logic
+          for i in $(seq 1 ${{ env.MAX_RETRIES }}); do
+            echo "Push attempt $i/${{ env.MAX_RETRIES }}"
+            if git push origin develop; then
+              echo "✅ Successfully pushed to develop branch"
+              break
+            else
+              echo "::warning::Push failed (attempt $i/${{ env.MAX_RETRIES }}), retrying in ${{ env.RETRY_DELAY }} seconds..."
+              if [[ $i -eq ${{ env.MAX_RETRIES }} ]]; then
+                echo "::error::Failed to push to develop branch after ${{ env.MAX_RETRIES }} attempts"
+                exit 1
+              fi
+              sleep ${{ env.RETRY_DELAY }}
+            fi
+          done
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create comprehensive release summary
+        run: |
+          set -e
+          echo "## Release Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [[ "${{ needs.release.result }}" == "success" ]]; then
+            echo "✅ **Release Status**: SUCCESS" >> $GITHUB_STEP_SUMMARY
+            echo "- **Released Version**: ${{ steps.current_version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+            echo "- **Release Tag**: ${{ github.ref }}" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Release Status**: FAILED" >> $GITHUB_STEP_SUMMARY
+            echo "- **Attempted Version**: ${{ steps.current_version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+            echo "- **Error**: GoReleaser execution failed" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Development Cycle" >> $GITHUB_STEP_SUMMARY
+          echo "- **Next Development Version**: ${{ steps.next_version.outputs.next_version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Branch Updated**: develop" >> $GITHUB_STEP_SUMMARY
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Workflow Details" >> $GITHUB_STEP_SUMMARY
+          echo "- **Workflow Run**: [#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_STEP_SUMMARY
+          echo "- **Triggered By**: ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit**: [${{ github.sha }}](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})" >> $GITHUB_STEP_SUMMARY
+
+          # Add troubleshooting section if release failed
+          if [[ "${{ needs.release.result }}" != "success" ]]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Troubleshooting" >> $GITHUB_STEP_SUMMARY
+            echo "If the release failed, check the following:" >> $GITHUB_STEP_SUMMARY
+            echo "1. Verify GoReleaser configuration (.goreleaser.yaml)" >> $GITHUB_STEP_SUMMARY
+            echo "2. Check build artifacts and compilation errors" >> $GITHUB_STEP_SUMMARY
+            echo "3. Review GitHub Actions logs for detailed error messages" >> $GITHUB_STEP_SUMMARY
+            echo "4. Ensure all required secrets (GITHUB_TOKEN) are properly configured" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: judo-build-${{ steps.version.outputs.base_version }}
+          path: |
+            dist/*.tar.gz
+            dist/*.zip
+            dist/checksums.txt
+            dist/homebrew/*.rb
+            RELEASE_NOTES.md
+
+  cleanup:
+    name: Final Status
+    runs-on: judong
+    needs: [release, post-release]
+    if: always()
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine final workflow status
+        run: |
+          set -e
+          echo "## Final Workflow Status" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [[ "${{ needs.release.result }}" == "success" && "${{ needs.post-release.result }}" == "success" ]]; then
+            echo "🎉 **Overall Status**: COMPLETE SUCCESS" >> $GITHUB_STEP_SUMMARY
+            echo "Both release creation and version management completed successfully." >> $GITHUB_STEP_SUMMARY
+          elif [[ "${{ needs.release.result }}" == "success" ]]; then
+            echo "⚠️ **Overall Status**: PARTIAL SUCCESS" >> $GITHUB_STEP_SUMMARY
+            echo "Release created successfully but post-release version management failed." >> $GITHUB_STEP_SUMMARY
+          elif [[ "${{ needs.post-release.result }}" == "success" ]]; then
+            echo "⚠️ **Overall Status**: PARTIAL SUCCESS" >> $GITHUB_STEP_SUMMARY
+            echo "Release failed but version management completed successfully." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "💥 **Overall Status**: COMPLETE FAILURE" >> $GITHUB_STEP_SUMMARY
+            echo "Both release creation and version management failed." >> $GITHUB_STEP_SUMMARY
+          fi
+
+          # Set final exit code based on release job status
+          if [[ "${{ needs.release.result }}" != "success" ]]; then
+            echo "::error::Release workflow failed"
+            exit 1
           fi
