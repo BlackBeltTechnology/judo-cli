@@ -124,6 +124,9 @@ jobs:
       - name: Fetch all tags
         run: |
           git fetch --prune --tags --force
+          git fetch --tags --force
+          git tag -l
+          git log --oneline --decorate -n 10
 
       - name: Create local tag for GoReleaser
         run: |
