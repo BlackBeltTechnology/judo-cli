@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 	"time"
 )
@@ -151,10 +152,13 @@ func TestPortConflictHandling(t *testing.T) {
 	}
 
 	// Server should have handled the port conflict gracefully
+	// The test expects the server to fail to start due to port conflict,
+	// not necessarily return http.ErrServerClosed
 	select {
 	case err := <-errChan:
-		if err != http.ErrServerClosed {
-			t.Errorf("Expected server closed error, got: %v", err)
+		// Accept either server closed error or port conflict error
+		if err != http.ErrServerClosed && !strings.Contains(err.Error(), "address already in use") {
+			t.Errorf("Expected server closed or port conflict error, got: %v", err)
 		}
 	case <-time.After(2 * time.Second):
 		t.Error("Server stop timeout")

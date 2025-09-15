@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
 import './App.css';
 
@@ -27,26 +27,15 @@ function App() {
   const [logs, setLogs] = useState<string[]>([]);
   const [logFilter, setLogFilter] = useState<string>('all');
   const [isConnected, setIsConnected] = useState(false);
+  const [loadingServices, setLoadingServices] = useState<{[key: string]: boolean}>({});
   const ws = useRef<WebSocket | null>(null);
 
-  useEffect(() => {
-    fetchStatus();
-    fetchServiceStatuses();
-    connectWebSocket();
-    
-    return () => {
-      if (ws.current) {
-        ws.current.close();
-      }
-    };
-  }, []);
-
-  const getApiBaseUrl = () => {
+  const getApiBaseUrl = useCallback(() => {
     const { protocol, hostname, port } = window.location;
     return `${protocol}//${hostname}:${port}`;
-  };
+  }, []);
 
-  const connectWebSocket = () => {
+  const connectWebSocket = useCallback(() => {
     const { protocol, hostname, port } = window.location;
     const wsProtocol = protocol === 'https:' ? 'wss:' : 'ws:';
     ws.current = new WebSocket(`${wsProtocol}//${hostname}:${port}/ws/logs`);
@@ -70,18 +59,18 @@ function App() {
     ws.current.onerror = (error) => {
       console.error('WebSocket error:', error);
     };
-  };
+  }, []);
 
-  const fetchStatus = async () => {
+  const fetchStatus = useCallback(async () => {
     try {
       const response = await axios.get(`${getApiBaseUrl()}/api/status`);
       setStatus(response.data);
     } catch (error) {
       console.error('Failed to fetch status:', error);
     }
-  };
+  }, [getApiBaseUrl]);
 
-  const fetchServiceStatuses = async () => {
+  const fetchServiceStatuses = useCallback(async () => {
     try {
       const [karaf, postgres, keycloak] = await Promise.all([
         axios.get(`${getApiBaseUrl()}/api/services/karaf/status`),
@@ -97,24 +86,43 @@ function App() {
     } catch (error) {
       console.error('Failed to fetch service statuses:', error);
     }
-  };
+  }, [getApiBaseUrl]);
 
 const handleServiceStart = async (service: string) => {
+    setLoadingServices(prev => ({ ...prev, [service]: true }));
     try {
       await axios.post(`${getApiBaseUrl()}/api/services/${service}/start`);
-      fetchServiceStatuses();
+      // Start polling for status updates
+      startStatusPolling(service);
     } catch (error) {
       console.error(`Failed to start ${service}:`, error);
+      setLoadingServices(prev => ({ ...prev, [service]: false }));
     }
   };
 
   const handleServiceStop = async (service: string) => {
+    setLoadingServices(prev => ({ ...prev, [service]: true }));
     try {
       await axios.post(`${getApiBaseUrl()}/api/services/${service}/stop`);
-      fetchServiceStatuses();
+      // Start polling for status updates
+      startStatusPolling(service);
     } catch (error) {
       console.error(`Failed to stop ${service}:`, error);
+      setLoadingServices(prev => ({ ...prev, [service]: false }));
     }
+  };
+
+  const startStatusPolling = (service: string) => {
+    // Poll every 2 seconds for 30 seconds to track service state changes
+    const pollInterval = setInterval(() => {
+      fetchServiceStatuses();
+    }, 2000);
+    
+    // Stop polling after 30 seconds and clear loading state
+    setTimeout(() => {
+      clearInterval(pollInterval);
+      setLoadingServices(prev => ({ ...prev, [service]: false }));
+    }, 30000);
   };
 
   const handleServiceStatus = async (service: string) => {
@@ -145,6 +153,18 @@ const handleServiceStart = async (service: string) => {
     };
   };
 
+  useEffect(() => {
+    fetchStatus();
+    fetchServiceStatuses();
+    connectWebSocket();
+    
+    return () => {
+      if (ws.current) {
+        ws.current.close();
+      }
+    };
+  }, [connectWebSocket, fetchServiceStatuses, fetchStatus]);
+
   return (
     <div className="App">
       <header className="App-header">
@@ -169,20 +189,21 @@ const handleServiceStart = async (service: string) => {
                   <button 
                     onClick={() => handleServiceStart(service)}
                     className="btn btn-service-start"
-                    disabled={status.status === 'starting' || status.status === 'running'}
+                    disabled={status.status === 'starting' || status.status === 'running' || loadingServices[service]}
                   >
-                    Start
+                    {loadingServices[service] ? 'Starting...' : 'Start'}
                   </button>
                   <button 
                     onClick={() => handleServiceStop(service)}
                     className="btn btn-service-stop"
-                    disabled={status.status === 'stopping' || status.status === 'stopped'}
+                    disabled={status.status === 'stopping' || status.status === 'stopped' || loadingServices[service]}
                   >
-                    Stop
+                    {loadingServices[service] ? 'Stopping...' : 'Stop'}
                   </button>
                   <button 
                     onClick={() => handleServiceStatus(service)}
                     className="btn btn-service-status"
+                    disabled={loadingServices[service]}
                   >
                     Refresh
                   </button>

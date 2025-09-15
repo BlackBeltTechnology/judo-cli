@@ -61,7 +61,7 @@ func StartKaraf() {
 	)
 	// extract
 	if err := utils.UntarGz(tarPath, karafDir, 1); err != nil {
-		log.Fatalf("Failed to extract Karaf archive: %v", err)
+		panic(fmt.Sprintf("Failed to extract Karaf archive: %v", err))
 	}
 
 	// Ensure karaf script is executable
@@ -89,7 +89,7 @@ func StartKaraf() {
 	ecmd.Stdout = consoleOut
 	ecmd.Stderr = consoleOut
 	if err := ecmd.Start(); err != nil {
-		log.Fatalf("Failed to start Karaf: %v", err)
+		panic(fmt.Sprintf("Failed to start Karaf: %v", err))
 	}
 
 	fmt.Printf("Karaf started (pid %d). Logs: %s\n", ecmd.Process.Pid, consoleOut.Name())
