@@ -24,7 +24,10 @@ As a JUDO CLI user, I want to run the CLI as a server and interact with it throu
 2. **Given** the web UI is open, **When** I look at the interface, **Then** I should see a command input area, an output display for command results, a real-time log viewer, and status buttons for `start`, `stop`, and `status`.
 3. **Given** the embedded services (Karaf, PostgreSQL, Keycloak) are stopped, **When** I click the "Start" button, **Then** the CLI should start all embedded services and the log viewer should show the services' startup logs in real-time.
 4. **Given** the application is running, **When** I type `judo build -q` into the command input and submit, **Then** the command should be executed, and the output should be displayed in the output area.
-5. **Given** I want to view the service logs, **When** I look at the log viewer, **Then** I should see a continuously updated tail of the Karaf, PostgreSQL, and Keycloak service logs, with the ability to filter by service.
+5. **Given** I want to view the service logs, **When** I look at the log viewer, **Then** I should see a continuously updated tail of the Karaf, PostgreSQL, and Keycloak service logs, with the ability to filter by individual service or view combined logs.
+6. **Given** I want to focus on a specific service, **When** I select to view only Karaf logs, **Then** the log viewer should display only Karaf service logs in real-time.
+7. **Given** I want to focus on a specific service, **When** I select to view only PostgreSQL logs, **Then** the log viewer should display only PostgreSQL service logs in real-time.
+8. **Given** I want to focus on a specific service, **When** I select to view only Keycloak logs, **Then** the log viewer should display only Keycloak service logs in real-time.
 6. **Given** the compiled frontend is ready, **When** a new release of the CLI is built, **Then** the frontend assets MUST be embedded into the final binary.
 
 ### Edge Cases
@@ -39,12 +42,12 @@ As a JUDO CLI user, I want to run the CLI as a server and interact with it throu
 - **FR-002**: The `server` command MUST serve a single-page web application to the browser.
 - **FR-003**: The web UI MUST provide a terminal-like interface for command input and output.
 - **FR-004**: The web UI MUST display status buttons to `start`, `stop`, and check the `status` of the embedded Karaf, PostgreSQL, and Keycloak services.
-- **FR-005**: The web UI MUST include a log viewer that tails the service outputs in real-time, with filtering capability for each service (Karaf, PostgreSQL, Keycloak).
+- **FR-005**: The web UI MUST include a log viewer that tails the service outputs in real-time, with individual filtering capability for Karaf, PostgreSQL, and Keycloak services, as well as a combined view option.
 - **FR-006**: The CLI server MUST handle command execution and stream output back to the web UI.
 - **FR-007**: The compiled frontend assets MUST be embedded into the Go binary for distribution.
 - **FR-008**: The server MUST provide individual service control (start/stop/status) for Karaf, PostgreSQL, and Keycloak.
 - **FR-009**: The server MUST display individual service statuses and health indicators.
-- **FR-010**: The log viewer MUST support service-specific log filtering and display.
+- **FR-010**: The log viewer MUST support individual service log filtering (Karaf-only, PostgreSQL-only, Keycloak-only) and combined log display, with clear visual indicators for each service type.
 - **FR-011**: All frontend functionality, including command execution, log viewing, and status updates, MUST be covered by UI tests.
 
 ### Key Entities
