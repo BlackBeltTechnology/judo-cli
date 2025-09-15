@@ -60,7 +60,16 @@ snapshot:
 
 changelog:
   sort: desc
-  use: git
+  use: github
+  format: |
+    {{ if .PrevTag }}(## [{{ .Tag }}] - {{ .Date }}){{ else }}(# Changelog){{ end }}
+    {{ .Major }}.{{ .Minor }}.{{ .Patch }} {{ if .IsPreRelease }}- Pre-release{{ end }}
+    {{ range .Commits }}
+    ---
+    {{ .Message }}
+    {{ if .Author.Name }} ({{ .Author.Name }}){{ end }}
+    {{ end }}
+    ---
 
 release:
   # Repository to release to.
