@@ -4,11 +4,11 @@ This document describes the automated release process for JUDO CLI using GoRelea
 
 ## Overview
 
-The release process is fully automated and follows semantic versioning. There are two main workflows:
+The release process is fully automated and follows semantic versioning. There are three workflows:
 
-1. **Continuous Integration** (`build.yml`) - Runs on every push to `develop` and `main`
-2. **Release** (`release.yml`) - Triggers when tags are pushed
-3. **Manual Release** (`manual-release.yml`) - Allows manual version increment and release
+1. **Continuous Integration** (`build.yml`) - Runs on every push to `develop` and `master`
+2. **Release** (`release.yml`) - Triggers on tags (`vX.Y.Z`), generates release notes and publishes assets
+3. **Manual Release** (`manual-release.yml`) - Bumps version on `develop` and pushes tag to trigger the release workflow
 
 ## Version Management
 
@@ -45,10 +45,10 @@ The `scripts/version.sh` script provides version management functionality:
 - Only the latest snapshot release is kept (older snapshots are automatically deleted)
 - After a release, the version is automatically incremented for the next development cycle
 
-### main Branch
-- The `main` branch contains stable, released code
-- Builds from `main` use the version from the `VERSION` file
-- No automatic releases are created from `main` branch pushes
+### master Branch
+- The `master` branch contains stable, released code
+- Builds from `master` use the version from the `VERSION` file
+- No automatic releases are created from `master` branch pushes
 
 ### Tags
 - Releases are triggered by pushing tags in the format `v{major}.{minor}.{patch}` (e.g., `v1.2.3`)
@@ -73,9 +73,9 @@ The `scripts/version.sh` script provides version management functionality:
 - Available as GitHub Actions artifacts
 - Not published as GitHub releases
 
-### 2. Main Branch Builds
+### 2. Master Branch Builds
 
-**Trigger:** Push to `main` branch
+**Trigger:** Push to `master` branch
 
 **Process:**
 1. Run tests and code quality checks
@@ -102,7 +102,7 @@ The `scripts/version.sh` script provides version management functionality:
    - Both `amd64` and `arm64` architectures
    - Compressed archives (`.tar.gz` for Unix, `.zip` for Windows)
    - Checksums file
-   - Auto-generated changelog
+   - Release notes generated from git log and used by GoReleaser
 
 **Post-Release:**
 1. Checkout `develop` branch
@@ -175,10 +175,10 @@ The workflow will automatically:
    ```bash
    # Increment version and commit
    NEW_VERSION=$(./scripts/version.sh increment patch --commit)
-   
+
    # Push version update
    git push origin develop
-   
+
    # Create and push tag
    git tag "v${NEW_VERSION}"
    git push origin "v${NEW_VERSION}"
