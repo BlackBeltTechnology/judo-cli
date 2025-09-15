@@ -69,7 +69,7 @@ changelog:
     # Changelog
     Initial release - {{ .Date }}
     {{ end }}
-    {{ .Major }}.{{ .Minor }}.{{ .Patch }} {{ if .IsPreRelease }}- Pre-release{{ end }}
+    Version: {{ .Major }}.{{ .Minor }}.{{ .Patch }}{{ if (contains .Tag "-") }} - Pre-release{{ end }}
     {{ range .Commits }}
     ---
     {{ .Message }}
