@@ -7,6 +7,7 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"log"
 	"net/http"
 	"net/url"
@@ -67,10 +68,9 @@ func NewServer(port int) *Server {
 	mux.HandleFunc("/api/services/keycloak/start", s.handleKeycloakStart)
 	mux.HandleFunc("/api/services/keycloak/stop", s.handleKeycloakStop)
 	mux.HandleFunc("/ws/logs", s.handleWebSocket)
-	// Serve simple response for root path
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("JUDO CLI Server is running"))
-	})
+	// Serve embedded frontend files
+	assetsFS, _ := fs.Sub(embeddedFiles, "assets")
+	mux.Handle("/", http.FileServer(http.FS(assetsFS)))
 
 	// Create a wrapper handler to log all requests with panic recovery
 	logHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
