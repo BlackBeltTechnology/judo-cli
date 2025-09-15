@@ -179,11 +179,11 @@ jobs:
           GORELEASER_PREVIOUS_TAG: ${{ steps.previous_tag.outputs.previous_tag }}
           GORELEASER_LOG: debug # <-- Enable debug mode here
 
-      - name: Remove remote tag
-        if: always() && steps.version.outputs.tag_name != ''
-        run: |
-          echo "GoReleaser failed, removing remote tag: ${{ steps.version.outputs.tag_name }}"
-          git push --delete origin ${{ steps.version.outputs.tag_name }} || echo "Tag already removed or not found"
+      # - name: Remove remote tag
+      #   if: always() && steps.version.outputs.tag_name != ''
+      #   run: |
+      #     echo "GoReleaser failed, removing remote tag: ${{ steps.version.outputs.tag_name }}"
+      #     git push --delete origin ${{ steps.version.outputs.tag_name }} || echo "Tag already removed or not found"
 
       - name: Cleanup local tag if build failed
         if: failure()
