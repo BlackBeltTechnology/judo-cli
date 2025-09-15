@@ -59,7 +59,7 @@ snapshot:
 # using GoReleaser's changelog functionality
 
 changelog:
-  use: git
+  use: github
   sort: asc
   filters:
     exclude:
@@ -75,7 +75,7 @@ changelog:
       order: 1
     - title: "Other Changes"
       order: 999
-
+  format: "{{ .SHA }}: {{ .Message }} ({{ with .AuthorUsername }}@{{ . }}{{ else }}{{ .AuthorName }} <{{ .AuthorEmail }}>{{ end }}))"
 release:
   # Repository to release to.
   github:
