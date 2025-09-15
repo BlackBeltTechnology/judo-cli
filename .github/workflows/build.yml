@@ -116,6 +116,13 @@ jobs:
       #     # Convert to a single line for GitHub output
       #     NOTES=$(sed ':a;N;$!ba;s/\n/\\n/g' "$TEMP_FILE")
       #     echo "logs=$NOTES" >> "$GITHUB_OUTPUT"
+      - name: Create local tag for GoReleaser
+        run: |
+          set -e
+          TAG="${{ steps.version.outputs.tag_name }}"
+          # Recreate the tag locally so it points to the current commit
+          git tag -fa "$TAG" -m "Dev snapshot $TAG" "$(git rev-parse HEAD)"
+          echo "GORELEASER_CURRENT_TAG=$TAG" >> $GITHUB_ENV
 
       - name: Set up Go
         uses: actions/setup-go@v5
