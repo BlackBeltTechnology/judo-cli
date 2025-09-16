@@ -117,6 +117,20 @@ judo session
 
 *Description:* Launches an interactive terminal session with command history, auto-completion, and persistent state. Includes dynamic service status indicators in the prompt.
 
+==== `server`
+Start JUDO CLI web server
+
+[source,bash]
+----
+judo server
+judo server -p 8080
+----
+
+*Flags:*
+- `-p, --port <port>` - Port to run the server on (default: 6969)
+
+*Description:* Starts a web server with browser-based interface for JUDO CLI operations. Provides visual project management, interactive command execution, real-time service monitoring, and database management tools. Access the interface at http://localhost:6969 after starting.
+
 === Build Commands
 
 ==== `build`

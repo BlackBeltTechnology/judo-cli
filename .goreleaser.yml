@@ -8,6 +8,8 @@ env:
 before:
   hooks:
     - go mod tidy
+    - cd frontend && npm install && npm run build
+    - cp -r frontend/build/* internal/server/assets/
     - go generate ./...
 
 builds:

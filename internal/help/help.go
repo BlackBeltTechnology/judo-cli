@@ -71,6 +71,9 @@ USAGE: judo COMMANDS... [OPTIONS...]
                                                java_compiler = ejc | javac. Which compuler can be used, default is ejc
     stop                                    Stop application, postgresql and keycloak. (if running)
     status                                  Print status of containers
+    session                                  Start interactive JUDO CLI session
+    server                                   Start JUDO CLI web server
+        -p --port <port>                     Port to run the server on (default: 6969)
 
 
 EXAMPLES:
@@ -313,5 +316,30 @@ It then executes the appropriate Maven command using the 'judo-version-updater-m
 
 Example:
   judo init
+`
+}
+
+func ServerLongHelp() string {
+	return `Start JUDO CLI web server with browser-based interface.
+
+This command starts a web server that provides a graphical interface for
+JUDO CLI operations. The server includes:
+
+• Project management dashboard
+• Interactive command execution
+• Real-time service status monitoring
+• Log viewing and filtering
+• Database management tools
+
+Options:
+  -p, --port <port>  Port to run the server on (default: 6969)
+
+Examples:
+  judo server           # Start server on default port 6969
+  judo server -p 8080   # Start server on port 8080
+  judo server --port 9000  # Start server on port 9000
+
+Once started, open your browser and navigate to http://localhost:<port>
+to access the web interface.
 `
 }

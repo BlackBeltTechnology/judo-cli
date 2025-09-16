@@ -23,6 +23,7 @@ Complete documentation for all JUDO CLI commands organized by category.
 | [`judo status`](status/) | Check service status |
 | [`judo clean`](clean/) | Clean environment |
 | [`judo session`](session/) | Interactive session mode |
+| [`judo server`](server/) | Web server with browser interface |
 
 ## Command Categories
 
