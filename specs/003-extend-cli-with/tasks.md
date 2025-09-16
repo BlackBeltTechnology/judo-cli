@@ -79,3 +79,12 @@
 - [ ] T048 Add cleanup guidance for `test-model/` (stop, clean, prune) to ensure repeatability.
 - [ ] T049 Validate log sources map to Karaf/PostgreSQL/Keycloak in `test-model/` including Combined stream labels.
 - [ ] T050 Establish CI job matrix step that exercises `test-model/` flows on supported platforms.
+
+## Phase 3.9: Documentation & CI Alignment
+- [ ] T051 [P] Update internal CLI help and docs pages for `server` (internal/help, docs/commands/, docs/getting-started.md)
+- [ ] T052 [P] Update README sections referencing server and interactive session
+- [ ] T053 [P] Review `.github/workflows/build.yml` for frontend build/embed steps; adjust if impacted
+- [ ] T054 [P] Verify `.github/workflows/hugo.yml` remains correct; update if documentation structure changed
+- [ ] T055 [P] Ensure release process includes embedded frontend assets (GoReleaser/build pipeline)
+- [ ] T056 [P] Validate docs site builds and deploys after changes (local + CI)
+- [ ] T057 [P] Add notes to `RELEASE.md` about server feature and embedding steps

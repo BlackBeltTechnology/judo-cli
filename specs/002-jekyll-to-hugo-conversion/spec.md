@@ -80,3 +80,5 @@ As a JUDO CLI user, I want to access documentation that maintains the same visua
 - [x] Review checklist passed
 
 ---
+
+*Based on Constitution v2.3.0 - See `/memory/constitution.md`*

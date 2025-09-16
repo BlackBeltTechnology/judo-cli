@@ -75,6 +75,11 @@
 - BUILD increments on every change?
 - Breaking changes handled? (parallel tests, migration plan)
 
+## Docs & CI Integrity
+- Documentation updates planned? (README, internal/help, docs/*)
+- CI workflows impacted? (build.yml, hugo.yml) — updates planned
+- Embedding/build steps documented in release process
+
 ## Project Structure
 
 ### Documentation (this feature)
@@ -234,4 +239,4 @@ ios/ or android/
 - [ ] Complexity deviations documented
 
 ---
-*Based on Constitution v2.2.0 - See `/memory/constitution.md`*
+*Based on Constitution v2.3.0 - See `/memory/constitution.md`*

@@ -156,5 +156,7 @@ Additional Requirements
 - FR-020: Log streaming MUST use direct log file access or internal streaming APIs rather than executing judo commands
 - FR-021: Terminal session management MUST use direct internal session functions rather than executing judo session commands
 - FR-022: Service status checking MUST use direct internal status functions rather than executing judo status commands
+- FR-023: Documentation MUST be updated (README, internal/help, docs/commands) to reflect server behavior and interactions
+- FR-024: CI/CD workflows (build.yml, hugo.yml, release pipeline) MUST be reviewed and updated as needed to ensure docs and builds remain intact
 
-*Based on Constitution v2.2.0 - See `/memory/constitution.md`*
+*Based on Constitution v2.3.0 - See `/memory/constitution.md`*

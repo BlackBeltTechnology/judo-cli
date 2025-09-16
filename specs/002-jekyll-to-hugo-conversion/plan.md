@@ -49,6 +49,10 @@ Convert the existing Jekyll-based documentation site to Hugo while preserving al
 - BUILD increments: On each content change
 - Breaking changes: URL preservation, redirects if needed
 
+## Docs & CI Integrity
+- Documentation updates planned? (Hugo docs, README references)
+- CI workflows impacted? (hugo.yml) — updates planned
+
 ## Project Structure
 
 ### Documentation (this feature)
@@ -175,4 +179,4 @@ docs/ (Hugo site root)
 
 ---
 
-*Based on Constitution v2.1.1 - See `/memory/constitution.md`*
+*Based on Constitution v2.3.0 - See `/memory/constitution.md`*

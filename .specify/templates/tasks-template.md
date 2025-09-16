@@ -119,7 +119,9 @@ Task: "Integration test auth in tests/integration/test_auth.py"
 ## Validation Checklist
 *GATE: Checked by main() before returning*
 
-- Constitution: v2.2.0 snapshot vs release rules must be reflected in tasks (no Homebrew updates from snapshots).
+- Constitution: v2.3.0 snapshot vs release rules must be reflected in tasks (no Homebrew updates from snapshots).
+- [ ] Documentation updates included (README, docs/, internal/help)
+- [ ] CI/CD workflows reviewed/updated (build.yml, hugo.yml), or explicitly confirmed unaffected
 
 - [ ] All contracts have corresponding tests
 - [ ] All entities have model tasks

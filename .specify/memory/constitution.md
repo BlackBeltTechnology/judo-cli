@@ -33,6 +33,7 @@
 - Hugo site lives in `docs/` and builds with the pinned Hugo and Node versions in CI (Hugo 0.150.x, Node 18).
 - GitHub Pages deploys via `.github/workflows/hugo.yml`; dependency caching uses `docs/package-lock.json`.
 - Pages environment name: `pages`. The workflow must not be blocked by environment rules intended for `github-pages`.
+- **Documentation Integrity**: When implementing features or changes, corresponding documentation and CI scripts MUST be kept intact and updated to reflect the changes. Documentation updates are non-negotiable for feature implementations.
 
 ### VII. Security & Secrets
 - All tokens (e.g., `HOMEBREW_TAP_TOKEN`) are provided via GitHub Secrets in workflows; never commit secrets.
@@ -46,6 +47,7 @@
   - Snapshot builds (develop) may create snapshot tags but must not update Homebrew.
   - Release builds (master) create a GitHub Release and update the Homebrew tap (branch `main`).
 - Documentation is deployed from the current default branch per `hugo.yml` triggers; baseURL configured via `configure-pages` output.
+- **CI/CD Integrity**: CI scripts and workflows MUST be maintained alongside code changes. Any feature that affects build, test, or deployment processes MUST include corresponding updates to CI/CD configuration and documentation.
 
 ## Additional Constraints
 - Supported platforms: darwin (amd64, arm64), linux (amd64, arm64), windows (amd64).
@@ -59,4 +61,4 @@
 - PR reviews verify compliance with CLI UX rules, testing discipline, versioning, and documentation updates.
 - Use conventional, meaningful commit messages focused on the “why”.
 
-**Version**: 2.2.0 | **Ratified**: 2025-09-15 | **Last Amended**: 2025-09-15
+**Version**: 2.3.0 | **Ratified**: 2025-09-15 | **Last Amended**: 2025-09-16

@@ -48,6 +48,11 @@ This plan outlines the implementation of a `server` command for the JUDO CLI tha
 - BUILD increments on every change: N/A
 - Breaking changes handled: N/A
 
+## Docs & CI Integrity
+- Documentation updates planned? (README, internal/help, docs/*)
+- CI workflows impacted? (build.yml, hugo.yml) — updates planned
+- Frontend embedding documented in release process
+
 ## Project Structure
 
 ### Documentation (this feature)
@@ -187,4 +192,4 @@ Testing
 Tasks Reference
 - See tasks T043–T050.
 
-*Based on Constitution v2.2.0 - See `/memory/constitution.md`*
+*Based on Constitution v2.3.0 - See `/memory/constitution.md`*
