@@ -276,16 +276,23 @@ func (s *Server) handleCommand(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Handle judo commands specifically - use current directory binary
+	// Handle judo commands specifically - use current binary
 	var cmd *exec.Cmd
 	if cmdParts[0] == "judo" {
+		// Get absolute path to current executable
+		exePath, err := os.Executable()
+		if err != nil {
+			http.Error(w, fmt.Sprintf("Failed to get executable path: %v", err), http.StatusInternalServerError)
+			return
+		}
+
 		// For judo commands, use the current binary
 		if len(cmdParts) == 1 {
 			// Just "judo" - show help
-			cmd = exec.Command("./judo", "--help")
+			cmd = exec.Command(exePath, "--help")
 		} else {
 			// judo with subcommands
-			cmd = exec.Command("./judo", cmdParts[1:]...)
+			cmd = exec.Command(exePath, cmdParts[1:]...)
 		}
 	} else {
 		// For system commands, execute directly
@@ -374,13 +381,18 @@ Project Commands:
 
 	case "doctor":
 		// Run doctor command
-		cmd := exec.Command("./judo", "doctor")
+		exePath, err := os.Executable()
+		if err != nil {
+			log.Printf("Failed to get executable path: %v", err)
+			return false
+		}
+		cmd := exec.Command(exePath, "doctor")
 		cmd.Dir = "."
 		var stdout, stderr bytes.Buffer
 		cmd.Stdout = &stdout
 		cmd.Stderr = &stderr
 
-		err := cmd.Run()
+		err = cmd.Run()
 		output := stdout.String()
 		if stderr.String() != "" {
 			output += "\n" + stderr.String()
@@ -904,7 +916,6 @@ func (s *Server) checkProjectInitialized() bool {
 	return false
 }
 
-
 func (s *Server) handleServicesStatus(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -1393,7 +1404,12 @@ func (s *Server) streamServiceLogs(conn *websocket.Conn, service string) {
 
 func (s *Server) handleInteractiveSession(conn *websocket.Conn) {
 	// Start an interactive judo session
-	cmd := exec.Command("./judo", "session")
+	exePath, err := os.Executable()
+	if err != nil {
+		log.Printf("Failed to get executable path: %v", err)
+		return
+	}
+	cmd := exec.Command(exePath, "session")
 	cmd.Dir = "."
 
 	// Create pipes for input/output
