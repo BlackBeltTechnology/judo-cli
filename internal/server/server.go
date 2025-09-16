@@ -3,12 +3,10 @@ package server
 import (
 	"bytes"
 	"context"
-	"crypto/tls"
 	"embed"
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/fs"
 	"log"
 	"net/http"
 	"net/url"
@@ -18,6 +16,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"io/fs"
 
 	"github.com/gorilla/websocket"
 
@@ -79,6 +79,8 @@ func (p *connectionPool) count() int {
 //go:embed assets/*
 var embeddedFiles embed.FS
 
+// Static frontend is served from embedded assets or frontend/build at runtime
+
 type Server struct {
 	httpServer *http.Server
 	port       int
@@ -92,58 +94,82 @@ type Server struct {
 
 	// Session input handling
 	sessionStdin io.WriteCloser
+	sessionConn  *websocket.Conn
+
+	// API for direct function calls
+	api *ServerAPI
 }
 
 func NewServer(port int) *Server {
+	log.Printf("Creating new server on port %d", port)
 	s := &Server{
-		port:    port,
+		port: port,
+		// Minimal initialization for testing
 		clients: make(map[*websocket.Conn]bool),
 		upgrader: websocket.Upgrader{
 			CheckOrigin: func(r *http.Request) bool {
 				return true
 			},
 		},
-		logPool:     newConnectionPool(100), // Max 100 log connections
-		sessionPool: newConnectionPool(50),  // Max 50 session connections
+		// Skip connection pools and API for now
+		logPool:     &connectionPool{conns: make(map[*websocket.Conn]bool), maxConns: 100},
+		sessionPool: &connectionPool{conns: make(map[*websocket.Conn]bool), maxConns: 50},
+		api:         NewServerAPI(),
 	}
 
 	mux := http.NewServeMux()
+
+	// REST API endpoints
 	mux.HandleFunc("/api/status", s.handleStatus)
-	mux.HandleFunc("/api/actions/start", s.handleStart)
-	mux.HandleFunc("/api/actions/stop", s.handleStop)
 	mux.HandleFunc("/api/commands/", s.handleCommand)
-	mux.HandleFunc("/api/logs/", s.handleLogs)
+	mux.HandleFunc("/api/project/init/status", s.handleProjectInitStatus)
+	mux.HandleFunc("/api/services/status", s.handleServicesStatus)
 	mux.HandleFunc("/api/services/karaf/status", s.handleKarafStatus)
 	mux.HandleFunc("/api/services/postgresql/status", s.handlePostgreSQLStatus)
 	mux.HandleFunc("/api/services/keycloak/status", s.handleKeycloakStatus)
-	mux.HandleFunc("/api/services/karaf/start", func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("Karaf start route called: %s %s", r.Method, r.URL.Path)
-		// Log request details
-		log.Printf("Request: Method=%s, URL=%s, ContentLength=%d", r.Method, r.URL.String(), r.ContentLength)
-		s.handleKarafStart(w, r)
-	})
-	mux.HandleFunc("/api/services/karaf/stop", s.handleKarafStop)
+	mux.HandleFunc("/api/services/karaf/start", s.handleKarafStart)
 	mux.HandleFunc("/api/services/postgresql/start", s.handlePostgreSQLStart)
-	mux.HandleFunc("/api/services/postgresql/stop", s.handlePostgreSQLStop)
 	mux.HandleFunc("/api/services/keycloak/start", s.handleKeycloakStart)
+	mux.HandleFunc("/api/services/karaf/stop", s.handleKarafStop)
+	mux.HandleFunc("/api/services/postgresql/stop", s.handlePostgreSQLStop)
 	mux.HandleFunc("/api/services/keycloak/stop", s.handleKeycloakStop)
 	mux.HandleFunc("/api/services/start", s.handleServicesStart)
 	mux.HandleFunc("/api/services/stop", s.handleServicesStop)
-	mux.HandleFunc("/api/services/status", s.handleServicesStatus)
-	mux.HandleFunc("/api/project/init/status", s.handleProjectInitStatus)
-	mux.HandleFunc("/ws/logs", s.handleWebSocket)
+	// Optional simple logs HTTP endpoint
+	mux.HandleFunc("/api/logs/", s.handleLogs)
+
+	// WebSocket endpoints
 	mux.HandleFunc("/ws/logs/combined", s.handleCombinedLogsWebSocket)
-	mux.HandleFunc("/ws/logs/service/karaf", s.handleKarafLogsWebSocket)
-	mux.HandleFunc("/ws/logs/service/postgresql", s.handlePostgreSQLLogsWebSocket)
-	mux.HandleFunc("/ws/logs/service/keycloak", s.handleKeycloakLogsWebSocket)
+	mux.HandleFunc("/ws/logs/service/", s.handleServiceLogsWebSocket)
 	mux.HandleFunc("/ws/session", s.handleSessionWebSocket)
-	// Serve embedded frontend files
-	assetsFS, _ := fs.Sub(embeddedFiles, "assets")
-	mux.Handle("/", http.FileServer(http.FS(assetsFS)))
+
+	// Serve static frontend files - try embedded assets first, then frontend/build
+	embeddedFS, err := fs.Sub(embeddedFiles, "assets")
+	if err == nil {
+		log.Printf("Serving frontend from embedded assets")
+		mux.Handle("/", http.FileServer(http.FS(embeddedFS)))
+	} else {
+		// Fallback to frontend/build directory
+		frontendDir := "frontend/build"
+		if _, err := os.Stat(frontendDir); err == nil {
+			log.Printf("Serving frontend from %s", frontendDir)
+			mux.Handle("/", http.FileServer(http.Dir(frontendDir)))
+		} else {
+			// Final fallback: simple landing page
+			mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path != "/" {
+					http.NotFound(w, r)
+					return
+				}
+				w.Header().Set("Content-Type", "text/html")
+				fmt.Fprintf(w, `<html><body><h1>JUDO CLI Server</h1><p>Server is running on port %d.</p><p><a href="/api/status">API Status</a></p></body></html>`, s.port)
+			})
+		}
+	}
 
 	// Create a wrapper handler to log all requests with panic recovery
 	logHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("Request received: %s %s", r.Method, r.URL.Path)
+		log.Printf("Request received: %s %s from %s", r.Method, r.URL.Path, r.RemoteAddr)
 
 		// Add panic recovery with stack trace
 		defer func() {
@@ -155,37 +181,33 @@ func NewServer(port int) *Server {
 			}
 		}()
 
+		log.Printf("About to serve request: %s %s", r.Method, r.URL.Path)
 		mux.ServeHTTP(w, r)
+		log.Printf("Request served: %s %s", r.Method, r.URL.Path)
 	})
 
+	log.Printf("Creating HTTP server on port %d", port)
 	s.httpServer = &http.Server{
-		Addr:    fmt.Sprintf(":%d", port),
+		Addr:    fmt.Sprintf("0.0.0.0:%d", port),
 		Handler: logHandler,
-		// Disable HTTP/2 for testing
-		TLSNextProto: map[string]func(*http.Server, *tls.Conn, http.Handler){},
 	}
+	log.Printf("HTTP server created successfully")
 
 	return s
 }
 
 func (s *Server) Start() error {
-	log.Printf("Server.Start() called")
-	// Use simple ListenAndServe for testing
-
-	// Use simple ListenAndServe for testing
-	go s.openBrowser()
-
-	// Add panic recovery for the server itself
+	log.Printf("Server.Start() called on port %d", s.port)
 	defer func() {
 		if rec := recover(); rec != nil {
 			log.Printf("PANIC recovered in server: %v", rec)
 		}
 	}()
 
-	log.Printf("About to start ListenAndServe on port %d", s.port)
-	err := s.httpServer.ListenAndServe()
-	log.Printf("ListenAndServe returned: %v", err)
-	return err
+	// Open browser automatically
+	go s.openBrowser()
+
+	return s.httpServer.ListenAndServe()
 }
 
 func (s *Server) Stop() error {
@@ -1312,6 +1334,48 @@ func (s *Server) handleKeycloakLogsWebSocket(w http.ResponseWriter, r *http.Requ
 	}
 }
 
+// handleServiceLogsWebSocket handles dynamic service log streaming at /ws/logs/service/{service}
+func (s *Server) handleServiceLogsWebSocket(w http.ResponseWriter, r *http.Request) {
+	service := strings.TrimPrefix(r.URL.Path, "/ws/logs/service/")
+	service = strings.TrimSuffix(service, "/")
+	if service == "" {
+		http.Error(w, "service not specified", http.StatusBadRequest)
+		return
+	}
+	// Validate known services
+	switch service {
+	case "karaf", "postgresql", "keycloak":
+		// ok
+	default:
+		http.Error(w, "unknown service", http.StatusNotFound)
+		return
+	}
+
+	conn, err := s.upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Printf("WebSocket upgrade failed: %v", err)
+		return
+	}
+	defer conn.Close()
+
+	if !s.logPool.add(conn) {
+		log.Printf("Log connection pool full, rejecting connection")
+		conn.WriteMessage(websocket.CloseMessage,
+			websocket.FormatCloseMessage(websocket.ClosePolicyViolation, "Connection pool full"))
+		return
+	}
+	defer s.logPool.remove(conn)
+
+	go s.streamServiceLogs(conn, service)
+
+	for {
+		_, _, err := conn.ReadMessage()
+		if err != nil {
+			break
+		}
+	}
+}
+
 func (s *Server) handleSessionWebSocket(w http.ResponseWriter, r *http.Request) {
 	conn, err := s.upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -1339,7 +1403,8 @@ func (s *Server) handleSessionWebSocket(w http.ResponseWriter, r *http.Request) 
 	handshakeMsg, _ := json.Marshal(handshake)
 	conn.WriteMessage(websocket.TextMessage, handshakeMsg)
 
-	// Start interactive session
+	// Start interactive session after a brief delay to ensure handshake is processed
+	time.Sleep(100 * time.Millisecond)
 	go s.handleInteractiveSession(conn)
 
 	// Handle client messages
@@ -1357,158 +1422,167 @@ func (s *Server) handleSessionWebSocket(w http.ResponseWriter, r *http.Request) 
 }
 
 func (s *Server) streamCombinedLogs(conn *websocket.Conn) {
-	// Implementation for streaming combined logs from all services
-	// This would tail logs from Karaf, PostgreSQL, and Keycloak
-	ticker := time.NewTicker(1 * time.Second)
-	defer ticker.Stop()
+	// Use API to stream real combined logs
+	config.LoadProperties()
+	cfg := config.GetConfig()
 
-	for range ticker.C {
-		// Simulate combined log streaming
-		logMessage := map[string]interface{}{
-			"ts":      time.Now().Format(time.RFC3339),
-			"service": "combined",
-			"line":    fmt.Sprintf("Combined log message at %s", time.Now().Format(time.RFC3339)),
+	// Create a channel for log output
+	logChan := make(chan string, 100)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Stream logs from various services based on configuration
+	if cfg.Runtime == "karaf" {
+		karafLogFile := filepath.Join(cfg.KarafDir, "console.out")
+		if _, err := os.Stat(karafLogFile); err == nil {
+			go s.api.streamLogFile(karafLogFile, "[KARAF]", ctx, logChan)
 		}
+	}
 
-		message, _ := json.Marshal(logMessage)
+	// Send connection established message as JSON
+	init := map[string]interface{}{
+		"ts":      time.Now().Format(time.RFC3339),
+		"service": "combined",
+		"line":    "Log stream connected",
+	}
+	msg, _ := json.Marshal(init)
+	conn.WriteMessage(websocket.TextMessage, msg)
 
-		// Broadcast to all connections in the log pool
-		s.logPool.broadcast(message)
-
-		// Also send to this specific connection
-		if err := conn.WriteMessage(websocket.TextMessage, message); err != nil {
-			break
+	// Stream logs to WebSocket
+	for {
+		select {
+		case logLine := <-logChan:
+			logMessage := map[string]interface{}{
+				"ts":      time.Now().Format(time.RFC3339),
+				"service": "combined",
+				"line":    logLine,
+			}
+			message, _ := json.Marshal(logMessage)
+			if err := conn.WriteMessage(websocket.TextMessage, message); err != nil {
+				return
+			}
+		case <-time.After(5 * time.Second):
+			// Send heartbeat to keep connection alive
+			heartbeat := map[string]interface{}{
+				"ts":      time.Now().Format(time.RFC3339),
+				"service": "combined",
+				"line":    "Log stream active",
+			}
+			message, _ := json.Marshal(heartbeat)
+			if err := conn.WriteMessage(websocket.TextMessage, message); err != nil {
+				return
+			}
 		}
 	}
 }
 
 func (s *Server) streamServiceLogs(conn *websocket.Conn, service string) {
-	// Implementation for streaming logs from a specific service
-	ticker := time.NewTicker(1 * time.Second)
-	defer ticker.Stop()
+	// Use API to stream real service logs
+	config.LoadProperties()
+	cfg := config.GetConfig()
 
-	for range ticker.C {
-		// Simulate service-specific log streaming
-		logMessage := map[string]interface{}{
-			"ts":      time.Now().Format(time.RFC3339),
-			"service": service,
-			"line":    fmt.Sprintf("[%s] Log message at %s", strings.ToUpper(service), time.Now().Format(time.RFC3339)),
+	// Create a channel for log output
+	logChan := make(chan string, 100)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Stream logs based on service type
+	switch service {
+	case "karaf":
+		if cfg.Runtime == "karaf" {
+			karafLogFile := filepath.Join(cfg.KarafDir, "console.out")
+			if _, err := os.Stat(karafLogFile); err == nil {
+				go s.api.streamLogFile(karafLogFile, "[KARAF]", ctx, logChan)
+			}
 		}
+	case "postgresql":
+		// PostgreSQL logs would be streamed from docker logs
+		// For now, simulate with status messages
+		go func() {
+			ticker := time.NewTicker(2 * time.Second)
+			defer ticker.Stop()
+			for range ticker.C {
+				logChan <- "PostgreSQL log streaming would be implemented here"
+			}
+		}()
+	case "keycloak":
+		// Keycloak logs would be streamed from docker logs
+		// For now, simulate with status messages
+		go func() {
+			ticker := time.NewTicker(2 * time.Second)
+			defer ticker.Stop()
+			for range ticker.C {
+				logChan <- "Keycloak log streaming would be implemented here"
+			}
+		}()
+	}
 
-		message, _ := json.Marshal(logMessage)
-		if err := conn.WriteMessage(websocket.TextMessage, message); err != nil {
-			break
+	// Send connection established message as JSON
+	init := map[string]interface{}{
+		"ts":      time.Now().Format(time.RFC3339),
+		"service": service,
+		"line":    fmt.Sprintf("%s log stream connected", strings.ToUpper(service)),
+	}
+	msg, _ := json.Marshal(init)
+	conn.WriteMessage(websocket.TextMessage, msg)
+
+	// Stream logs to WebSocket
+	for {
+		select {
+		case logLine := <-logChan:
+			logMessage := map[string]interface{}{
+				"ts":      time.Now().Format(time.RFC3339),
+				"service": service,
+				"line":    logLine,
+			}
+			message, _ := json.Marshal(logMessage)
+			if err := conn.WriteMessage(websocket.TextMessage, message); err != nil {
+				return
+			}
+		case <-time.After(5 * time.Second):
+			// Send heartbeat to keep connection alive
+			heartbeat := map[string]interface{}{
+				"ts":      time.Now().Format(time.RFC3339),
+				"service": service,
+				"line":    fmt.Sprintf("%s log stream active", strings.ToUpper(service)),
+			}
+			message, _ := json.Marshal(heartbeat)
+			if err := conn.WriteMessage(websocket.TextMessage, message); err != nil {
+				return
+			}
 		}
 	}
 }
 
 func (s *Server) handleInteractiveSession(conn *websocket.Conn) {
-	// Start an interactive judo session
-	exePath, err := os.Executable()
-	if err != nil {
-		log.Printf("Failed to get executable path: %v", err)
-		return
+	// Send welcome message for interactive session
+	welcomeMsg := map[string]interface{}{
+		"type": "output",
+		"data": "🚀 JUDO CLI Interactive Session\nType 'help' for available commands, 'exit' to quit\n\n",
 	}
-	cmd := exec.Command(exePath, "session")
-	cmd.Dir = "."
+	msg, _ := json.Marshal(welcomeMsg)
+	conn.WriteMessage(websocket.TextMessage, msg)
 
-	// Create pipes for input/output
-	stdin, err := cmd.StdinPipe()
-	if err != nil {
-		log.Printf("Error creating stdin pipe: %v", err)
-		return
+	// Send initial prompt
+	promptMsg := map[string]interface{}{
+		"type": "prompt",
+		"data": "judo> ",
 	}
+	msg, _ = json.Marshal(promptMsg)
+	conn.WriteMessage(websocket.TextMessage, msg)
 
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		log.Printf("Error creating stdout pipe: %v", err)
-		return
+	// Store connection for session input handling
+	s.mu.Lock()
+	s.sessionConn = conn
+	s.mu.Unlock()
+
+	// Send session ready message
+	readyMsg := map[string]interface{}{
+		"type":  "status",
+		"state": "ready",
 	}
-
-	stderr, err := cmd.StderrPipe()
-	if err != nil {
-		log.Printf("Error creating stderr pipe: %v", err)
-		return
-	}
-
-	// Start the command
-	if err := cmd.Start(); err != nil {
-		log.Printf("Error starting session: %v", err)
-		return
-	}
-
-	// Stream stdout to WebSocket
-	go func() {
-		buffer := make([]byte, 1024)
-		for {
-			n, err := stdout.Read(buffer)
-			if err != nil {
-				break
-			}
-			if n > 0 {
-				message := map[string]interface{}{
-					"type": "output",
-					"data": string(buffer[:n]),
-				}
-				msg, _ := json.Marshal(message)
-				conn.WriteMessage(websocket.TextMessage, msg)
-			}
-		}
-	}()
-
-	// Stream stderr to WebSocket
-	go func() {
-		buffer := make([]byte, 1024)
-		for {
-			n, err := stderr.Read(buffer)
-			if err != nil {
-				break
-			}
-			if n > 0 {
-				message := map[string]interface{}{
-					"type": "output",
-					"data": string(buffer[:n]),
-				}
-				msg, _ := json.Marshal(message)
-				conn.WriteMessage(websocket.TextMessage, msg)
-			}
-		}
-	}()
-
-	// Handle input from WebSocket to stdin
-	go func() {
-		// Store stdin for later use by handleSessionInput
-		s.mu.Lock()
-		s.sessionStdin = stdin
-		s.mu.Unlock()
-
-		// Keep this goroutine alive to prevent stdin from being closed
-		select {}
-	}()
-
-	// Wait for command to complete
-	go func() {
-		err := cmd.Wait()
-		exitCode := 0
-		if err != nil {
-			if exitErr, ok := err.(*exec.ExitError); ok {
-				exitCode = exitErr.ExitCode()
-			}
-		}
-
-		message := map[string]interface{}{
-			"type":     "status",
-			"state":    "exited",
-			"exitCode": exitCode,
-		}
-		msg, _ := json.Marshal(message)
-		conn.WriteMessage(websocket.TextMessage, msg)
-
-		// Clean up stdin reference
-		s.mu.Lock()
-		s.sessionStdin = nil
-		s.mu.Unlock()
-	}()
+	msg, _ = json.Marshal(readyMsg)
+	conn.WriteMessage(websocket.TextMessage, msg)
 }
 
 func (s *Server) handleSessionInput(conn *websocket.Conn, input string) {
@@ -1519,27 +1593,15 @@ func (s *Server) handleSessionInput(conn *websocket.Conn, input string) {
 		return
 	}
 
-	// Handle different message types
-	s.mu.Lock()
-	stdin := s.sessionStdin
-	s.mu.Unlock()
-
-	if stdin == nil {
-		log.Printf("No active session stdin available")
-		return
-	}
-
 	switch message["type"] {
 	case "input":
-		// Send input to session process
+		// Handle user input for interactive session
 		if data, ok := message["data"].(string); ok {
-			if _, err := stdin.Write([]byte(data)); err != nil {
-				log.Printf("Error writing to session stdin: %v", err)
-			}
+			s.handleWebSocketSessionCommand(conn, data)
 		}
 
 	case "resize":
-		// Handle terminal resize (would need PTY for this)
+		// Handle terminal resize
 		cols, ok1 := message["cols"].(float64)
 		rows, ok2 := message["rows"].(float64)
 		if ok1 && ok2 {
@@ -1551,10 +1613,100 @@ func (s *Server) handleSessionInput(conn *websocket.Conn, input string) {
 		action, ok := message["action"].(string)
 		if ok && action == "interrupt" {
 			log.Printf("Session interrupt received")
-			// Send Ctrl+C equivalent
-			if _, err := stdin.Write([]byte{0x03}); err != nil {
-				log.Printf("Error sending interrupt: %v", err)
+			// Send interrupt message to client
+			interruptMsg := map[string]interface{}{
+				"type": "output",
+				"data": "^C\n",
 			}
+			msg, _ := json.Marshal(interruptMsg)
+			conn.WriteMessage(websocket.TextMessage, msg)
 		}
 	}
+}
+
+// handleWebSocketSessionCommand handles session commands for WebSocket connections
+func (s *Server) handleWebSocketSessionCommand(conn *websocket.Conn, command string) {
+	// Trim and handle empty commands
+	command = strings.TrimSpace(command)
+	if command == "" {
+		return
+	}
+
+	// Handle session-specific commands
+	switch command {
+	case "exit", "quit":
+		// Send exit message
+		exitMsg := map[string]interface{}{
+			"type": "output",
+			"data": "👋 Session ended\n",
+		}
+		msg, _ := json.Marshal(exitMsg)
+		conn.WriteMessage(websocket.TextMessage, msg)
+
+		// Close connection
+		conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+		conn.Close()
+		return
+
+	case "help":
+		helpMsg := map[string]interface{}{
+			"type": "output",
+			"data": "📋 Available commands:\n  help     - Show this help\n  exit     - Exit session\n  status   - Show status\n  doctor   - Run system check\n  clear    - Clear screen\n\nType any JUDO command to execute it directly\n",
+		}
+		msg, _ := json.Marshal(helpMsg)
+		conn.WriteMessage(websocket.TextMessage, msg)
+
+	case "clear":
+		// Send clear screen command
+		clearMsg := map[string]interface{}{
+			"type": "output",
+			"data": "\033[H\033[2J",
+		}
+		msg, _ := json.Marshal(clearMsg)
+		conn.WriteMessage(websocket.TextMessage, msg)
+
+	case "status":
+		// Execute status command via API
+		result := s.api.executeStatus()
+		statusMsg := map[string]interface{}{
+			"type": "output",
+			"data": result + "\n",
+		}
+		msg, _ := json.Marshal(statusMsg)
+		conn.WriteMessage(websocket.TextMessage, msg)
+
+	case "doctor":
+		// Execute doctor command via API
+		result, _ := s.api.executeDoctor()
+		doctorMsg := map[string]interface{}{
+			"type": "output",
+			"data": result + "\n",
+		}
+		msg, _ := json.Marshal(doctorMsg)
+		conn.WriteMessage(websocket.TextMessage, msg)
+
+	default:
+		// Try to execute as a JUDO command
+		args := strings.Fields(command)
+		if len(args) > 0 {
+			result, err := s.api.ExecuteCommand(args[0], args[1:])
+			if err != nil {
+				result = "Error: " + err.Error()
+			}
+			outputMsg := map[string]interface{}{
+				"type": "output",
+				"data": result + "\n",
+			}
+			msg, _ := json.Marshal(outputMsg)
+			conn.WriteMessage(websocket.TextMessage, msg)
+		}
+	}
+
+	// Send prompt after command execution
+	promptMsg := map[string]interface{}{
+		"type": "prompt",
+		"data": "judo> ",
+	}
+	msg, _ := json.Marshal(promptMsg)
+	conn.WriteMessage(websocket.TextMessage, msg)
 }
