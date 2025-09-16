@@ -7,6 +7,7 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/fs"
 	"log"
 	"net/http"
@@ -88,6 +89,9 @@ type Server struct {
 	// Connection pools
 	logPool     *connectionPool
 	sessionPool *connectionPool
+
+	// Session input handling
+	sessionStdin io.WriteCloser
 }
 
 func NewServer(port int) *Server {
@@ -126,6 +130,7 @@ func NewServer(port int) *Server {
 	mux.HandleFunc("/api/services/start", s.handleServicesStart)
 	mux.HandleFunc("/api/services/stop", s.handleServicesStop)
 	mux.HandleFunc("/api/services/status", s.handleServicesStatus)
+	mux.HandleFunc("/api/project/init/status", s.handleProjectInitStatus)
 	mux.HandleFunc("/ws/logs", s.handleWebSocket)
 	mux.HandleFunc("/ws/logs/combined", s.handleCombinedLogsWebSocket)
 	mux.HandleFunc("/ws/logs/service/karaf", s.handleKarafLogsWebSocket)
@@ -857,6 +862,49 @@ func (s *Server) handleServicesStop(w http.ResponseWriter, r *http.Request) {
 }
 
 // Concurrent service status handler
+func (s *Server) handleProjectInitStatus(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Check if project is initialized by looking for common JUDO project files
+	isInitialized := s.checkProjectInitialized()
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"initialized": isInitialized,
+		"timestamp":   time.Now().Format(time.RFC3339),
+	})
+}
+
+func (s *Server) checkProjectInitialized() bool {
+	// Check for common JUDO project files that indicate initialization
+	projectFiles := []string{
+		"judo.properties",
+		"pom.xml",
+		"model/TestProject.model", // Example model file
+		".generated-files",
+	}
+
+	for _, file := range projectFiles {
+		if _, err := os.Stat(file); err == nil {
+			return true
+		}
+	}
+
+	// Also check if we're in a directory that looks like a JUDO project
+	if _, err := os.Stat("application"); err == nil {
+		return true
+	}
+	if _, err := os.Stat("model"); err == nil {
+		return true
+	}
+
+	return false
+}
+
+
 func (s *Server) handleServicesStatus(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -1270,6 +1318,16 @@ func (s *Server) handleSessionWebSocket(w http.ResponseWriter, r *http.Request) 
 	}
 	defer s.sessionPool.remove(conn)
 
+	// Send handshake message with session information
+	handshake := map[string]interface{}{
+		"type":    "handshake",
+		"version": "1.0",
+		"session": "judo",
+		"welcome": "JUDO Interactive Session - Connected\r\nType 'help' for available commands\r\n",
+	}
+	handshakeMsg, _ := json.Marshal(handshake)
+	conn.WriteMessage(websocket.TextMessage, handshakeMsg)
+
 	// Start interactive session
 	go s.handleInteractiveSession(conn)
 
@@ -1338,10 +1396,9 @@ func (s *Server) handleInteractiveSession(conn *websocket.Conn) {
 	cmd := exec.Command("./judo", "session")
 	cmd.Dir = "."
 
-	// Create PTY for interactive session
-	// This is a simplified implementation - in production would use proper PTY handling
-
-	if _, err := cmd.StdinPipe(); err != nil {
+	// Create pipes for input/output
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
 		log.Printf("Error creating stdin pipe: %v", err)
 		return
 	}
@@ -1402,6 +1459,17 @@ func (s *Server) handleInteractiveSession(conn *websocket.Conn) {
 		}
 	}()
 
+	// Handle input from WebSocket to stdin
+	go func() {
+		// Store stdin for later use by handleSessionInput
+		s.mu.Lock()
+		s.sessionStdin = stdin
+		s.mu.Unlock()
+
+		// Keep this goroutine alive to prevent stdin from being closed
+		select {}
+	}()
+
 	// Wait for command to complete
 	go func() {
 		err := cmd.Wait()
@@ -1419,6 +1487,11 @@ func (s *Server) handleInteractiveSession(conn *websocket.Conn) {
 		}
 		msg, _ := json.Marshal(message)
 		conn.WriteMessage(websocket.TextMessage, msg)
+
+		// Clean up stdin reference
+		s.mu.Lock()
+		s.sessionStdin = nil
+		s.mu.Unlock()
 	}()
 }
 
@@ -1431,14 +1504,26 @@ func (s *Server) handleSessionInput(conn *websocket.Conn, input string) {
 	}
 
 	// Handle different message types
+	s.mu.Lock()
+	stdin := s.sessionStdin
+	s.mu.Unlock()
+
+	if stdin == nil {
+		log.Printf("No active session stdin available")
+		return
+	}
+
 	switch message["type"] {
 	case "input":
 		// Send input to session process
-		// This would be implemented with proper PTY handling
-		log.Printf("Session input received: %s", message["data"])
+		if data, ok := message["data"].(string); ok {
+			if _, err := stdin.Write([]byte(data)); err != nil {
+				log.Printf("Error writing to session stdin: %v", err)
+			}
+		}
 
 	case "resize":
-		// Handle terminal resize
+		// Handle terminal resize (would need PTY for this)
 		cols, ok1 := message["cols"].(float64)
 		rows, ok2 := message["rows"].(float64)
 		if ok1 && ok2 {
@@ -1450,6 +1535,10 @@ func (s *Server) handleSessionInput(conn *websocket.Conn, input string) {
 		action, ok := message["action"].(string)
 		if ok && action == "interrupt" {
 			log.Printf("Session interrupt received")
+			// Send Ctrl+C equivalent
+			if _, err := stdin.Write([]byte{0x03}); err != nil {
+				log.Printf("Error sending interrupt: %v", err)
+			}
 		}
 	}
 }

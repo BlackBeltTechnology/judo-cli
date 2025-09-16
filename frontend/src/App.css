@@ -80,6 +80,7 @@
   background: #667eea;
   color: #ffffff;
   min-width: 100px;
+  order: -1; /* Move to leftmost position */
 }
 
 .btn-service-panel:hover {
@@ -381,6 +382,69 @@
   .service-panel.open {
     left: 0;
   }
+}
+
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+
+.modal {
+  background: #1a1d25;
+  padding: 2rem;
+  border-radius: 12px;
+  border: 1px solid #2a2d3a;
+  max-width: 500px;
+  width: 90%;
+  text-align: center;
+}
+
+.modal h2 {
+  margin: 0 0 1rem 0;
+  color: #ffffff;
+  font-size: 1.5rem;
+}
+
+.modal p {
+  margin: 0 0 2rem 0;
+  color: #a0aec0;
+  line-height: 1.5;
+}
+
+.modal-buttons {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+}
+
+.modal-buttons .btn {
+  min-width: 120px;
+}
+
+/* Disabled terminal state */
+.terminal.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.terminal.disabled::before {
+  content: "Project not initialized";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #a0aec0;
+  font-size: 1.1rem;
+  text-align: center;
 }
 
 @media (max-width: 768px) {

@@ -25,6 +25,7 @@ interface SessionMessage {
   cols?: number;
   rows?: number;
   action?: string;
+  welcome?: string;
 }
 
 function App() {
@@ -33,6 +34,8 @@ function App() {
   const [serviceStatus, setServiceStatus] = useState<{[key: string]: ServiceStatus}>({});
   const [isServicePanelOpen, setIsServicePanelOpen] = useState(false);
   const [loadingServices, setLoadingServices] = useState<{[key: string]: boolean}>({});
+  const [isProjectInitialized, setIsProjectInitialized] = useState<boolean | null>(null);
+  const [showInitModal, setShowInitModal] = useState(false);
   
   const terminalARef = useRef<HTMLDivElement>(null);
   const terminalBRef = useRef<HTMLDivElement>(null);
@@ -143,21 +146,33 @@ function App() {
     sessionWs.current.onopen = () => {
       console.log('Session WebSocket connected');
       isSessionRunning.current = true;
-      if (terminalBInstance.current) {
-        terminalBInstance.current.write('\r\n\x1b[32m✓ Connected to JUDO session\x1b[0m\r\n');
-        terminalBInstance.current.write('\x1b[33mjudo> \x1b[0m');
-      }
+      // Server will send handshake message with welcome text
     };
     
     sessionWs.current.onmessage = (event) => {
       try {
         const message: SessionMessage = JSON.parse(event.data);
         if (terminalBInstance.current && activeTerminal === 'B') {
-          if (message.type === 'output') {
-            terminalBInstance.current.write(message.data || '');
-          } else if (message.type === 'status' && message.state === 'exited') {
-            terminalBInstance.current.write(`\r\n\x1b[31mSession exited with code ${message.exitCode}\x1b[0m\r\n`);
-            isSessionRunning.current = false;
+          switch (message.type) {
+            case 'handshake':
+              // Server sends welcome message in handshake
+              if (message.welcome) {
+                terminalBInstance.current.write(message.welcome);
+              }
+              break;
+            case 'output':
+              terminalBInstance.current.write(message.data || '');
+              break;
+            case 'status':
+              if (message.state === 'exited') {
+                terminalBInstance.current.write(`\r\n\x1b[31mSession exited with code ${message.exitCode}\x1b[0m\r\n`);
+                isSessionRunning.current = false;
+              }
+              break;
+            case 'prompt':
+              // Server-controlled prompt
+              terminalBInstance.current.write(message.data || '');
+              break;
           }
         }
       } catch (error) {
@@ -185,6 +200,39 @@ function App() {
         data: data
       };
       sessionWs.current.send(JSON.stringify(message));
+    }
+  };
+
+  const checkProjectInitialized = useCallback(async () => {
+    try {
+      const response = await axios.get(`${getApiBaseUrl()}/api/project/init/status`);
+      setIsProjectInitialized(response.data.initialized);
+      if (!response.data.initialized) {
+        setShowInitModal(true);
+      }
+    } catch (error) {
+      console.error('Failed to check project initialization status:', error);
+      setIsProjectInitialized(false); // Assume not initialized if check fails
+      setShowInitModal(true);
+    }
+  }, [getApiBaseUrl]);
+
+  const handleProjectInit = async (initialize: boolean) => {
+    setShowInitModal(false);
+    if (initialize) {
+      // Initialize project
+      try {
+        await axios.post(`${getApiBaseUrl()}/api/commands/judo%20init`);
+        // Recheck initialization status
+        await checkProjectInitialized();
+      } catch (error) {
+        console.error('Failed to initialize project:', error);
+        // Still allow access but show warning
+        setIsProjectInitialized(false);
+      }
+    } else {
+      // User declined initialization, allow access but disable certain features
+      setIsProjectInitialized(false);
     }
   };
 
@@ -287,6 +335,9 @@ function App() {
     // Fetch service statuses
     fetchServiceStatuses();
 
+    // Check if project is initialized
+    checkProjectInitialized();
+
     // Handle window resize
     const handleResize = () => {
       if (fitAddonA.current) fitAddonA.current.fit();
@@ -319,19 +370,27 @@ function App() {
   return (
     <div className={`App ${isServicePanelOpen ? 'service-panel-open' : ''}`}>
       <header className="App-header">
+        <button 
+          className="btn btn-service-panel"
+          onClick={() => setIsServicePanelOpen(!isServicePanelOpen)}
+        >
+          {isServicePanelOpen ? '◀' : '▶'} Services
+        </button>
+        
         <h1>JUDO CLI Server</h1>
+        
         <div className="terminal-switcher">
           <button 
             className={activeTerminal === 'A' ? 'btn btn-terminal active' : 'btn btn-terminal'}
             onClick={() => setActiveTerminal('A')}
           >
-            Terminal A
+            Logs
           </button>
           <button 
             className={activeTerminal === 'B' ? 'btn btn-terminal active' : 'btn btn-terminal'}
             onClick={() => setActiveTerminal('B')}
           >
-            Terminal B
+            JUDO Terminal
           </button>
         </div>
         
@@ -350,13 +409,6 @@ function App() {
             </select>
           </div>
         )}
-
-        <button 
-          className="btn btn-service-panel"
-          onClick={() => setIsServicePanelOpen(!isServicePanelOpen)}
-        >
-          {isServicePanelOpen ? '◀' : '▶'} Services
-        </button>
       </header>
 
       <div className="main-content">
@@ -413,14 +465,38 @@ function App() {
         <div className="terminal-container">
           <div 
             ref={terminalARef} 
-            className={`terminal terminal-a ${activeTerminal === 'A' ? 'active' : 'hidden'}`}
+            className={`terminal terminal-a ${activeTerminal === 'A' ? 'active' : 'hidden'} ${isProjectInitialized === false ? 'disabled' : ''}`}
           />
           <div 
             ref={terminalBRef} 
-            className={`terminal terminal-b ${activeTerminal === 'B' ? 'active' : 'hidden'}`}
+            className={`terminal terminal-b ${activeTerminal === 'B' ? 'active' : 'hidden'} ${isProjectInitialized === false ? 'disabled' : ''}`}
           />
         </div>
       </div>
+
+      {/* Project Initialization Modal */}
+      {showInitModal && (
+        <div className="modal-overlay">
+          <div className="modal">
+            <h2>Project Not Initialized</h2>
+            <p>This directory does not appear to be a JUDO project. Would you like to initialize it?</p>
+            <div className="modal-buttons">
+              <button 
+                className="btn btn-service-start"
+                onClick={() => handleProjectInit(true)}
+              >
+                Yes, Initialize
+              </button>
+              <button 
+                className="btn btn-service-stop"
+                onClick={() => handleProjectInit(false)}
+              >
+                No, Continue Anyway
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
