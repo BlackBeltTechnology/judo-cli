@@ -26,7 +26,7 @@ As a JUDO CLI user, I want to run the CLI as a server and interact with it throu
 3. **Given** the Service panel is collapsed by default, **When** I click the left-edge button, **Then** the panel slides in and the active terminal resizes; collapsing the panel returns the terminal to full-screen.
 4. **Given** I switch between Terminal A and Terminal B, **Then** each terminal preserves its scrollback and scroll position across switches.
 5. **Given** Terminal A is active, **When** I choose a source (Combined, Karaf, PostgreSQL, Keycloak), **Then** the terminal displays only that selection; Combined shows labeled, color-distinguished live logs for all three.
-6. **Given** Terminal B is active, **When** I type a command at the prompt (e.g., `help`, `status`, `build`), **Then** the command executes exactly as in `judo session` and the output appears in the terminal in real time.
+6. **Given** Terminal B is active, **When** I type a command at the prompt (e.g., `help`, `status`, `build`), **Then** the command executes using direct function calls (not by executing judo commands) and the output appears in the terminal in real time.
 7. **Given** I start or stop services using the Service panel, **Then** the corresponding startup/shutdown logs stream in real-time in Terminal A when its source includes that service.
 8. **Given** a temporary network interruption occurs, **Then** the UI indicates reconnecting and resumes streaming without requiring a page refresh; Terminal B reattaches to the running session if available, otherwise starts a new session.
 9. **Given** the compiled frontend is ready, **When** a new release of the CLI is built, **Then** the frontend assets MUST be embedded into the final binary.
@@ -56,13 +56,13 @@ As a JUDO CLI user, I want to run the CLI as a server and interact with it throu
 - **FR-002**: The `server` command MUST serve a single-page web application to the browser.
 - **FR-003**: The web UI MUST provide two Xterm.js terminals with an A/B switch.
 - **FR-004**: Terminal A MUST support a source selector with options: Combined, Karaf, PostgreSQL, Keycloak; Combined MUST display clearly labeled, color-distinguished live logs from all three.
-- **FR-005**: Terminal B MUST provide an interactive `judo session` terminal with prompt, command history, copy/paste, Ctrl+C (interrupt), and auto-resize.
+- **FR-005**: Terminal B MUST provide an interactive session terminal with prompt, command history, copy/paste, Ctrl+C (interrupt), and auto-resize, using direct function calls rather than executing judo commands.
 - **FR-006**: The web UI MUST include a left-side collapsible Service panel with controls to `start`, `stop`, and view `status` for each embedded service.
 - **FR-007**: The UI MUST preserve each terminal’s scrollback and scroll position across switches, and fit the active terminal to the available space.
 - **FR-008**: The compiled frontend assets MUST be embedded into the Go binary for distribution.
 - **FR-009**: The server MUST provide individual service control (start/stop/status) and display per-service status/health indicators.
-- **FR-010**: Log streaming MUST be real-time, resilient to temporary disconnects, and support Combined and per-service views with clear visual indicators.
-- **FR-011**: Terminal B MUST reconnect gracefully after transient network failures, reattaching to the existing session when possible or starting a new session if the previous one has ended.
+- **FR-010**: Log streaming MUST be real-time, resilient to temporary disconnects, and support Combined and per-service views with clear visual indicators, using direct log access rather than executing judo commands.
+- **FR-011**: Terminal B MUST reconnect gracefully after transient network failures, reattaching to the existing session when possible or starting a new session if the previous one has ended, using direct session management rather than command execution.
 - **FR-012**: The server command MUST support a `-p` or `--port` flag to specify the server port, with a default of 6969.
 - **FR-013**: All frontend functionality, including log viewing, terminal switching, interactive session behavior, and status updates, MUST be covered by UI tests.
 
@@ -70,7 +70,7 @@ As a JUDO CLI user, I want to run the CLI as a server and interact with it throu
 - **CLI Server**: The Go application that runs the web server, manages embedded service state (Karaf, PostgreSQL, Keycloak), and executes commands.
 - **Web UI**: The single-page application served to the browser, providing the user interface for service management.
 - **Log Streamer**: The component that tails service logs (Karaf, PostgreSQL, Keycloak) and sends them to the UI in real-time.
-- **Session Bridge**: The component that runs and attaches to an interactive `judo session`, forwarding input, resize events, and output between the browser and the CLI process.
+- **Session Bridge**: The component that directly interfaces with the interactive session functionality, forwarding input, resize events, and output between the browser and the CLI process without executing external judo commands.
 - **Service Manager**: The component that controls the lifecycle of embedded Karaf, PostgreSQL, and Keycloak services.
 - **Service Monitor**: The component that tracks and reports the status and health of each embedded service.
 
@@ -125,7 +125,7 @@ Additional Requirements
 - FR-014: The Services toggle MUST be a left-edge control; the header MUST NOT include a redundant Services button.
 - FR-015: The terminal labels MUST be 'Logs' and 'JUDO Terminal'.
 - FR-016: If the project is not initialized, the application MUST prompt to initialize; selecting 'No' MUST present a clear notification that initialization is required to connect; until initialization completes, Logs and JUDO Terminal MUST be inactive.
-- FR-017: The JUDO Terminal MUST provide parity with a native 'judo session', acting as a pure TTY bridge in the browser.
+- FR-017: The JUDO Terminal MUST provide parity with a native 'judo session', acting as a pure TTY bridge in the browser using direct function calls rather than command execution.
 
 ## Spec Extension (Test Model Project)
 
@@ -141,5 +141,20 @@ Additional Acceptance Scenarios
 Additional Requirements
 - FR-018: Documentation MUST describe how to use `test-model/` for local testing with infrastructure.
 - FR-019: E2E/UI tests MUST target `test-model/` to ensure reproducible behavior.
+
+## Spec Extension (Architectural Refinement)
+
+Summary
+- Server functionality uses direct function calls instead of executing judo commands for logs and session streaming
+- Eliminates dependency on relative binary paths and improves reliability
+
+Additional Acceptance Scenarios
+- Given the server is running, when it streams logs or handles terminal sessions, then it uses direct internal function calls rather than executing external judo commands
+- Given the server needs to access service logs, then it reads log files directly or uses internal log streaming APIs instead of executing judo log commands
+
+Additional Requirements
+- FR-020: Log streaming MUST use direct log file access or internal streaming APIs rather than executing judo commands
+- FR-021: Terminal session management MUST use direct internal session functions rather than executing judo session commands
+- FR-022: Service status checking MUST use direct internal status functions rather than executing judo status commands
 
 *Based on Constitution v2.2.0 - See `/memory/constitution.md`*
