@@ -53,6 +53,8 @@
 - Service management implementation (T015-T017) before frontend service controls (T020-T021).
 - Core implementation (T007-T023) before integration (T024-T026).
 - Integration (T024-T026) before polish (T027-T030).
+- Frontend implementation (T018-T023) before frontend testing (T058-T074).
+- Integration testing (T075-T100) should run after all implementation is complete.
 
 ## Phase 3.7: Amendments (UI/Init/TTY)
 - [ ] T033 [P] Rename UI labels to 'Logs' and 'JUDO Terminal' across frontend and docs.
@@ -89,58 +91,74 @@
 - [ ] T056 [P] Validate docs site builds and deploys after changes (local + CI)
 - [ ] T057 [P] Add notes to `RELEASE.md` about server feature and embedding steps
 
-## Phase 3.10: Comprehensive UI Testing Implementation
-- [ ] T058 [P] Set up UI testing framework with React Testing Library, Jest, and necessary mocking utilities
-- [ ] T059 [P] Create test utilities for WebSocket mocking and service state simulation
-- [ ] T060 [P] Implement terminal initialization and connection state transition tests
-- [ ] T061 [P] Create tests for terminal resize behavior and panel toggling responsiveness
-- [ ] T062 [P] Implement scrollback preservation and scroll position maintenance tests
-- [ ] T063 [P] Create comprehensive service panel interaction tests (start, stop, status refresh)
-- [ ] T064 [P] Implement service status indicator update validation tests
-- [ ] T065 [P] Create log source switching and filtering behavior tests
-- [ ] T066 [P] Implement Combined log stream labeling and color coding validation tests
-- [ ] T067 [P] Create JUDO Terminal command execution and output display tests
-- [ ] T068 [P] Implement command history functionality and navigation tests
-- [ ] T069 [P] Create session interruption (Ctrl+C) and restart functionality tests
-- [ ] T070 [P] Implement WebSocket reconnection behavior and state recovery tests
-- [ ] T071 [P] Create project initialization flow and modal handling tests
-- [ ] T072 [P] Implement error handling and user feedback validation tests
-- [ ] T073 [P] Create visual indicator and status display tests for various states
-- [ ] T074 [P] Implement interactive element visual feedback tests (hover, focus, activation)
-- [ ] T075 [P] Create accessibility and keyboard navigation tests
-- [ ] T076 [P] Implement responsive design behavior tests across screen sizes
-- [ ] T077 [P] Configure headless test execution for CI/CD pipeline integration
-- [ ] T078 [P] Set up visual regression testing infrastructure
-- [ ] T079 [P] Create performance and responsiveness under load tests
-- [ ] T080 [P] Implement cross-browser compatibility test configuration
-- [ ] T081 [P] Create mobile browser responsive design validation tests
-- [ ] T082 [P] Integrate UI tests with main test suite and standard workflow
-- [ ] T083 [P] Ensure all UI tests run against `test-model/` environment for end-to-end validation
+## Phase 3.10: Comprehensive Vite/Vitest Frontend Testing Implementation
+
+### Phase 3.10.1: Test Infrastructure & Setup
+- [ ] T058 [P] Update vitest.config.ts for comprehensive testing (coverage, UI mode, watch)
+- [ ] T059 [P] Enhance setupTests.tsx with global test utilities and custom render
+- [ ] T060 [P] Create test data factories for WebSocket, terminal, and session data
+
+### Phase 3.10.2: Update Existing Tests to Constitution Standards
+- [ ] T061 [P] Update Terminal.test.tsx for behavior-driven testing with full state coverage
+- [ ] T062 [P] Update WebSocket.test.tsx for realistic mocking and type-safe API responses
+- [ ] T063 [P] Update App.test.tsx for comprehensive application state testing
+
+### Phase 3.10.3: Add Missing Test Coverage
+- [ ] T064 [P] Create component tests for all React components (ConnectionStatus, TerminalContainer, ErrorBoundary, LoadingSpinner)
+- [ ] T065 [P] Create service tests for WebSocket, session, terminal, and error handling services
+- [ ] T066 [P] Create hook tests for useWebSocket, useTerminal, and useSession custom hooks
+
+### Phase 3.10.4: Behavior-Driven Testing Scenarios
+- [ ] T067 [P] Implement user journey integration tests (connection flow, terminal interaction, error recovery)
+- [ ] T068 [P] Create comprehensive edge case tests (network failures, invalid input, memory leaks)
+- [ ] T069 [P] Implement visual regression testing with vitest-image-snapshot
+
+### Phase 3.10.5: Accessibility & Performance Testing
+- [ ] T070 [P] Implement comprehensive accessibility testing (screen readers, keyboard nav, ARIA, contrast)
+- [ ] T071 [P] Add performance benchmarking (render speed, WebSocket processing, memory usage)
+
+### Phase 3.10.6: CI Integration & Quality Gates
+- [ ] T072 [P] Update CI workflows for frontend testing with coverage thresholds
+- [ ] T073 [P] Implement quality gates (90% coverage, headless execution, accessibility compliance)
+- [ ] T074 [P] Configure visual regression and performance budget enforcement in CI
+
+### Testing Standards Compliance (Constitution Articles VIII-IX)
+- ✅ Behavior-first approach focusing on user behavior, not implementation
+- ✅ Realistic mock data matching actual API response structures
+- ✅ Comprehensive state coverage (loading, success, error, edge cases)
+- ✅ All mocks in vi.hoisted() blocks with type safety
+- ✅ Component lifecycle, user interaction, and permission-based rendering tests
+- ✅ Cross-browser compatibility and accessibility compliance
+- ✅ Visual regression detection and performance monitoring
 
 ## Phase 3.11: Comprehensive E2E Testing Implementation
-- [ ] T084 [P] Set up E2E testing framework with Playwright or similar tool for browser automation
-- [ ] T085 [P] Create test environment setup and teardown utilities for `test-model/`
-- [ ] T086 [P] Implement CLI server startup and browser launch sequence tests
-- [ ] T087 [P] Create tests for embedded frontend asset serving and proper rendering
-- [ ] T088 [P] Implement WebSocket connection establishment and validation tests
-- [ ] T089 [P] Create comprehensive service lifecycle management tests (start, stop, status)
-- [ ] T090 [P] Implement real log streaming validation tests for all services
-- [ ] T091 [P] Create JUDO Terminal command execution parity tests vs native CLI
-- [ ] T092 [P] Implement project initialization flow tests from uninitialized to operational
-- [ ] T093 [P] Create database operation tests (dump, import, export) through JUDO Terminal
-- [ ] T094 [P] Implement service status indicator synchronization tests with actual service state
-- [ ] T095 [P] Create error scenario tests including service failures and network issues
-- [ ] T096 [P] Implement system recovery and consistency maintenance tests
-- [ ] T097 [P] Create port configuration and conflict handling tests
-- [ ] T098 [P] Implement authentication and security validation tests if applicable
-- [ ] T099 [P] Create comprehensive user interaction to system outcome validation tests
-- [ ] T100 [P] Implement performance benchmarking tests for critical user journeys
-- [ ] T101 [P] Create resource cleanup and proper shutdown procedure tests
-- [ ] T102 [P] Implement cross-platform compatibility tests on supported OS
-- [ ] T103 [P] Configure CI/CD pipeline integration for E2E test execution
-- [ ] T104 [P] Create detailed logging and debugging infrastructure for E2E test failures
-- [ ] T105 [P] Implement stability measures and waiting strategies to prevent test flakiness
-- [ ] T106 [P] Ensure E2E tests cover all acceptance scenarios from the specification
-- [ ] T107 [P] Create test data management and cleanup procedures for reproducible results
-- [ ] T108 [P] Implement test parallelization and optimization for faster execution
-- [ ] T109 [P] Create test reporting and visualization for easy results interpretation
+- [ ] T075 [P] Set up E2E testing framework with Playwright or similar tool for browser automation
+- [ ] T076 [P] Create test environment setup and teardown utilities for `test-model/`
+- [ ] T077 [P] Implement CLI server startup and browser launch sequence tests
+- [ ] T078 [P] Create tests for embedded frontend asset serving and proper rendering
+- [ ] T079 [P] Implement WebSocket connection establishment and validation tests
+- [ ] T080 [P] Create comprehensive service lifecycle management tests (start, stop, status)
+- [ ] T081 [P] Implement real log streaming validation tests for all services
+- [ ] T082 [P] Create JUDO Terminal command execution parity tests vs native CLI
+- [ ] T083 [P] Implement project initialization flow tests from uninitialized to operational
+- [ ] T084 [P] Create database operation tests (dump, import, export) through JUDO Terminal
+- [ ] T085 [P] Implement service status indicator synchronization tests with actual service state
+- [ ] T086 [P] Create error scenario tests including service failures and network issues
+- [ ] T087 [P] Implement system recovery and consistency maintenance tests
+- [ ] T088 [P] Create port configuration and conflict handling tests
+- [ ] T089 [P] Implement authentication and security validation tests if applicable
+- [ ] T090 [P] Create comprehensive user interaction to system outcome validation tests
+- [ ] T091 [P] Implement performance benchmarking tests for critical user journeys
+- [ ] T092 [P] Create resource cleanup and proper shutdown procedure tests
+- [ ] T093 [P] Implement cross-platform compatibility tests on supported OS
+- [ ] T094 [P] Configure CI/CD pipeline integration for E2E test execution
+- [ ] T095 [P] Create detailed logging and debugging infrastructure for E2E test failures
+- [ ] T096 [P] Implement stability measures and waiting strategies to prevent test flakiness
+- [ ] T097 [P] Ensure E2E tests cover all acceptance scenarios from the specification
+- [ ] T098 [P] Create test data management and cleanup procedures for reproducible results
+- [ ] T099 [P] Implement test parallelization and optimization for faster execution
+- [ ] T100 [P] Create test reporting and visualization for easy results interpretation
+
+---
+
+*Constitution v2.4.1 Compliance: Frontend testing tasks (T058-T074) fully implement Articles VIII-IX requirements for behavior-driven testing, realistic mocking, comprehensive coverage, accessibility, and performance testing.*
