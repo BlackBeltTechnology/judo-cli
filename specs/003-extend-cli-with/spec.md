@@ -65,6 +65,18 @@ As a JUDO CLI user, I want to run the CLI as a server and interact with it throu
 - **FR-011**: Terminal B MUST reconnect gracefully after transient network failures, reattaching to the existing session when possible or starting a new session if the previous one has ended, using direct session management rather than command execution.
 - **FR-012**: The server command MUST support a `-p` or `--port` flag to specify the server port, with a default of 6969.
 - **FR-013**: All frontend functionality, including log viewing, terminal switching, interactive session behavior, and status updates, MUST be covered by UI tests.
+- **FR-025**: UI tests MUST verify terminal switching behavior preserves scrollback and state across switches.
+- **FR-026**: UI tests MUST validate log streaming functionality with different sources (Combined, Karaf, PostgreSQL, Keycloak).
+- **FR-027**: UI tests MUST cover service panel interactions including start/stop operations and status updates.
+- **FR-028**: UI tests MUST verify WebSocket connection and reconnection behavior for both log and session streams.
+- **FR-029**: UI tests MUST validate project initialization flow including modal handling and terminal enablement.
+- **FR-030**: UI tests MUST ensure JUDO Terminal provides parity with native 'judo session' behavior.
+- **FR-031**: UI tests MUST cover error handling and user feedback for service operations and connection issues.
+- **FR-032**: UI tests MUST validate visual indicators and color coding for different log sources.
+- **FR-033**: UI tests MUST verify service status indicators update correctly based on actual service state.
+- **FR-034**: UI tests MUST cover resize behavior and terminal fitting to available space.
+- **FR-035**: UI tests MUST validate that all user interactions produce appropriate visual feedback.
+- **FR-036**: UI tests MUST be integrated into CI/CD pipeline and run against the `test-model/` environment.
 
 ### Key Entities
 - **CLI Server**: The Go application that runs the web server, manages embedded service state (Karaf, PostgreSQL, Keycloak), and executes commands.
@@ -158,5 +170,77 @@ Additional Requirements
 - FR-022: Service status checking MUST use direct internal status functions rather than executing judo status commands
 - FR-023: Documentation MUST be updated (README, internal/help, docs/commands) to reflect server behavior and interactions
 - FR-024: CI/CD workflows (build.yml, hugo.yml, release pipeline) MUST be reviewed and updated as needed to ensure docs and builds remain intact
+
+## Spec Extension (Comprehensive UI Testing)
+
+Summary
+- Comprehensive UI test suite covering all user interactions, visual feedback, and edge cases
+- Tests integrated into CI/CD pipeline and run against the `test-model/` environment
+- Focus on user experience validation and regression prevention
+
+Additional Acceptance Scenarios
+- Given the UI test suite is executed, when all tests pass, then all user interactions and visual feedback mechanisms are verified to work correctly
+- Given a UI regression is introduced, when the test suite runs, then it should detect the regression and fail appropriately
+- Given the test environment is set up, when UI tests run against `test-model/`, then they should validate real service interactions and log streaming
+
+Additional Requirements
+- FR-037: UI tests MUST cover terminal initialization and connection state transitions (connecting, connected, disconnected, reconnecting)
+- FR-038: UI tests MUST validate terminal resize behavior and proper fitting to available space during panel toggling
+- FR-039: UI tests MUST verify scrollback preservation and scroll position maintenance during terminal switches
+- FR-040: UI tests MUST cover all service panel interactions including start, stop, and status refresh operations
+- FR-041: UI tests MUST validate service status indicator updates based on actual service state changes
+- FR-042: UI tests MUST verify log source switching behavior and proper filtering of log streams
+- FR-043: UI tests MUST cover Combined log stream functionality with proper labeling and color coding
+- FR-044: UI tests MUST validate JUDO Terminal command execution, output display, and control key handling
+- FR-045: UI tests MUST verify command history functionality and navigation in JUDO Terminal
+- FR-046: UI tests MUST cover session interruption (Ctrl+C) and session restart functionality
+- FR-047: UI tests MUST validate WebSocket reconnection behavior and state recovery after network interruptions
+- FR-048: UI tests MUST verify project initialization flow including modal presentation and terminal enablement
+- FR-049: UI tests MUST cover error handling and user feedback for service operation failures
+- FR-050: UI tests MUST validate visual indicators for different connection states and service statuses
+- FR-051: UI tests MUST verify that all interactive elements provide appropriate visual feedback on hover, focus, and activation
+- FR-052: UI tests MUST cover accessibility features including keyboard navigation and screen reader compatibility
+- FR-053: UI tests MUST validate responsive design behavior across different screen sizes and orientations
+- FR-054: UI tests MUST be executable in headless mode for CI/CD pipeline integration
+- FR-055: UI tests MUST include visual regression testing to detect unintended UI changes
+- FR-056: UI tests MUST cover performance aspects including render speed and responsiveness under load
+- FR-057: UI tests MUST validate cross-browser compatibility for supported browser versions
+- FR-058: UI tests MUST include mobile browser testing for responsive design validation
+- FR-059: UI tests MUST be integrated with the main test suite and run as part of the standard test workflow
+
+## Spec Extension (Comprehensive E2E Testing)
+
+Summary
+- Comprehensive end-to-end test suite covering the complete user journey from CLI startup to browser interaction
+- Tests validate the integrated system behavior across CLI backend, web server, and React frontend
+- Focus on real-world usage scenarios and system integration validation
+
+Additional Acceptance Scenarios
+- Given the E2E test suite is executed, when all tests pass, then the complete integrated system from CLI command to browser UI functions correctly
+- Given a system regression is introduced, when the E2E test suite runs, then it should detect integration failures and provide clear error reporting
+- Given the `test-model/` environment is properly set up, when E2E tests run, then they should validate real service lifecycle management and log streaming
+
+Additional Requirements
+- FR-060: E2E tests MUST cover complete CLI server startup and browser launch sequence
+- FR-061: E2E tests MUST validate that the embedded frontend assets are properly served by the Go backend
+- FR-062: E2E tests MUST verify WebSocket connections are established correctly for both log streaming and session management
+- FR-063: E2E tests MUST cover service lifecycle management including start, stop, and status monitoring operations
+- FR-064: E2E tests MUST validate real log streaming from all services (Karaf, PostgreSQL, Keycloak) through the complete pipeline
+- FR-065: E2E tests MUST verify JUDO Terminal command execution produces identical results to native CLI session
+- FR-066: E2E tests MUST cover project initialization flow from uninitialized state to fully operational
+- FR-067: E2E tests MUST validate database operations (dump, import, export) through the JUDO Terminal interface
+- FR-068: E2E tests MUST verify service status indicators reflect actual service state in real-time
+- FR-069: E2E tests MUST cover error scenarios including service startup failures and network interruptions
+- FR-070: E2E tests MUST validate that the system recovers gracefully from failures and maintains consistency
+- FR-071: E2E tests MUST verify port configuration and conflict handling behavior
+- FR-072: E2E tests MUST cover authentication and security aspects if implemented
+- FR-073: E2E tests MUST validate that all user interactions produce the expected system-level outcomes
+- FR-074: E2E tests MUST be executable against the `test-model/` environment for realistic validation
+- FR-075: E2E tests MUST include performance benchmarking for critical user journeys
+- FR-076: E2E tests MUST validate resource cleanup and proper shutdown procedures
+- FR-077: E2E tests MUST cover cross-platform compatibility on supported operating systems
+- FR-078: E2E tests MUST be integrated into CI/CD pipeline with appropriate environment setup
+- FR-079: E2E tests MUST provide detailed logging and debugging information for failure analysis
+- FR-080: E2E tests MUST be maintainable and resistant to flakiness through proper waiting strategies and stability measures
 
 *Based on Constitution v2.3.0 - See `/memory/constitution.md`*

@@ -10,7 +10,7 @@ This plan outlines the implementation of a `server` command for the JUDO CLI tha
 **Language/Version**: Go 1.25+, Node.js 18+ (for frontend)
 **Primary Dependencies**: Go (Cobra, Gorilla WebSocket), React (Create React App, Xterm.js)
 **Storage**: N/A (state is managed in memory by the CLI server)
-**Testing**: Go testing, Jest/React Testing Library
+**Testing**: Go testing, Jest/React Testing Library, comprehensive UI test suite covering all user interactions and visual feedback
 **Target Platform**: Local machine (browser-based UI)
 **Project Type**: Web (frontend + backend)
 **Performance Goals**: Real-time log streaming for multiple services, responsive UI for command execution and service management
@@ -37,6 +37,8 @@ This plan outlines the implementation of a `server` command for the JUDO CLI tha
 - Order: Contract→Integration→E2E→Unit strictly followed: Yes
 - Real dependencies used: Yes
 - Integration tests for: API endpoints, WebSocket communication, service management functionality.
+- Comprehensive UI tests for: terminal behavior, service panel interactions, log streaming, JUDO Terminal functionality, visual feedback, accessibility, and responsive design.
+- Comprehensive E2E tests for: complete system integration, real service lifecycle management, end-to-end log streaming, JUDO Terminal parity, database operations, and cross-platform compatibility.
 
 **Observability**:
 - Structured logging included: Yes, for the server component.
@@ -110,7 +112,29 @@ frontend/
     - Session messages: client→server `{type: input|resize|control, ...}`, server→client `{type: output|status, ...}`
 4. **Quickstart Guide**: Write a `quickstart.md` with setup, build, and run instructions.
 5. **Agent File Update**: N/A for this feature.
-6. **Testing Methodology**: Document WebSocket testing approach using Node.js `ws` library instead of curl (which doesn't support WebSocket protocol).
+6. **Testing Methodology**: Document WebSocket testing approach using Node.js `ws` library instead of curl (which doesn't support WebSocket protocol). Implement comprehensive UI and E2E testing strategy covering:
+   - **UI Testing**: Component behavior, user interactions, visual feedback
+   - Terminal behavior and state transitions
+   - Service panel interactions and status updates
+   - Log streaming and source filtering
+   - JUDO Terminal command execution and history
+   - WebSocket connection and reconnection behavior
+   - Project initialization flow and modal handling
+   - Visual indicators and user feedback
+   - Accessibility and responsive design
+   - Cross-browser compatibility
+   - Performance under load
+   - Visual regression detection
+   - **E2E Testing**: Complete system integration and real-world scenarios
+   - CLI server startup and browser integration
+   - Embedded asset serving and rendering
+   - Real service lifecycle management
+   - End-to-end log streaming validation
+   - JUDO Terminal parity with native CLI
+   - Database operations through web interface
+   - Error recovery and system consistency
+   - Cross-platform compatibility
+   - Performance benchmarking
 
 **Output**: `data-model.md`, `/contracts/openapi.yml`, `quickstart.md`.
 

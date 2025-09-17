@@ -88,3 +88,59 @@
 - [ ] T055 [P] Ensure release process includes embedded frontend assets (GoReleaser/build pipeline)
 - [ ] T056 [P] Validate docs site builds and deploys after changes (local + CI)
 - [ ] T057 [P] Add notes to `RELEASE.md` about server feature and embedding steps
+
+## Phase 3.10: Comprehensive UI Testing Implementation
+- [ ] T058 [P] Set up UI testing framework with React Testing Library, Jest, and necessary mocking utilities
+- [ ] T059 [P] Create test utilities for WebSocket mocking and service state simulation
+- [ ] T060 [P] Implement terminal initialization and connection state transition tests
+- [ ] T061 [P] Create tests for terminal resize behavior and panel toggling responsiveness
+- [ ] T062 [P] Implement scrollback preservation and scroll position maintenance tests
+- [ ] T063 [P] Create comprehensive service panel interaction tests (start, stop, status refresh)
+- [ ] T064 [P] Implement service status indicator update validation tests
+- [ ] T065 [P] Create log source switching and filtering behavior tests
+- [ ] T066 [P] Implement Combined log stream labeling and color coding validation tests
+- [ ] T067 [P] Create JUDO Terminal command execution and output display tests
+- [ ] T068 [P] Implement command history functionality and navigation tests
+- [ ] T069 [P] Create session interruption (Ctrl+C) and restart functionality tests
+- [ ] T070 [P] Implement WebSocket reconnection behavior and state recovery tests
+- [ ] T071 [P] Create project initialization flow and modal handling tests
+- [ ] T072 [P] Implement error handling and user feedback validation tests
+- [ ] T073 [P] Create visual indicator and status display tests for various states
+- [ ] T074 [P] Implement interactive element visual feedback tests (hover, focus, activation)
+- [ ] T075 [P] Create accessibility and keyboard navigation tests
+- [ ] T076 [P] Implement responsive design behavior tests across screen sizes
+- [ ] T077 [P] Configure headless test execution for CI/CD pipeline integration
+- [ ] T078 [P] Set up visual regression testing infrastructure
+- [ ] T079 [P] Create performance and responsiveness under load tests
+- [ ] T080 [P] Implement cross-browser compatibility test configuration
+- [ ] T081 [P] Create mobile browser responsive design validation tests
+- [ ] T082 [P] Integrate UI tests with main test suite and standard workflow
+- [ ] T083 [P] Ensure all UI tests run against `test-model/` environment for end-to-end validation
+
+## Phase 3.11: Comprehensive E2E Testing Implementation
+- [ ] T084 [P] Set up E2E testing framework with Playwright or similar tool for browser automation
+- [ ] T085 [P] Create test environment setup and teardown utilities for `test-model/`
+- [ ] T086 [P] Implement CLI server startup and browser launch sequence tests
+- [ ] T087 [P] Create tests for embedded frontend asset serving and proper rendering
+- [ ] T088 [P] Implement WebSocket connection establishment and validation tests
+- [ ] T089 [P] Create comprehensive service lifecycle management tests (start, stop, status)
+- [ ] T090 [P] Implement real log streaming validation tests for all services
+- [ ] T091 [P] Create JUDO Terminal command execution parity tests vs native CLI
+- [ ] T092 [P] Implement project initialization flow tests from uninitialized to operational
+- [ ] T093 [P] Create database operation tests (dump, import, export) through JUDO Terminal
+- [ ] T094 [P] Implement service status indicator synchronization tests with actual service state
+- [ ] T095 [P] Create error scenario tests including service failures and network issues
+- [ ] T096 [P] Implement system recovery and consistency maintenance tests
+- [ ] T097 [P] Create port configuration and conflict handling tests
+- [ ] T098 [P] Implement authentication and security validation tests if applicable
+- [ ] T099 [P] Create comprehensive user interaction to system outcome validation tests
+- [ ] T100 [P] Implement performance benchmarking tests for critical user journeys
+- [ ] T101 [P] Create resource cleanup and proper shutdown procedure tests
+- [ ] T102 [P] Implement cross-platform compatibility tests on supported OS
+- [ ] T103 [P] Configure CI/CD pipeline integration for E2E test execution
+- [ ] T104 [P] Create detailed logging and debugging infrastructure for E2E test failures
+- [ ] T105 [P] Implement stability measures and waiting strategies to prevent test flakiness
+- [ ] T106 [P] Ensure E2E tests cover all acceptance scenarios from the specification
+- [ ] T107 [P] Create test data management and cleanup procedures for reproducible results
+- [ ] T108 [P] Implement test parallelization and optimization for faster execution
+- [ ] T109 [P] Create test reporting and visualization for easy results interpretation
