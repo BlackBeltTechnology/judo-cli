@@ -31,3 +31,14 @@
 - Embedded assets include: `index.html`, static files, React bundle, manifest files
 - Build process: Frontend must be built before Go compilation for embedding
 - Server connectivity: Ensure port 6969 is available, check for empty response issues
+
+## WebSocket Testing
+- Use Node.js with `ws` library for WebSocket testing (curl doesn't support WebSocket protocol)
+- Install: `npm install ws`
+- Test script example:
+  ```javascript
+  const WebSocket = require('ws');
+  const ws = new WebSocket('ws://localhost:6969/ws/session');
+  ws.on('message', data => console.log('Received:', data.toString()));
+  ```
+- Alternative tools: `wscat` (npm install -g wscat) or Python `websockets` library

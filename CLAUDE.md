@@ -101,6 +101,116 @@ cd docs && ./serve-docs-simple.sh    # Simple server
 - **internal/session**: Interactive session mode with command history
 - **internal/selfupdate**: Self-update functionality
 - **internal/help**: Command help text and documentation
+- **internal/server**: Web server with browser-based interface
+
+## Advanced Features
+
+### Database Operations
+- **Schema Management**: Automatic schema upgrades and migrations
+- **Data Import/Export**: PostgreSQL dump/restore functionality with timestamped backups
+- **Multi-database Support**: HSQLDB (default) and PostgreSQL with automatic configuration
+
+### Build System Features
+- **Incremental Builds**: Smart build targeting with module-specific flags
+- **Parallel Builds**: Maven parallel execution support (-T 1C)
+- **Quick Mode**: Skip validations and use cache for faster development cycles
+- **Reckless Mode**: Ultra-fast builds prioritizing speed over completeness
+
+### Container Management
+- **Automatic Network Setup**: Docker network creation and management
+- **Port Conflict Detection**: Smart port checking with service-specific validation
+- **Health Checking**: Container status monitoring and readiness verification
+- **Volume Management**: Persistent data volume handling for databases
+
+### Development Tools
+- **Interactive Session**: Command history, auto-completion, and persistent state
+- **Web Interface**: Browser-based GUI accessible via `judo server`
+- **System Diagnostics**: Comprehensive `doctor` command for dependency checking
+- **Self-update Mechanism**: Automatic updates for snapshot versions
+
+## Configuration System
+
+### Property Files Hierarchy
+1. **Profile-specific**: `{profile}.properties` (highest priority)
+2. **Global**: `judo.properties`
+3. **Version**: `judo-version.properties`
+4. **Defaults**: Built-in sensible defaults
+
+### Key Configuration Properties
+- `runtime`: "karaf" or "compose"
+- `dbtype`: "hsqldb" or "postgresql"
+- `karaf_port`: Karaf console port (default: 8181)
+- `postgres_port`: PostgreSQL port (default: 5432)
+- `keycloak_port`: Keycloak port (default: 8080)
+- `model_dir`: Custom model directory path
+
+## Performance Optimization
+
+### Build Optimizations
+- **Maven Daemon**: mvnd support for faster build times
+- **Selective Building**: Target specific modules (-a, -f flags)
+- **Cache Utilization**: Smart caching strategies for repeated builds
+- **Validation Skipping**: Optional validation bypass for development speed
+
+### Runtime Optimizations
+- **Container Reuse**: Existing container detection and reuse
+- **Port Management**: Intelligent port allocation and conflict resolution
+- **Network Optimization**: Efficient Docker network configuration
+- **Resource Management**: Proper container lifecycle management
+
+## Security Features
+
+- **Keycloak Integration**: OAuth2/OpenID Connect authentication
+- **SSL/TLS Support**: Certificate management for secure communications
+- **Port Security**: Port availability checking and conflict prevention
+- **Container Isolation**: Proper Docker network segmentation
+
+## Testing and Quality
+
+### Test Coverage
+- **Unit Tests**: Core functionality testing across all packages
+- **Integration Tests**: Docker and runtime integration testing
+- **Command Testing**: Comprehensive CLI command validation
+- **Error Handling**: Robust error condition testing
+
+### Code Quality
+- **Go Vet**: Static analysis and code validation
+- **Go Fmt**: Consistent code formatting
+- **Linting**: Code style and best practices enforcement
+- **Dependency Management**: Clean module management with go mod tidy
+
+## Deployment Strategies
+
+### Local Development
+- **Karaf Runtime**: Local Karaf instance with Docker services
+- **Compose Runtime**: Full Docker Compose environment
+- **Hybrid Mode**: Mixed local and containerized services
+
+### Production Deployment
+- **Docker Compose**: Full containerized deployment
+- **Standalone Binaries**: Self-contained executable distribution
+- **Versioned Releases**: Semantic versioning with GitHub releases
+- **Homebrew Distribution**: macOS package management integration
+
+## Monitoring and Logging
+
+- **Container Logs**: Docker container log access and tailing
+- **Karaf Console**: Real-time Karaf console output monitoring
+- **Port Monitoring**: Service port availability and health checking
+- **Build Logging**: Comprehensive build process logging and output
+
+## Extensibility Points
+
+### Custom Commands
+- **Cobra Framework**: Easy addition of new CLI commands
+- **Configuration Hooks**: Pre/post command execution hooks
+- **Plugin System**: Potential for external command plugins
+
+### Integration Points
+- **Docker API**: Full Docker client integration
+- **Maven Integration**: Deep Maven build system integration
+- **Database Connectivity**: Multiple database backend support
+- **Web Interface**: Extensible web server architecture
 
 # important-instruction-reminders
 Do what has been asked; nothing more, nothing less.

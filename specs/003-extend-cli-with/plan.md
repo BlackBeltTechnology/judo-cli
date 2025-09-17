@@ -110,6 +110,7 @@ frontend/
     - Session messages: client→server `{type: input|resize|control, ...}`, server→client `{type: output|status, ...}`
 4. **Quickstart Guide**: Write a `quickstart.md` with setup, build, and run instructions.
 5. **Agent File Update**: N/A for this feature.
+6. **Testing Methodology**: Document WebSocket testing approach using Node.js `ws` library instead of curl (which doesn't support WebSocket protocol).
 
 **Output**: `data-model.md`, `/contracts/openapi.yml`, `quickstart.md`.
 

@@ -47,7 +47,9 @@
       "Read(/private/tmp/jekyll-theme-judo/_includes/**)",
       "Bash(bundle exec jekyll build:*)",
       "mcp__sequential-thinking-server__sequentialthinking",
-      "WebSearch"
+      "WebSearch",
+      "Bash(npm view:*)",
+      "Bash(./build.sh:*)"
     ],
     "deny": [],
     "ask": []
