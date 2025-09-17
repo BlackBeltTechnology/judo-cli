@@ -1,7 +1,6 @@
 package server
 
 import (
-	"bytes"
 	"context"
 	"embed"
 	"encoding/json"
@@ -293,63 +292,40 @@ func (s *Server) handleCommand(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Execute the command
+	// Execute the command using ServerAPI direct function calls
 	cmdParts := strings.Fields(decodedCommand)
 	if len(cmdParts) == 0 {
 		http.Error(w, "Empty command", http.StatusBadRequest)
 		return
 	}
 
-	// Handle judo commands specifically - use current binary
-	var cmd *exec.Cmd
-	if cmdParts[0] == "judo" {
-		// Get absolute path to current executable
-		exePath, err := os.Executable()
-		if err != nil {
-			http.Error(w, fmt.Sprintf("Failed to get executable path: %v", err), http.StatusInternalServerError)
-			return
-		}
+	// Handle judo commands using ServerAPI
+	var result string
+	var execErr error
 
-		// For judo commands, use the current binary
+	if cmdParts[0] == "judo" {
+		// Handle "judo" command with subcommands
 		if len(cmdParts) == 1 {
 			// Just "judo" - show help
-			cmd = exec.Command(exePath, "--help")
+			result = s.api.executeJudoHelp()
 		} else {
-			// judo with subcommands
-			cmd = exec.Command(exePath, cmdParts[1:]...)
+			// judo with subcommands - execute the subcommand
+			result, execErr = s.api.ExecuteCommand(cmdParts[1], cmdParts[2:])
 		}
 	} else {
-		// For system commands, execute directly
-		if len(cmdParts) == 1 {
-			cmd = exec.Command(cmdParts[0])
-		} else {
-			cmd = exec.Command(cmdParts[0], cmdParts[1:]...)
-		}
-	}
-
-	// Set working directory to current directory
-	cmd.Dir = "."
-
-	// Capture output
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-
-	err = cmd.Run()
-	output := stdout.String()
-	if stderr.String() != "" {
-		output += "\n" + stderr.String()
+		// For non-judo commands, try to execute via ServerAPI
+		result, execErr = s.api.ExecuteCommand(cmdParts[0], cmdParts[1:])
 	}
 
 	// Prepare response
 	response := map[string]interface{}{
 		"command": decodedCommand,
-		"output":  strings.TrimSpace(output),
-		"success": err == nil,
+		"output":  strings.TrimSpace(result),
+		"success": execErr == nil,
 	}
 
-	if err != nil {
-		response["error"] = err.Error()
+	if execErr != nil {
+		response["error"] = execErr.Error()
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -404,23 +380,8 @@ Project Commands:
 		response["output"] = "Current Service Status: " + status
 
 	case "doctor":
-		// Run doctor command
-		exePath, err := os.Executable()
-		if err != nil {
-			log.Printf("Failed to get executable path: %v", err)
-			return false
-		}
-		cmd := exec.Command(exePath, "doctor")
-		cmd.Dir = "."
-		var stdout, stderr bytes.Buffer
-		cmd.Stdout = &stdout
-		cmd.Stderr = &stderr
-
-		err = cmd.Run()
-		output := stdout.String()
-		if stderr.String() != "" {
-			output += "\n" + stderr.String()
-		}
+		// Run doctor command using ServerAPI
+		output, err := s.api.executeDoctor()
 		response["output"] = strings.TrimSpace(output)
 		response["success"] = err == nil
 		if err != nil {
