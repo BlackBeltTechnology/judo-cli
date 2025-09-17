@@ -47,6 +47,7 @@ function App() {
   const logWs = useRef<WebSocket | null>(null);
   const sessionWs = useRef<WebSocket | null>(null);
   const isSessionRunning = useRef(false);
+  const inputBufferRef = useRef<string>('');
 
   const getApiBaseUrl = useCallback(() => {
     const { protocol, hostname, port } = window.location;
@@ -87,6 +88,7 @@ function App() {
 
   const connectLogWebSocket = useCallback((source: string) => {
     if (logWs.current) {
+      logWs.current.onclose = null;
       logWs.current.close();
     }
 
@@ -94,19 +96,20 @@ function App() {
       ? `${getWsBaseUrl()}/ws/logs/combined`
       : `${getWsBaseUrl()}/ws/logs/service/${source}`;
 
-    logWs.current = new WebSocket(wsUrl);
+    const ws = new WebSocket(wsUrl);
+    logWs.current = ws;
     
-    logWs.current.onopen = () => {
+    ws.onopen = () => {
       console.log('Log WebSocket connected');
       if (terminalAInstance.current) {
         terminalAInstance.current.write('\r\n\x1b[32m✓ Connected to log stream\x1b[0m\r\n');
       }
     };
     
-    logWs.current.onmessage = (event) => {
+    ws.onmessage = (event) => {
       try {
         const logMessage: LogMessage = JSON.parse(event.data);
-        if (terminalAInstance.current && activeTerminal === 'A') {
+        if (terminalAInstance.current) {
           const serviceColor = {
             karaf: '\x1b[35m',
             postgresql: '\x1b[36m',
@@ -123,39 +126,43 @@ function App() {
       }
     };
     
-    logWs.current.onclose = () => {
+      
+    ws.onclose = () => {
       console.log('Log WebSocket disconnected');
-      if (terminalAInstance.current && activeTerminal === 'A') {
+      if (terminalAInstance.current) {
         terminalAInstance.current.write('\r\n\x1b[31m✗ Log stream disconnected\x1b[0m\r\n');
       }
-      setTimeout(() => connectLogWebSocket(source), 2000);
     };
     
-    logWs.current.onerror = (error) => {
+    ws.onerror = (error) => {
       console.error('Log WebSocket error:', error);
     };
-  }, [getWsBaseUrl, activeTerminal]);
+  }, [getWsBaseUrl]);
 
   const connectSessionWebSocket = useCallback(() => {
     if (sessionWs.current) {
+      sessionWs.current.onclose = null;
       sessionWs.current.close();
     }
 
-    sessionWs.current = new WebSocket(`${getWsBaseUrl()}/ws/session`);
+    const ws = new WebSocket(`${getWsBaseUrl()}/ws/session`);
+    sessionWs.current = ws;
     
-    sessionWs.current.onopen = () => {
+    ws.onopen = () => {
       console.log('Session WebSocket connected');
       isSessionRunning.current = true;
-      // Server will send handshake message with welcome text
+      // Send initial terminal size
+      if (terminalBInstance.current) {
+        ws.send(JSON.stringify({ type: 'resize', cols: terminalBInstance.current.cols, rows: terminalBInstance.current.rows }));
+      }
     };
     
-    sessionWs.current.onmessage = (event) => {
+    ws.onmessage = (event) => {
       try {
         const message: SessionMessage = JSON.parse(event.data);
-        if (terminalBInstance.current && activeTerminal === 'B') {
+        if (terminalBInstance.current) {
           switch (message.type) {
             case 'handshake':
-              // Server sends welcome message in handshake
               if (message.welcome) {
                 terminalBInstance.current.write(message.welcome);
               }
@@ -170,7 +177,6 @@ function App() {
               }
               break;
             case 'prompt':
-              // Server-controlled prompt
               terminalBInstance.current.write(message.data || '');
               break;
           }
@@ -180,18 +186,25 @@ function App() {
       }
     };
     
-    sessionWs.current.onclose = () => {
+    ws.onclose = () => {
       console.log('Session WebSocket disconnected');
-      isSessionRunning.current = false;
-      if (terminalBInstance.current && activeTerminal === 'B') {
-        terminalBInstance.current.write('\r\n\x1b[31m✗ Session disconnected\x1b[0m\r\n');
+      if (isSessionRunning.current) {
+        isSessionRunning.current = false;
+        if (terminalBInstance.current) {
+          terminalBInstance.current.write('\r\n\x1b[31m✗ Session disconnected. Reconnecting...\x1b[0m\r\n');
+        }
+        setTimeout(connectSessionWebSocket, 2000);
+      } else {
+        if (terminalBInstance.current) {
+          terminalBInstance.current.write('\r\n\x1b[31m✗ Session disconnected\x1b[0m\r\n');
+        }
       }
     };
     
-    sessionWs.current.onerror = (error) => {
+    ws.onerror = (error) => {
       console.error('Session WebSocket error:', error);
     };
-  }, [getWsBaseUrl, activeTerminal]);
+  }, [getWsBaseUrl]);
 
   const handleTerminalBInput = (data: string) => {
     if (sessionWs.current && sessionWs.current.readyState === WebSocket.OPEN) {
@@ -342,16 +355,62 @@ function App() {
     const handleResize = () => {
       if (fitAddonA.current) fitAddonA.current.fit();
       if (fitAddonB.current) fitAddonB.current.fit();
+      if (sessionWs.current && sessionWs.current.readyState === WebSocket.OPEN && terminalBInstance.current) {
+        sessionWs.current.send(JSON.stringify({
+          type: 'resize',
+          cols: terminalBInstance.current.cols,
+          rows: terminalBInstance.current.rows
+        }));
+      }
     };
     
     window.addEventListener('resize', handleResize);
 
+    // Wire Terminal B input to session
+    let disposeInput: { dispose: () => void } | null = null;
+    if (terminalBInstance.current) {
+      disposeInput = terminalBInstance.current.onData((data: string) => {
+        for (const ch of data) {
+          if (ch === '\r') {
+            const line = inputBufferRef.current;
+            inputBufferRef.current = '';
+            handleTerminalBInput(line);
+            terminalBInstance.current?.write('\r\n');
+          } else if (ch === '\u0003') { // Ctrl+C
+            if (sessionWs.current && sessionWs.current.readyState === WebSocket.OPEN) {
+              sessionWs.current.send(JSON.stringify({ type: 'control', action: 'interrupt' }));
+            }
+            terminalBInstance.current?.write('^C\r\n');
+            inputBufferRef.current = '';
+          } else if (ch === '\u007F') { // Backspace
+            if (inputBufferRef.current.length > 0) {
+              inputBufferRef.current = inputBufferRef.current.slice(0, -1);
+              terminalBInstance.current?.write('\b \b');
+            }
+          } else {
+            // Printable characters
+            if (ch >= ' ' && ch <= '~') {
+              inputBufferRef.current += ch;
+              terminalBInstance.current?.write(ch);
+            }
+          }
+        }
+      });
+    }
+
     return () => {
-      if (logWs.current) logWs.current.close();
-      if (sessionWs.current) sessionWs.current.close();
+      if (logWs.current) {
+        logWs.current.onclose = null;
+        logWs.current.close();
+      }
+      if (sessionWs.current) {
+        sessionWs.current.onclose = null;
+        sessionWs.current.close();
+      }
+      if (disposeInput) disposeInput.dispose();
       window.removeEventListener('resize', handleResize);
     };
-  }, [connectLogWebSocket, fetchServiceStatuses, terminalASource]);
+  }, []);
 
   useEffect(() => {
     // Connect to session WebSocket when Terminal B becomes active
@@ -362,10 +421,8 @@ function App() {
 
   useEffect(() => {
     // Reconnect log WebSocket when source changes
-    if (activeTerminal === 'A') {
-      connectLogWebSocket(terminalASource);
-    }
-  }, [terminalASource, activeTerminal, connectLogWebSocket]);
+    connectLogWebSocket(terminalASource);
+  }, [terminalASource, connectLogWebSocket]);
 
   return (
     <div className={`App ${isServicePanelOpen ? 'service-panel-open' : ''}`}>

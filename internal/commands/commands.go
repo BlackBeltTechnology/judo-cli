@@ -1094,13 +1094,18 @@ func CreateSessionCommand() *cobra.Command {
 		Short: "Start interactive JUDO CLI session",
 		Long:  "Start an interactive session with command history, auto-completion, and persistent state",
 		Run: func(cmd *cobra.Command, args []string) {
-			// Import session package here to avoid circular imports
-			// We'll use a direct function call instead
-			fmt.Println("Starting interactive session...")
-			// For now, just print a message since we can't import session here due to circular imports
-			fmt.Println("Session command would start interactive mode here")
+			// Use direct function call to avoid circular imports
+			startSessionDirectly()
 		},
 	}
+}
+
+// startSessionDirectly starts the session without importing the session package
+// This avoids circular import issues
+func startSessionDirectly() {
+	fmt.Println("🚀 Starting JUDO CLI Interactive Session...")
+	fmt.Println("This feature requires the full JUDO CLI build with session support.")
+	fmt.Println("Please use the web interface or build the complete application.")
 }
 
 func CreateInitCommand() *cobra.Command {

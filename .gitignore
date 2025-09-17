@@ -80,3 +80,7 @@ frontend/node_modules/
 
 # Server assets (embedded frontend)
 internal/server/assets/
+
+dist/
+judo_test
+

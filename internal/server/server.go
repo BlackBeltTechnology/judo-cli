@@ -17,8 +17,6 @@ import (
 	"sync"
 	"time"
 
-	"io/fs"
-
 	"github.com/gorilla/websocket"
 
 	"judo-cli-module/internal/config"
@@ -166,6 +164,37 @@ func NewServer(port int) *Server {
 			})
 		}
 	}
+	
+	//// Serve static frontend files - try embedded assets first, then frontend/build
+	//var frontendHandler http.Handler
+
+	// If embedded assets weren't used, try frontend/build directory
+	//if frontendHandler == nil {
+	//	exePath, err := os.Executable()
+	//	if err != nil {
+	//		log.Printf("Error getting executable path: %v", err)
+	//	}
+	//	exeDir := filepath.Dir(exePath)
+	//	frontendDir := filepath.Join(exeDir, "frontend/build")
+    //
+	//	if _, err := os.Stat(frontendDir); err == nil {
+	//		log.Printf("Serving frontend from %s", frontendDir)
+	//		frontendHandler = http.FileServer(http.Dir(frontendDir))
+	//	} else {
+	//		// Final fallback: simple landing page
+	//		log.Printf("Frontend build not found, using fallback landing page")
+	//		frontendHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	//			if r.URL.Path != "/" {
+	//				http.NotFound(w, r)
+	//				return
+	//			}
+	//			w.Header().Set("Content-Type", "text/html")
+	//			fmt.Fprintf(w, `<html><body><h1>JUDO CLI Server</h1><p>Server is running on port %d.</p><p><a href="/api/status">API Status</a></p></body></html>`, s.port)
+	//		})
+	//	}
+	//}
+
+	mux.Handle("/", frontendHandler)
 
 	// Create a wrapper handler to log all requests with panic recovery
 	logHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -183,7 +212,7 @@ func NewServer(port int) *Server {
 
 		log.Printf("About to serve request: %s %s", r.Method, r.URL.Path)
 		mux.ServeHTTP(w, r)
-		log.Printf("Request served: %s %s", r.Method, r.URL.Path)
+		log.Printf("Request served: %s %s - completed", r.Method, r.URL.Path)
 	})
 
 	log.Printf("Creating HTTP server on port %d", port)

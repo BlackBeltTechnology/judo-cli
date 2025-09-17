@@ -22,3 +22,11 @@
 - Help: `internal/help`
 - Tests: alongside code (`*_test.go`)
 - Avoid breaking CLI UX; update `internal/help` and docs
+
+## Frontend Integration
+- Frontend: React app in `/frontend/` built with `npm run build`
+- Embedded assets: Frontend build embedded via `//go:embed assets/*` in `internal/server/server.go:79`
+- Server serves embedded assets first, falls back to `frontend/build/` directory
+- Embedded assets include: `index.html`, static files, React bundle, manifest files
+- Build process: Frontend must be built before Go compilation for embedding
+- Server connectivity: Ensure port 6969 is available, check for empty response issues

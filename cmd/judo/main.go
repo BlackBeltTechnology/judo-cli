@@ -13,6 +13,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/exec"
 
 	"github.com/spf13/cobra"
 
@@ -68,6 +69,7 @@ func main() {
 		commands.CreateLogCommand(),
 		commands.CreateInitCommand(),
 		commands.CreateSelfUpdateCommand(version),
+		createFrontendCommand(),
 		createSessionCommand(),
 		createServerCommand(),
 		createVersionCommand(),
@@ -76,6 +78,59 @@ func main() {
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
+	}
+}
+
+// createFrontendCommand creates the frontend build command
+func createFrontendCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "frontend",
+		Short: "Build frontend React application",
+		Long:  "Build the React frontend application for the JUDO CLI web interface",
+		Run: func(cmd *cobra.Command, args []string) {
+			fmt.Println("Building frontend React application...")
+
+			// Change to frontend directory and run npm build
+			frontendDir := "frontend"
+			if _, err := os.Stat(frontendDir); os.IsNotExist(err) {
+				fmt.Printf("Frontend directory '%s' not found\n", frontendDir)
+				os.Exit(1)
+			}
+
+			// Save current directory
+			originalDir, err := os.Getwd()
+			if err != nil {
+				fmt.Printf("Error getting current directory: %v\n", err)
+				os.Exit(1)
+			}
+
+			// Change to frontend directory
+			if err := os.Chdir(frontendDir); err != nil {
+				fmt.Printf("Error changing to frontend directory: %v\n", err)
+				os.Exit(1)
+			}
+
+			// Run npm build
+			buildCmd := exec.Command("npm", "run", "build")
+			buildCmd.Stdout = os.Stdout
+			buildCmd.Stderr = os.Stderr
+
+			if err := buildCmd.Run(); err != nil {
+				fmt.Printf("Error building frontend: %v\n", err)
+				// Change back to original directory before exiting
+				os.Chdir(originalDir)
+				os.Exit(1)
+			}
+
+			// Change back to original directory
+			if err := os.Chdir(originalDir); err != nil {
+				fmt.Printf("Error changing back to original directory: %v\n", err)
+				os.Exit(1)
+			}
+
+			fmt.Println("Frontend build completed successfully!")
+			fmt.Println("Built files are in: frontend/build/")
+		},
 	}
 }
 
