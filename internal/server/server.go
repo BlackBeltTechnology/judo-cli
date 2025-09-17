@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/fs"
 	"log"
 	"net/http"
 	"net/url"
@@ -164,7 +165,7 @@ func NewServer(port int) *Server {
 			})
 		}
 	}
-	
+
 	//// Serve static frontend files - try embedded assets first, then frontend/build
 	//var frontendHandler http.Handler
 
@@ -176,7 +177,7 @@ func NewServer(port int) *Server {
 	//	}
 	//	exeDir := filepath.Dir(exePath)
 	//	frontendDir := filepath.Join(exeDir, "frontend/build")
-    //
+	//
 	//	if _, err := os.Stat(frontendDir); err == nil {
 	//		log.Printf("Serving frontend from %s", frontendDir)
 	//		frontendHandler = http.FileServer(http.Dir(frontendDir))
@@ -193,8 +194,6 @@ func NewServer(port int) *Server {
 	//		})
 	//	}
 	//}
-
-	mux.Handle("/", frontendHandler)
 
 	// Create a wrapper handler to log all requests with panic recovery
 	logHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

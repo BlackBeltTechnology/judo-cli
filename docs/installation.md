@@ -63,8 +63,29 @@ To build from source, you need Go 1.21 or later:
 ```bash
 git clone https://github.com/BlackBeltTechnology/judo-cli.git
 cd judo-cli
+
+# Simple build
 go build -o judo ./cmd/judo
+
+# Or use the comprehensive build script (recommended)
+./build.sh
 ```
+
+## Comprehensive Build Script
+
+The project includes a `build.sh` script that provides a complete build process:
+
+```bash
+# Run the comprehensive build
+./build.sh
+```
+
+This script:
+1. Builds the React frontend application
+2. Prepares embedded assets for Go embedding
+3. Compiles the Go backend with embedded frontend
+4. Runs tests to ensure everything works
+5. Includes proper version metadata and git commit information
 
 ## Self-Update (Snapshot Versions)
 

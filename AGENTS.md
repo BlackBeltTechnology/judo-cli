@@ -3,6 +3,7 @@
 ## Build/Test Commands
 - Run: `go run ./cmd/judo`
 - Build: `go build -o judo ./cmd/judo`
+- Comprehensive build: `./build.sh` (builds frontend + backend with embedded assets)
 - Test all: `go test ./... -cover`
 - Test single: `go test ./internal/commands -v -run TestName`
 - Lint: `go fmt ./... && go vet ./...`

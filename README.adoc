@@ -535,8 +535,11 @@ To build the `judo` executable from source, navigate to the project root directo
 git clone https://github.com/BlackBeltTechnology/judo-cli.git
 cd judo-cli
 
-# Build the binary
+# Build the binary (simple method)
 go build -o judo ./cmd/judo
+
+# Or use the comprehensive build script (recommended)
+./build.sh
 
 # Make executable and test
 chmod +x judo
@@ -556,6 +559,33 @@ go build -ldflags "-X main.version=$(scripts/version.sh get) -X main.commit=$(gi
 ----
 
 This will create an executable named `judo` in the current directory with proper version metadata.
+
+=== Comprehensive Build with Embedded Frontend
+
+The `build.sh` script provides a complete build process that:
+
+1. Builds the React frontend application
+2. Prepares embedded assets for Go embedding
+3. Compiles the Go backend with embedded frontend
+4. Runs tests to ensure everything works
+5. Includes proper version metadata and git commit information
+
+[source,bash]
+----
+# Run the comprehensive build
+./build.sh
+
+# Output includes version information
+./judo version
+----
+
+The build script handles:
+- Frontend dependency installation
+- React application build
+- Asset embedding preparation
+- Go compilation with proper ldflags
+- Test execution
+- Error handling and colored output
 
 == Common Usage Examples
 

@@ -83,4 +83,5 @@ internal/server/assets/
 
 dist/
 judo_test
+assets/
 

@@ -17,6 +17,7 @@ Go-based CLI tool (`judo`) for managing JUDO application lifecycle. Orchestrates
 ### Building & Testing
 ```bash
 go build -o judo ./cmd/judo           # Build CLI
+./build.sh                            # Comprehensive build (frontend + backend with embedded assets)
 go test ./internal/...               # Run tests (limited coverage)
 go test -v ./internal/...            # Run tests with verbose output
 go test ./internal/db/...            # Run specific package tests
