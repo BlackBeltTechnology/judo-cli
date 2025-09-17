@@ -119,9 +119,10 @@ Task: "Integration test auth in tests/integration/test_auth.py"
 ## Validation Checklist
 *GATE: Checked by main() before returning*
 
-- Constitution: v2.3.0 snapshot vs release rules must be reflected in tasks (no Homebrew updates from snapshots).
-- [ ] Documentation updates included (README, docs/, internal/help)
-- [ ] CI/CD workflows reviewed/updated (build.yml, hugo.yml), or explicitly confirmed unaffected
+- Constitution: v2.4.1 snapshot vs release rules must be reflected in tasks (no Homebrew updates from snapshots).
+- [ ] Documentation updates included (README, docs/, internal/help) - NON-NEGOTIABLE
+- [ ] CI/CD workflows reviewed/updated (build.yml, hugo.yml), or explicitly confirmed unaffected - NON-NEGOTIABLE
+- [ ] Frontend testing disciplines applied (Articles VIII-IX) - behavior-first, realistic mocks, comprehensive coverage
 
 - [ ] All contracts have corresponding tests
 - [ ] All entities have model tasks
@@ -129,3 +130,7 @@ Task: "Integration test auth in tests/integration/test_auth.py"
 - [ ] Parallel tasks truly independent
 - [ ] Each task specifies exact file path
 - [ ] No task modifies same file as another [P] task
+
+---
+
+*Based on Constitution v2.4.1 - See `/memory/constitution.md`*

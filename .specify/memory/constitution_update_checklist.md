@@ -43,6 +43,16 @@ When amending the constitution (`/memory/constitution.md`), ensure all dependent
 - [ ] Include breaking change procedures
 - [ ] Update migration requirements
 
+#### Article VIII (Frontend Testing):
+- [ ] Add behavior-driven testing requirements
+- [ ] Include mocking guidelines and technical exceptions
+- [ ] Update test coverage expectations
+
+#### Article IX (Comprehensive Frontend Testing):
+- [ ] Add comprehensive testing disciplines
+- [ ] Include state coverage and interaction validation
+- [ ] Update accessibility and performance testing requirements
+
 #### Article VII (Simplicity):
 - [ ] Update project count limits
 - [ ] Add pattern prohibition examples
@@ -76,9 +86,9 @@ Watch for these often-forgotten updates:
 
 ## Template Sync Status
 
-Last sync check: 2025-09-16
-- Constitution version: 2.3.0
-- Templates aligned: ⚠️ (requires template updates for documentation/CI integrity requirements)
+Last sync check: 2025-09-17
+- Constitution version: 2.4.1
+- Templates aligned: ✅ (all templates updated to v2.4.1 with documentation/CI integrity and frontend testing requirements)
 
 ---
 

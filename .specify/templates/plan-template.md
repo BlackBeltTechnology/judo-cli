@@ -75,10 +75,11 @@
 - BUILD increments on every change?
 - Breaking changes handled? (parallel tests, migration plan)
 
-## Docs & CI Integrity
-- Documentation updates planned? (README, internal/help, docs/*)
-- CI workflows impacted? (build.yml, hugo.yml) — updates planned
-- Embedding/build steps documented in release process
+## Docs & CI Integrity (NON-NEGOTIABLE)
+- [ ] Documentation updates planned? (README, internal/help, docs/*) - MUST be included
+- [ ] CI workflows impacted? (build.yml, hugo.yml) — updates MUST be planned
+- [ ] Embedding/build steps documented in release process
+- [ ] Frontend testing disciplines applied? (Articles VIII-IX) - behavior-first, realistic mocks, comprehensive coverage
 
 ## Project Structure
 
@@ -239,4 +240,4 @@ ios/ or android/
 - [ ] Complexity deviations documented
 
 ---
-*Based on Constitution v2.3.0 - See `/memory/constitution.md`*
+*Based on Constitution v2.4.1 - See `/memory/constitution.md`*

@@ -101,6 +101,8 @@ When creating this spec from a user prompt:
 - [ ] Dependencies and assumptions identified
 - [ ] Documentation updated or explicitly declared unchanged
 - [ ] CI/CD workflows reviewed and updated if impacted
+- [ ] Documentation updated or explicitly declared unchanged
+- [ ] CI/CD workflows reviewed and updated if impacted
 
 ---
 
@@ -117,4 +119,4 @@ When creating this spec from a user prompt:
 
 ---
 
-*Based on Constitution v2.3.0 - See `/memory/constitution.md`*
+*Based on Constitution v2.4.1 - See `/memory/constitution.md`*
