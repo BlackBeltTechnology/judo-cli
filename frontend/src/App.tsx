@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
-import { Terminal } from '@xterm/xterm';
-import { FitAddon } from '@xterm/addon-fit';
-import { WebLinksAddon } from '@xterm/addon-web-links';
+import { XTerm } from 'react-xtermjs';
+
+
 import './App.css';
 
 interface ServiceStatus {
@@ -30,6 +30,7 @@ interface SessionMessage {
 
 function App() {
   const [activeTerminal, setActiveTerminal] = useState<'A' | 'B'>('A');
+
   const [terminalASource, setTerminalASource] = useState<string>('combined');
   const [serviceStatus, setServiceStatus] = useState<{[key: string]: ServiceStatus}>({});
   const [isServicePanelOpen, setIsServicePanelOpen] = useState(false);
@@ -37,12 +38,8 @@ function App() {
   const [isProjectInitialized, setIsProjectInitialized] = useState<boolean | null>(null);
   const [showInitModal, setShowInitModal] = useState(false);
   
-  const terminalARef = useRef<HTMLDivElement>(null);
-  const terminalBRef = useRef<HTMLDivElement>(null);
-  const terminalAInstance = useRef<Terminal | null>(null);
-  const terminalBInstance = useRef<Terminal | null>(null);
-  const fitAddonA = useRef<FitAddon | null>(null);
-  const fitAddonB = useRef<FitAddon | null>(null);
+  const terminalARef = useRef<XTerm | null>(null);
+  const terminalBRef = useRef<XTerm | null>(null);
   
   const logWs = useRef<WebSocket | null>(null);
   const sessionWs = useRef<WebSocket | null>(null);
@@ -60,31 +57,6 @@ function App() {
     return `${wsProtocol}//${hostname}:${port}`;
   }, []);
 
-  const initializeTerminal = (ref: React.RefObject<HTMLDivElement | null>, fitAddon: React.MutableRefObject<FitAddon | null>) => {
-    if (ref.current && !ref.current.children.length) {
-      const terminal = new Terminal({
-        theme: {
-          background: '#1a1a1a',
-          foreground: '#ffffff',
-          cursor: '#ffffff'
-        },
-        fontSize: 14,
-        fontFamily: 'Monaco, Menlo, "Ubuntu Mono", monospace',
-        cursorBlink: true
-      });
-
-      const fit = new FitAddon();
-      terminal.loadAddon(fit);
-      terminal.loadAddon(new WebLinksAddon());
-      
-      terminal.open(ref.current);
-      fit.fit();
-      
-      fitAddon.current = fit;
-      return terminal;
-    }
-    return null;
-  };
 
   const connectLogWebSocket = useCallback((source: string) => {
     if (logWs.current) {
@@ -101,15 +73,15 @@ function App() {
     
     ws.onopen = () => {
       console.log('Log WebSocket connected');
-      if (terminalAInstance.current) {
-        terminalAInstance.current.write('\r\n\x1b[32m✓ Connected to log stream\x1b[0m\r\n');
+      if (terminalARef.current?.terminal) {
+        terminalARef.current.terminal.write('\r\n\x1b[32m✓ Connected to log stream\x1b[0m\r\n');
       }
     };
     
     ws.onmessage = (event) => {
       try {
         const logMessage: LogMessage = JSON.parse(event.data);
-        if (terminalAInstance.current) {
+        if (terminalARef.current?.terminal) {
           const serviceColor = {
             karaf: '\x1b[35m',
             postgresql: '\x1b[36m',
@@ -117,7 +89,7 @@ function App() {
             combined: '\x1b[37m'
           }[logMessage.service] || '\x1b[37m';
           
-          terminalAInstance.current.write(
+          terminalARef.current.terminal.write(
             `${serviceColor}[${logMessage.service.toUpperCase()}]\x1b[0m ${logMessage.line}\r\n`
           );
         }
@@ -129,8 +101,8 @@ function App() {
       
     ws.onclose = () => {
       console.log('Log WebSocket disconnected');
-      if (terminalAInstance.current) {
-        terminalAInstance.current.write('\r\n\x1b[31m✗ Log stream disconnected\x1b[0m\r\n');
+      if (terminalARef.current?.terminal) {
+        terminalARef.current.terminal.write('\r\n\x1b[31m✗ Log stream disconnected\x1b[0m\r\n');
       }
     };
     
@@ -152,32 +124,32 @@ function App() {
       console.log('Session WebSocket connected');
       isSessionRunning.current = true;
       // Send initial terminal size
-      if (terminalBInstance.current) {
-        ws.send(JSON.stringify({ type: 'resize', cols: terminalBInstance.current.cols, rows: terminalBInstance.current.rows }));
+      if (terminalBRef.current?.terminal) {
+        ws.send(JSON.stringify({ type: 'resize', cols: terminalBRef.current.terminal.cols, rows: terminalBRef.current.terminal.rows }));
       }
     };
     
     ws.onmessage = (event) => {
       try {
         const message: SessionMessage = JSON.parse(event.data);
-        if (terminalBInstance.current) {
+        if (terminalBRef.current?.terminal) {
           switch (message.type) {
             case 'handshake':
               if (message.welcome) {
-                terminalBInstance.current.write(message.welcome);
+                terminalBRef.current.terminal.write(message.welcome);
               }
               break;
             case 'output':
-              terminalBInstance.current.write(message.data || '');
+              terminalBRef.current.terminal.write(message.data || '');
               break;
             case 'status':
               if (message.state === 'exited') {
-                terminalBInstance.current.write(`\r\n\x1b[31mSession exited with code ${message.exitCode}\x1b[0m\r\n`);
+                terminalBRef.current.terminal.write(`\r\n\x1b[31mSession exited with code ${message.exitCode}\x1b[0m\r\n`);
                 isSessionRunning.current = false;
               }
               break;
             case 'prompt':
-              terminalBInstance.current.write(message.data || '');
+              terminalBRef.current.terminal.write(message.data || '');
               break;
           }
         }
@@ -190,13 +162,13 @@ function App() {
       console.log('Session WebSocket disconnected');
       if (isSessionRunning.current) {
         isSessionRunning.current = false;
-        if (terminalBInstance.current) {
-          terminalBInstance.current.write('\r\n\x1b[31m✗ Session disconnected. Reconnecting...\x1b[0m\r\n');
+        if (terminalBRef.current?.terminal) {
+          terminalBRef.current.terminal.write('\r\n\x1b[31m✗ Session disconnected. Reconnecting...\x1b[0m\r\n');
         }
         setTimeout(connectSessionWebSocket, 2000);
       } else {
-        if (terminalBInstance.current) {
-          terminalBInstance.current.write('\r\n\x1b[31m✗ Session disconnected\x1b[0m\r\n');
+        if (terminalBRef.current?.terminal) {
+          terminalBRef.current.terminal.write('\r\n\x1b[31m✗ Session disconnected\x1b[0m\r\n');
         }
       }
     };
@@ -338,10 +310,6 @@ function App() {
   };
 
   useEffect(() => {
-    // Initialize terminals
-    terminalAInstance.current = initializeTerminal(terminalARef, fitAddonA);
-    terminalBInstance.current = initializeTerminal(terminalBRef, fitAddonB);
-
     // Connect to log WebSocket
     connectLogWebSocket(terminalASource);
 
@@ -350,53 +318,6 @@ function App() {
 
     // Check if project is initialized
     checkProjectInitialized();
-
-    // Handle window resize
-    const handleResize = () => {
-      if (fitAddonA.current) fitAddonA.current.fit();
-      if (fitAddonB.current) fitAddonB.current.fit();
-      if (sessionWs.current && sessionWs.current.readyState === WebSocket.OPEN && terminalBInstance.current) {
-        sessionWs.current.send(JSON.stringify({
-          type: 'resize',
-          cols: terminalBInstance.current.cols,
-          rows: terminalBInstance.current.rows
-        }));
-      }
-    };
-    
-    window.addEventListener('resize', handleResize);
-
-    // Wire Terminal B input to session
-    let disposeInput: { dispose: () => void } | null = null;
-    if (terminalBInstance.current) {
-      disposeInput = terminalBInstance.current.onData((data: string) => {
-        for (const ch of data) {
-          if (ch === '\r') {
-            const line = inputBufferRef.current;
-            inputBufferRef.current = '';
-            handleTerminalBInput(line);
-            terminalBInstance.current?.write('\r\n');
-          } else if (ch === '\u0003') { // Ctrl+C
-            if (sessionWs.current && sessionWs.current.readyState === WebSocket.OPEN) {
-              sessionWs.current.send(JSON.stringify({ type: 'control', action: 'interrupt' }));
-            }
-            terminalBInstance.current?.write('^C\r\n');
-            inputBufferRef.current = '';
-          } else if (ch === '\u007F') { // Backspace
-            if (inputBufferRef.current.length > 0) {
-              inputBufferRef.current = inputBufferRef.current.slice(0, -1);
-              terminalBInstance.current?.write('\b \b');
-            }
-          } else {
-            // Printable characters
-            if (ch >= ' ' && ch <= '~') {
-              inputBufferRef.current += ch;
-              terminalBInstance.current?.write(ch);
-            }
-          }
-        }
-      });
-    }
 
     return () => {
       if (logWs.current) {
@@ -407,8 +328,6 @@ function App() {
         sessionWs.current.onclose = null;
         sessionWs.current.close();
       }
-      if (disposeInput) disposeInput.dispose();
-      window.removeEventListener('resize', handleResize);
     };
   }, []);
 
@@ -520,13 +439,14 @@ function App() {
         </div>
 
         <div className="terminal-container">
-          <div 
+          <XTerm 
             ref={terminalARef} 
             className={`terminal terminal-a ${activeTerminal === 'A' ? 'active' : 'hidden'} ${isProjectInitialized === false ? 'disabled' : ''}`}
           />
-          <div 
+          <XTerm 
             ref={terminalBRef} 
             className={`terminal terminal-b ${activeTerminal === 'B' ? 'active' : 'hidden'} ${isProjectInitialized === false ? 'disabled' : ''}`}
+            onData={handleTerminalBInput}
           />
         </div>
       </div>

@@ -54,7 +54,7 @@ As a JUDO CLI user, I want to run the CLI as a server and interact with it throu
 ### Functional Requirements
 - **FR-001**: The CLI MUST include a new `server` command that starts a local web server.
 - **FR-002**: The `server` command MUST serve a single-page web application to the browser.
-- **FR-003**: The web UI MUST provide two Xterm.js terminals with an A/B switch.
+- **FR-003**: The web UI MUST provide two `react-xtermjs` terminals with an A/B switch.
 - **FR-004**: Terminal A MUST support a source selector with options: Combined, Karaf, PostgreSQL, Keycloak; Combined MUST display clearly labeled, color-distinguished live logs from all three.
 - **FR-005**: Terminal B MUST provide an interactive session terminal with prompt, command history, copy/paste, Ctrl+C (interrupt), and auto-resize, using direct function calls rather than executing judo commands.
 - **FR-006**: The web UI MUST include a left-side collapsible Service panel with controls to `start`, `stop`, and view `status` for each embedded service.

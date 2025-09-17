@@ -8,7 +8,7 @@ This plan outlines the implementation of a `server` command for the JUDO CLI tha
 
 ## Technical Context
 **Language/Version**: Go 1.25+, Node.js 18+ (for frontend)
-**Primary Dependencies**: Go (Cobra, Gorilla WebSocket), React (Create React App, Xterm.js)
+**Primary Dependencies**: Go (Cobra, Gorilla WebSocket), React (Create React App, react-xtermjs)
 **Storage**: N/A (state is managed in memory by the CLI server)
 **Testing**: Go testing, Jest/React Testing Library, comprehensive UI test suite covering all user interactions and visual feedback
 **Target Platform**: Local machine (browser-based UI)
@@ -151,7 +151,7 @@ frontend/
   - Set up React project with Create React App.
   - Create components for dual terminals (A: logs with source selector; B: interactive session), A/B switch, and Service panel with status buttons.
   - Implement API calls to the backend.
-  - Implement WebSocket clients for logs and session; use Xterm.js with fit addon and message batching.
+  - Implement WebSocket clients for logs and session; use react-xtermjs with fit addon and message batching.
   - Set up build process for production assets.
 
 **Ordering Strategy**:

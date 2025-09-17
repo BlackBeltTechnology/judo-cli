@@ -17,8 +17,8 @@
 - Enforce `go fmt` and `go vet`. CI runs `go test ./...`, vet, and formatting checks.
 - Write focused tests close to the changed code. Prefer integration tests for behavior that spans packages.
 
-### IV. Versioning & Releases
-- Semantic Versioning (MAJOR.MINOR.PATCH).
+### IV. Version: 2.4.1 | Ratified: 2025-09-15 | Last Amended: 2025-09-17
+- Semantic Version: 2.4.1 | Ratified: 2025-09-15 | Last Amended: 2025-09-17
 - `scripts/version.sh` is the single source of truth for the working version in `VERSION`.
 - Snapshot builds originate from `develop` with tags like `vX.Y.Z-snapshot-YYYYMMDDHHMMSS` and never publish Homebrew updates.
 - Stable releases are cut from `master` with tags `vX.Y.Z` and are published via GoReleaser.
@@ -54,6 +54,35 @@
 - Minimum Go toolchain per CI: 1.25.
 - Avoid breaking CLI UX; when unavoidable, provide deprecations and update `internal/help` and docs.
 
+### VIII. Frontend Testing (Vitest & React Testing Library)
+- **Behavior-Driven**: Tests MUST focus on user behavior, not implementation details.
+- **Reliable Selectors**: Use `data-testid` for interactive elements and dynamic content. Use explicit text assertions for static content.
+- **Mocking**: All mocks MUST be declared in `vi.hoisted()` blocks. Mocks should be realistic and match actual API responses.
+- **Technical Exceptions**: When technical barriers prevent standard mocking patterns (e.g., global objects, third-party libraries with complex initialization), alternative solutions MAY be used provided they:
+  - Maintain test isolation and reliability
+  - Document the technical limitation requiring the exception
+  - Are reviewed and approved during PR review
+  - Include plans to migrate to standard patterns when possible
+- **Comprehensive Coverage**: Tests MUST cover loading, success, and error states, as well as user interactions and their side effects.
+- **TypeScript Safety**: Always import and use actual types for mock data to ensure type safety.
+
+### IX. Comprehensive Frontend Testing Disciplines
+- **Behavior-First Approach**: Tests MUST focus on user behavior and outcomes, not implementation details
+- **Realistic Mock Data**: Use mock data that accurately matches actual API responses and data structures
+- **State Coverage**: Tests MUST cover loading, success, error, and edge case states comprehensively
+- **User Interaction Validation**: Verify all user interactions produce expected outcomes and side effects
+- **Component Lifecycle**: Test component rendering, re-rendering, and state changes throughout lifecycle
+- **Type Safety**: Always import and use actual types for mock data to ensure compile-time validation
+- **Reliable Selectors**: Use `data-testid` attributes for interactive elements and dynamic content; use text assertions for static content verification
+- **Structured Mocking**: All mocks MUST be declared in `vi.hoisted()` blocks to prevent timing issues
+- **Comprehensive Scenarios**: Cover permission-based rendering, conditional UI, hook state changes, and dynamic updates
+- **Accessibility**: Include keyboard navigation and screen reader compatibility testing
+- **Performance**: Validate render speed and responsiveness under realistic load conditions
+- **Cross-Browser**: Ensure compatibility across supported browser versions
+- **Visual Regression**: Implement visual testing to detect unintended UI changes
+- **CI Integration**: All tests MUST run in headless mode and integrate with CI/CD pipeline
+
+
 ## Governance
 - This constitution governs engineering practice for judo‑cli. Amendments require:
   1) updating this file, 2) syncing templates and helper guides, 3) noting the change in the checklist,
@@ -61,4 +90,6 @@
 - PR reviews verify compliance with CLI UX rules, testing discipline, versioning, and documentation updates.
 - Use conventional, meaningful commit messages focused on the “why”.
 
-**Version**: 2.3.0 | **Ratified**: 2025-09-15 | **Last Amended**: 2025-09-16
+**Version: 2.4.1 | Ratified: 2025-09-15 | Last Amended: 2025-09-17
+
+

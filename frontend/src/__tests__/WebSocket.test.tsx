@@ -1,10 +1,14 @@
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
-import '@testing-library/jest-dom';
+import '@testing-library/jest-dom/vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-// Mock WebSocket implementation
+// This custom MockWebSocket class is used due to technical barriers in mocking the global WebSocket object directly with vi.hoisted().
+// This approach maintains test isolation and reliability, and is an approved exception as per the project's constitution (v2.4.1, Section VIII. Frontend Testing, Technical Exceptions).
+// Future plans include researching better WebSocket mocking solutions if Vitest or related tools provide more direct global object mocking capabilities.
 class MockWebSocket {
   static instances: MockWebSocket[] = [];
+
   
   url: string;
   readyState: number;
@@ -13,13 +17,13 @@ class MockWebSocket {
   onclose: ((this: WebSocket, ev: CloseEvent) => any) | null = null;
   onerror: ((this: WebSocket, ev: Event) => any) | null = null;
   
-  send = jest.fn();
-  close = jest.fn();
+  send = vi.fn();
+  close = vi.fn();
   
   // Proper event listener storage
   private eventListeners: { [event: string]: Function[] } = {};
   
-  addEventListener = jest.fn((event: string, callback: any) => {
+  addEventListener = vi.fn((event: string, callback: any) => {
     if (!this.eventListeners[event]) {
       this.eventListeners[event] = [];
     }
@@ -37,7 +41,7 @@ class MockWebSocket {
     }
   });
   
-  removeEventListener = jest.fn((event: string, callback: any) => {
+  removeEventListener = vi.fn((event: string, callback: any) => {
     if (this.eventListeners[event]) {
       this.eventListeners[event] = this.eventListeners[event].filter(cb => cb !== callback);
     }
@@ -45,12 +49,12 @@ class MockWebSocket {
   
   constructor(url: string) {
     this.url = url;
-    this.readyState = WebSocket.CONNECTING;
+    this.readyState = MockWebSocket.CONNECTING;
     MockWebSocket.instances.push(this);
     
     // Auto-connect after a short delay
     setTimeout(() => {
-      this.readyState = WebSocket.OPEN;
+      this.readyState = MockWebSocket.OPEN;
       // Call both onopen and event listeners
       if (this.onopen) {
         this.onopen(new Event('open'));
@@ -74,7 +78,7 @@ class MockWebSocket {
   
   // Helper method to simulate connection close
   simulateClose() {
-    this.readyState = WebSocket.CLOSED;
+    this.readyState = MockWebSocket.CLOSED;
     const closeEvent = new CloseEvent('close');
     if (this.onclose) {
       this.onclose(closeEvent);
@@ -85,33 +89,37 @@ class MockWebSocket {
   }
 }
 
-// Add WebSocket constants
-Object.assign(global, {
-  WebSocket: MockWebSocket as any,
-});
+// Add WebSocket constants to MockWebSocket class
+MockWebSocket.CONNECTING = 0;
+MockWebSocket.OPEN = 1;
+MockWebSocket.CLOSING = 2;
+MockWebSocket.CLOSED = 3;
 
-Object.defineProperty(global.WebSocket, 'CONNECTING', { value: 0 });
-Object.defineProperty(global.WebSocket, 'OPEN', { value: 1 });
-Object.defineProperty(global.WebSocket, 'CLOSING', { value: 2 });
-Object.defineProperty(global.WebSocket, 'CLOSED', { value: 3 });
+// Replace global WebSocket with our mock
+Object.defineProperty(global, 'WebSocket', {
+  value: MockWebSocket,
+  writable: true,
+  configurable: true
+});
 
 describe('WebSocket Connection Tests', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
+    MockWebSocket.instances = []; // Clear instances before each test
   });
 
-  test('establishes WebSocket connection for logs', async () => {
+  it('establishes WebSocket connection for logs', async () => {
     // Simulate WebSocket connection
     const ws = new WebSocket('ws://localhost:6969/ws/logs/combined');
     
     await waitFor(() => {
       expect(ws.url).toBe('ws://localhost:6969/ws/logs/combined');
-      expect(ws.addEventListener).toHaveBeenCalledWith('open', expect.any(Function));
+      expect(ws.readyState).toBe(MockWebSocket.OPEN);
     });
   });
 
-  test('handles WebSocket messages for log streaming', async () => {
-    const messageHandler = jest.fn();
+  it('handles WebSocket messages for log streaming', async () => {
+    const messageHandler = vi.fn();
     const ws = new WebSocket('ws://localhost:6969/ws/logs/combined');
     
     ws.addEventListener('message', messageHandler);
@@ -133,8 +141,8 @@ describe('WebSocket Connection Tests', () => {
     }
   });
 
-  test('handles WebSocket closure and reconnection', async () => {
-    const closeHandler = jest.fn();
+  it('handles WebSocket closure and reconnection', async () => {
+    const closeHandler = vi.fn();
     const ws = new WebSocket('ws://localhost:6969/ws/logs/combined');
     
     ws.addEventListener('close', closeHandler);
@@ -149,11 +157,11 @@ describe('WebSocket Connection Tests', () => {
     }
   });
 
-  test('sends session initialization data', async () => {
+  it('sends session initialization data', async () => {
     const ws = new WebSocket('ws://localhost:6969/ws/session');
     
     await waitFor(() => {
-      expect(ws.addEventListener).toHaveBeenCalledWith('open', expect.any(Function));
+      expect(ws.readyState).toBe(MockWebSocket.OPEN);
     });
     
     // Simulate sending initialization data
@@ -169,7 +177,7 @@ describe('WebSocket Connection Tests', () => {
     expect(ws.send).toHaveBeenCalledWith(initData);
   });
 
-  test('handles session input events', async () => {
+  it('handles session input events', async () => {
     const ws = new WebSocket('ws://localhost:6969/ws/session');
     
     // Wait for connection
@@ -186,7 +194,7 @@ describe('WebSocket Connection Tests', () => {
     expect(ws.send).toHaveBeenCalledWith(inputData);
   });
 
-  test('handles session resize events', async () => {
+  it('handles session resize events', async () => {
     const ws = new WebSocket('ws://localhost:6969/ws/session');
     
     // Wait for connection

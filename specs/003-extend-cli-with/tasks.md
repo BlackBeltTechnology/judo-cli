@@ -28,12 +28,12 @@
 
 ## Phase 3.4: Core Implementation (Frontend)
 - [ ] T018 Implement API calls to the backend for status and actions.
-- [ ] T019 Implement a WebSocket client to receive and display logs in Xterm.js terminals with message batching.
+- [ ] T019 Implement a WebSocket client to receive and display logs in react-xtermjs terminals with message batching.
 - [ ] T020 Implement Terminal A/B switch and Terminal A’s source selector (Combined, Karaf, PostgreSQL, Keycloak).
 - [ ] T021 Implement individual service status display and control UI.
 - [ ] T022 Implement UI state persistence (active terminal, Terminal A source, Service panel open/closed).
 - [ ] T023 Add per-terminal controls: Clear, Pause/Resume, Copy selection; show connection status (connecting, disconnected).
-- [ ] T031 Implement Terminal B interactive Xterm client for `/ws/session` with input handling, paste, and auto-resize.
+- [ ] T031 Implement Terminal B interactive react-xtermjs client for `/ws/session` with input handling, paste, and auto-resize.
 - [ ] T032 Implement Terminal B features: command history, Ctrl+C interrupt, session ended state with “Start New Session” action.
 
 ## Phase 3.5: Integration
