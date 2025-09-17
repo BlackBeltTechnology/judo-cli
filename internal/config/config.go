@@ -25,6 +25,10 @@ var (
 	instance *Config
 )
 
+func Reset() {
+	instance = nil
+}
+
 func GetConfig() *Config {
 	if instance == nil {
 		cwd, _ := os.Getwd()

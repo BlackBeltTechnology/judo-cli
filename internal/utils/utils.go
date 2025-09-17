@@ -65,28 +65,32 @@ func CheckError(err error) {
 }
 
 // Small exec helpers
-func Run(name string, args ...string) error {
-	return RunInDir("", name, args...)
-}
+var Run func(name string, args ...string) error
+var RunInDir func(dir, name string, args ...string) error
+var RunCapture func(name string, args ...string) (string, error)
+var RunCaptureInDir func(dir, name string, args ...string) (string, error)
 
-func RunInDir(dir, name string, args ...string) error {
-	cmd := exec.Command(name, args...)
-	cmd.Stdout, cmd.Stderr, cmd.Stdin = os.Stdout, os.Stderr, os.Stdin
-	cmd.Dir = dir
-	return cmd.Run()
-}
-
-func RunCapture(name string, args ...string) (string, error) {
-	return RunCaptureInDir("", name, args...)
-}
-
-func RunCaptureInDir(dir, name string, args ...string) (string, error) {
-	var out bytes.Buffer
-	cmd := exec.Command(name, args...)
-	cmd.Stdout, cmd.Stderr = &out, &out
-	cmd.Dir = dir
-	err := cmd.Run()
-	return strings.TrimSpace(out.String()), err
+func init() {
+	Run = func(name string, args ...string) error {
+		return RunInDir("", name, args...)
+	}
+	RunInDir = func(dir, name string, args ...string) error {
+		cmd := exec.Command(name, args...)
+		cmd.Stdout, cmd.Stderr, cmd.Stdin = os.Stdout, os.Stderr, os.Stdin
+		cmd.Dir = dir
+		return cmd.Run()
+	}
+	RunCapture = func(name string, args ...string) (string, error) {
+		return RunCaptureInDir("", name, args...)
+	}
+	RunCaptureInDir = func(dir, name string, args ...string) (string, error) {
+		var out bytes.Buffer
+		cmd := exec.Command(name, args...)
+		cmd.Stdout, cmd.Stderr = &out, &out
+		cmd.Dir = dir
+		err := cmd.Run()
+		return strings.TrimSpace(out.String()), err
+	}
 }
 
 // Optional shim if your code calls executeCommand(...)
@@ -95,19 +99,23 @@ func ExecuteCommand(name string, args ...string) *exec.Cmd {
 	return cmd
 }
 
-func GetProjectVersion() string {
-	var out bytes.Buffer
-	c := exec.Command("mvn",
-		"org.apache.maven.plugins:maven-help-plugin:3.2.0:evaluate",
-		"-Dexpression=project.version", "-q", "-DforceStdout",
-	)
-	c.Dir = "." // This will be set by the caller based on config.ModelDir
-	c.Stdout = &out
-	c.Stderr = &out
-	if err := c.Run(); err != nil {
-		return "SNAPSHOT"
+var GetProjectVersion func() string
+
+func init() {
+	GetProjectVersion = func() string {
+		var out bytes.Buffer
+		c := exec.Command("mvn",
+			"org.apache.maven.plugins:maven-help-plugin:3.2.0:evaluate",
+			"-Dexpression=project.version", "-q", "-DforceStdout",
+		)
+		c.Dir = "." // This will be set by the caller based on config.ModelDir
+		c.Stdout = &out
+		c.Stderr = &out
+		if err := c.Run(); err != nil {
+			return "SNAPSHOT"
+		}
+		return strings.TrimSpace(out.String())
 	}
-	return strings.TrimSpace(out.String())
 }
 
 // GetCurrentDir returns the current working directory
@@ -304,18 +312,22 @@ func PromptForSelection(prompt string, options []string, defaultOption string) s
 }
 
 // IsPortAvailable checks if a TCP port is available by attempting to connect to it.
-func IsPortAvailable(port int) bool {
-	address := fmt.Sprintf("127.0.0.1:%d", port)
-	conn, err := net.DialTimeout("tcp", address, 1*time.Second)
+var IsPortAvailable func(port int) bool
 
-	if err != nil {
-		// Could not connect, so port is likely available.
-		return true
+func init() {
+	IsPortAvailable = func(port int) bool {
+		address := fmt.Sprintf("127.0.0.1:%d", port)
+		conn, err := net.DialTimeout("tcp", address, 1*time.Second)
+
+		if err != nil {
+			// Could not connect, so port is likely available.
+			return true
+		}
+
+		// Successfully connected, so port is in use.
+		_ = conn.Close()
+		return false
 	}
-
-	// Successfully connected, so port is in use.
-	_ = conn.Close()
-	return false
 }
 
 // IsPortUsedByKaraf checks if a port is being used by the current Karaf instance
