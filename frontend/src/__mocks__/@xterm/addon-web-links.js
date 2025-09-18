@@ -1,3 +1,5 @@
-const WebLinksAddon = jest.fn();
+const { vi } = require('vitest');
+
+const WebLinksAddon = vi.fn();
 
 module.exports = { WebLinksAddon };

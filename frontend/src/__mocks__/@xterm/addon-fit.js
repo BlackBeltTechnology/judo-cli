@@ -1,6 +1,8 @@
-const mockFit = jest.fn();
+const { vi } = require('vitest');
 
-const FitAddon = jest.fn().mockImplementation(() => ({
+const mockFit = vi.fn();
+
+const FitAddon = vi.fn().mockImplementation(() => ({
   fit: mockFit,
 }));
 

@@ -1,12 +1,14 @@
+const { vi } = require('vitest');
+
 module.exports = {
-  Terminal: jest.fn().mockImplementation(() => {
+  Terminal: vi.fn().mockImplementation(() => {
     return {
-      loadAddon: jest.fn(),
-      open: jest.fn(),
-      write: jest.fn(),
-      onData: jest.fn().mockReturnValue({ dispose: jest.fn() }),
-      dispose: jest.fn(),
-      resize: jest.fn(),
+      loadAddon: vi.fn(),
+      open: vi.fn(),
+      write: vi.fn(),
+      onData: vi.fn().mockReturnValue({ dispose: vi.fn() }),
+      dispose: vi.fn(),
+      resize: vi.fn(),
       cols: 80,
       rows: 24,
     };
