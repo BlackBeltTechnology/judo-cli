@@ -6,7 +6,7 @@
   flex-direction: column;
 }
 
-.App.service-panel-open .main-content {
+.App.service-panel-open .terminal-container {
   margin-left: 300px;
 }
 
@@ -19,6 +19,12 @@
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 1rem;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1001;
+  height: 60px;
 }
 
 .App-header h1 {
@@ -72,14 +78,14 @@
 .main-content {
   flex: 1;
   display: flex;
-  transition: margin-left 0.3s ease;
   position: relative;
+  margin-top: 60px;
 }
 
 .service-panel {
   position: fixed;
   left: -300px;
-  top: 0;
+  top: 60px;
   bottom: 0;
   width: 300px;
   background: #1a1d25;
@@ -208,6 +214,7 @@
   flex: 1;
   position: relative;
   background: #0f1117;
+  transition: margin-left 0.3s ease;
 }
 
 .terminal {
@@ -348,7 +355,7 @@
     justify-content: center;
   }
   
-  .App.service-panel-open .main-content {
+  .App.service-panel-open .terminal-container {
     margin-left: 0;
   }
   

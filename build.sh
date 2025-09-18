@@ -55,11 +55,11 @@ echo -e "${YELLOW}Preparing embedded assets...${NC}"
 cd "$PROJECT_ROOT"
 
 # Create assets directory if it doesn't exist
-mkdir -p assets
+mkdir -p internal/server/assets
 
 # Copy frontend build to assets directory
-rm -rf assets/*
-cp -r frontend/build/* assets/
+rm -rf internal/server/assets/*
+cp -r frontend/build/* internal/server/assets/
 
 echo -e "${GREEN}Assets prepared for embedding!${NC}"
 
