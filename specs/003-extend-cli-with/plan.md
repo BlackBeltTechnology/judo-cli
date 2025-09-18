@@ -111,7 +111,10 @@ frontend/
     - Session endpoint: `/ws/session` (one session per connection).
     - Session messages: client→server `{type: input|resize|control, ...}`, server→client `{type: output|status, ...}`
 4. **Quickstart Guide**: Write a `quickstart.md` with setup, build, and run instructions.
-5. **Agent File Update**: N/A for this feature.
+5. **Update agent file incrementally** (O(1) operation):
+   - Run `.specify/scripts/bash/update-agent-context.sh opencode` for your AI assistant
+   - If exists: Add only NEW tech from current plan
+   - Preserve manual additions between markers
 6. **Testing Methodology**: Document WebSocket testing approach using Node.js `ws` library instead of curl (which doesn't support WebSocket protocol). Implement comprehensive UI and E2E testing strategy covering:
    - **UI Testing**: Component behavior, user interactions, visual feedback
    - Terminal behavior and state transitions

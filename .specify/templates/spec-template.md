@@ -99,10 +99,6 @@ When creating this spec from a user prompt:
 - [ ] Success criteria are measurable
 - [ ] Scope is clearly bounded
 - [ ] Dependencies and assumptions identified
-- [ ] Documentation updated or explicitly declared unchanged
-- [ ] CI/CD workflows reviewed and updated if impacted
-- [ ] Documentation updated or explicitly declared unchanged
-- [ ] CI/CD workflows reviewed and updated if impacted
 
 ---
 

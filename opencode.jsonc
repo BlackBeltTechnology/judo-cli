@@ -3,4 +3,22 @@
   "theme": "opencode",
   "model": "deepseek/deepseek-chat",
   "autoupdate": true,
+
+  "mcp": {
+    "github-server": {
+      "type": "local",
+      "command": ["npx", "-y", "@modelcontextprotocol/server-github@latest"],
+      "enabled": true,
+    },
+    "sequential-thinking-server": {
+      "type": "local",
+      "command": ["npx", "-y", "@modelcontextprotocol/server-sequential-thinking"],
+      "enabled": true,
+    },
+    "context7-server": {
+      "type": "local",
+      "command": ["npx", "@upstash/context7-mcp@latest"],
+      "enabled": true,
+    },
+  },
 }
