@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
-import { XTerm } from 'react-xtermjs';
+import { XTerm, useXTerm } from 'react-xtermjs';
 
 
 import './App.css';
@@ -17,34 +17,19 @@ interface LogMessage {
   line: string;
 }
 
-interface SessionMessage {
-  type: string;
-  data?: string;
-  state?: string;
-  exitCode?: number;
-  cols?: number;
-  rows?: number;
-  action?: string;
-  welcome?: string;
-}
+
 
 function App() {
-  const [activeTerminal, setActiveTerminal] = useState<'A' | 'B'>('A');
-
-  const [terminalASource, setTerminalASource] = useState<string>('combined');
+  const [terminalSource, setTerminalSource] = useState<string>('combined');
   const [serviceStatus, setServiceStatus] = useState<{[key: string]: ServiceStatus}>({});
   const [isServicePanelOpen, setIsServicePanelOpen] = useState(false);
   const [loadingServices, setLoadingServices] = useState<{[key: string]: boolean}>({});
   const [isProjectInitialized, setIsProjectInitialized] = useState<boolean | null>(null);
   const [showInitModal, setShowInitModal] = useState(false);
   
-  const terminalARef = useRef<XTerm | null>(null);
-  const terminalBRef = useRef<XTerm | null>(null);
+  const { ref: terminalRef, instance: terminalInstance } = useXTerm();
   
   const logWs = useRef<WebSocket | null>(null);
-  const sessionWs = useRef<WebSocket | null>(null);
-  const isSessionRunning = useRef(false);
-  const inputBufferRef = useRef<string>('');
 
   const getApiBaseUrl = useCallback(() => {
     const { protocol, hostname, port } = window.location;
@@ -73,15 +58,15 @@ function App() {
     
     ws.onopen = () => {
       console.log('Log WebSocket connected');
-      if (terminalARef.current?.terminal) {
-        terminalARef.current.terminal.write('\r\n\x1b[32m✓ Connected to log stream\x1b[0m\r\n');
+      if (terminalInstance) {
+        terminalInstance.write('\r\n\x1b[32m✓ Connected to log stream\x1b[0m\r\n');
       }
     };
     
     ws.onmessage = (event) => {
       try {
         const logMessage: LogMessage = JSON.parse(event.data);
-        if (terminalARef.current?.terminal) {
+        if (terminalInstance) {
           const serviceColor = {
             karaf: '\x1b[35m',
             postgresql: '\x1b[36m',
@@ -89,7 +74,7 @@ function App() {
             combined: '\x1b[37m'
           }[logMessage.service] || '\x1b[37m';
           
-          terminalARef.current.terminal.write(
+          terminalInstance.write(
             `${serviceColor}[${logMessage.service.toUpperCase()}]\x1b[0m ${logMessage.line}\r\n`
           );
         }
@@ -101,8 +86,8 @@ function App() {
       
     ws.onclose = () => {
       console.log('Log WebSocket disconnected');
-      if (terminalARef.current?.terminal) {
-        terminalARef.current.terminal.write('\r\n\x1b[31m✗ Log stream disconnected\x1b[0m\r\n');
+      if (terminalInstance) {
+        terminalInstance.write('\r\n\x1b[31m✗ Log stream disconnected\x1b[0m\r\n');
       }
     };
     
@@ -111,82 +96,7 @@ function App() {
     };
   }, [getWsBaseUrl]);
 
-  const connectSessionWebSocket = useCallback(() => {
-    if (sessionWs.current) {
-      sessionWs.current.onclose = null;
-      sessionWs.current.close();
-    }
 
-    const ws = new WebSocket(`${getWsBaseUrl()}/ws/session`);
-    sessionWs.current = ws;
-    
-    ws.onopen = () => {
-      console.log('Session WebSocket connected');
-      isSessionRunning.current = true;
-      // Send initial terminal size
-      if (terminalBRef.current?.terminal) {
-        ws.send(JSON.stringify({ type: 'resize', cols: terminalBRef.current.terminal.cols, rows: terminalBRef.current.terminal.rows }));
-      }
-    };
-    
-    ws.onmessage = (event) => {
-      try {
-        const message: SessionMessage = JSON.parse(event.data);
-        if (terminalBRef.current?.terminal) {
-          switch (message.type) {
-            case 'handshake':
-              if (message.welcome) {
-                terminalBRef.current.terminal.write(message.welcome);
-              }
-              break;
-            case 'output':
-              terminalBRef.current.terminal.write(message.data || '');
-              break;
-            case 'status':
-              if (message.state === 'exited') {
-                terminalBRef.current.terminal.write(`\r\n\x1b[31mSession exited with code ${message.exitCode}\x1b[0m\r\n`);
-                isSessionRunning.current = false;
-              }
-              break;
-            case 'prompt':
-              terminalBRef.current.terminal.write(message.data || '');
-              break;
-          }
-        }
-      } catch (error) {
-        console.error('Error parsing session message:', error);
-      }
-    };
-    
-    ws.onclose = () => {
-      console.log('Session WebSocket disconnected');
-      if (isSessionRunning.current) {
-        isSessionRunning.current = false;
-        if (terminalBRef.current?.terminal) {
-          terminalBRef.current.terminal.write('\r\n\x1b[31m✗ Session disconnected. Reconnecting...\x1b[0m\r\n');
-        }
-        setTimeout(connectSessionWebSocket, 2000);
-      } else {
-        if (terminalBRef.current?.terminal) {
-          terminalBRef.current.terminal.write('\r\n\x1b[31m✗ Session disconnected\x1b[0m\r\n');
-        }
-      }
-    };
-    
-    ws.onerror = (error) => {
-      console.error('Session WebSocket error:', error);
-    };
-  }, [getWsBaseUrl]);
-
-  const handleTerminalBInput = (data: string) => {
-    if (sessionWs.current && sessionWs.current.readyState === WebSocket.OPEN) {
-      const message: SessionMessage = {
-        type: 'input',
-        data: data
-      };
-      sessionWs.current.send(JSON.stringify(message));
-    }
-  };
 
   const checkProjectInitialized = useCallback(async () => {
     try {
@@ -311,7 +221,7 @@ function App() {
 
   useEffect(() => {
     // Connect to log WebSocket
-    connectLogWebSocket(terminalASource);
+    connectLogWebSocket(terminalSource);
 
     // Fetch service statuses
     fetchServiceStatuses();
@@ -324,24 +234,13 @@ function App() {
         logWs.current.onclose = null;
         logWs.current.close();
       }
-      if (sessionWs.current) {
-        sessionWs.current.onclose = null;
-        sessionWs.current.close();
-      }
     };
   }, []);
 
   useEffect(() => {
-    // Connect to session WebSocket when Terminal B becomes active
-    if (activeTerminal === 'B' && !isSessionRunning.current) {
-      connectSessionWebSocket();
-    }
-  }, [activeTerminal, connectSessionWebSocket]);
-
-  useEffect(() => {
     // Reconnect log WebSocket when source changes
-    connectLogWebSocket(terminalASource);
-  }, [terminalASource, connectLogWebSocket]);
+    connectLogWebSocket(terminalSource);
+  }, [terminalSource, connectLogWebSocket]);
 
   return (
     <div className={`App ${isServicePanelOpen ? 'service-panel-open' : ''}`}>
@@ -355,36 +254,19 @@ function App() {
         
         <h1>JUDO CLI Server</h1>
         
-        <div className="terminal-switcher">
-          <button 
-            className={activeTerminal === 'A' ? 'btn btn-terminal active' : 'btn btn-terminal'}
-            onClick={() => setActiveTerminal('A')}
+        <div className="terminal-controls">
+          <span>Source: </span>
+          <select 
+            value={terminalSource} 
+            onChange={(e) => setTerminalSource(e.target.value)}
+            className="source-selector"
           >
-            Logs
-          </button>
-          <button 
-            className={activeTerminal === 'B' ? 'btn btn-terminal active' : 'btn btn-terminal'}
-            onClick={() => setActiveTerminal('B')}
-          >
-            JUDO Terminal
-          </button>
+            <option value="combined">Combined</option>
+            <option value="karaf">Karaf</option>
+            <option value="postgresql">PostgreSQL</option>
+            <option value="keycloak">Keycloak</option>
+          </select>
         </div>
-        
-        {activeTerminal === 'A' && (
-          <div className="terminal-a-controls">
-            <span>Source: </span>
-            <select 
-              value={terminalASource} 
-              onChange={(e) => setTerminalASource(e.target.value)}
-              className="source-selector"
-            >
-              <option value="combined">Combined</option>
-              <option value="karaf">Karaf</option>
-              <option value="postgresql">PostgreSQL</option>
-              <option value="keycloak">Keycloak</option>
-            </select>
-          </div>
-        )}
       </header>
 
       <div className="main-content">
@@ -440,13 +322,8 @@ function App() {
 
         <div className="terminal-container">
           <XTerm 
-            ref={terminalARef} 
-            className={`terminal terminal-a ${activeTerminal === 'A' ? 'active' : 'hidden'} ${isProjectInitialized === false ? 'disabled' : ''}`}
-          />
-          <XTerm 
-            ref={terminalBRef} 
-            className={`terminal terminal-b ${activeTerminal === 'B' ? 'active' : 'hidden'} ${isProjectInitialized === false ? 'disabled' : ''}`}
-            onData={handleTerminalBInput}
+            ref={terminalRef} 
+            className={`terminal ${isProjectInitialized === false ? 'disabled' : ''}`}
           />
         </div>
       </div>

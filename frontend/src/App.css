@@ -28,10 +28,7 @@
   font-weight: 600;
 }
 
-.terminal-switcher {
-  display: flex;
-  gap: 0.5rem;
-}
+
 
 .btn {
   padding: 0.5rem 1rem;
@@ -43,24 +40,9 @@
   font-size: 0.9rem;
 }
 
-.btn-terminal {
-  background: #2a2d3a;
-  color: #a0aec0;
-  border: 1px solid #3a3d4a;
-}
 
-.btn-terminal:hover {
-  background: #3a3d4a;
-  color: #ffffff;
-}
 
-.btn-terminal.active {
-  background: #667eea;
-  color: #ffffff;
-  border-color: #667eea;
-}
-
-.terminal-a-controls {
+.terminal-controls {
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -362,11 +344,7 @@
     align-items: stretch;
   }
   
-  .terminal-switcher {
-    justify-content: center;
-  }
-  
-  .terminal-a-controls {
+  .terminal-controls {
     justify-content: center;
   }
   
