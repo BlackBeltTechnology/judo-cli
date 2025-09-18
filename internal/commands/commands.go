@@ -1342,6 +1342,9 @@ func tailLogFile(logFile string, lines int, follow bool) error {
 	// Signal the goroutine to exit
 	done <- true
 
+	// Restore default signal handling to avoid interfering with parent process
+	signal.Reset(os.Interrupt, syscall.SIGTERM)
+
 	return nil
 }
 
