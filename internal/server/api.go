@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"judo-cli-module/internal/commands"
@@ -694,72 +695,203 @@ func (api *ServerAPI) StreamLogs(service string, ctx context.Context, outputChan
 	}
 }
 
-// streamLogFile streams logs from a file
+// streamLogFile streams logs from a file with proper tail functionality and position tracking
 func (api *ServerAPI) streamLogFile(logFile, prefix string, ctx context.Context, outputChan chan<- string) {
-	// Implementation for file-based log streaming
-	ticker := time.NewTicker(1 * time.Second)
+	// Create a file watcher for efficient log monitoring
+	ticker := time.NewTicker(100 * time.Millisecond) // Real-time polling for immediate log updates
 	defer ticker.Stop()
 
 	var lastOffset int64 = 0
+	var lastInode uint64 = 0
+	var lastModTime time.Time
+	var partialLine string
+
+	// Function to handle file rotation and get current read position
+	getReadPosition := func() (int64, error) {
+		file, err := os.Open(logFile)
+		if err != nil {
+			return lastOffset, err
+		}
+		defer file.Close()
+
+		stat, err := file.Stat()
+		if err != nil {
+			return lastOffset, err
+		}
+
+		// Check for file rotation by comparing inode and modification time
+		currentInode := getFileInode(stat)
+		currentModTime := stat.ModTime()
+
+		if lastInode != 0 && (currentInode != lastInode || currentModTime.Before(lastModTime)) {
+			// File was rotated, reset to beginning of new file
+			lastOffset = 0
+			partialLine = "" // Clear partial line on rotation
+		}
+
+		lastInode = currentInode
+		lastModTime = currentModTime
+
+		// If file was truncated, reset offset
+		if stat.Size() < lastOffset {
+			lastOffset = 0
+			partialLine = "" // Clear partial line on truncation
+		}
+
+		return lastOffset, nil
+	}
+
+	// Function to read new log content
+	readNewContent := func() error {
+		readPos, err := getReadPosition()
+		if err != nil {
+			return err
+		}
+
+		file, err := os.Open(logFile)
+		if err != nil {
+			return err
+		}
+		defer file.Close()
+
+		stat, err := file.Stat()
+		if err != nil {
+			return err
+		}
+
+		if stat.Size() > readPos {
+			// Seek to the last read position and read new content
+			_, err = file.Seek(readPos, 0)
+			if err != nil {
+				return err
+			}
+
+			// Use a reasonable buffer size for efficient reading
+			buffer := make([]byte, 16384) // 16KB buffer for better performance with large logs
+			totalRead := 0
+
+			for {
+				n, err := file.Read(buffer)
+				if err != nil && err != io.EOF {
+					return err
+				}
+
+				if n == 0 {
+					break
+				}
+
+				totalRead += n
+
+				// Process the new content with proper line handling
+				content := string(buffer[:n])
+
+				// Handle partial lines from previous read
+				if partialLine != "" {
+					content = partialLine + content
+					partialLine = ""
+				}
+
+				// Split into lines, handling partial last line
+				lines := strings.Split(content, "\n")
+
+				// If content doesn't end with newline, the last line is partial
+				if !strings.HasSuffix(content, "\n") && len(lines) > 0 {
+					partialLine = lines[len(lines)-1]
+					lines = lines[:len(lines)-1]
+				}
+
+				// Send complete lines immediately for real-time streaming
+				for _, line := range lines {
+					if line != "" {
+						outputChan <- prefix + " " + line
+					}
+				}
+
+				// Update offset after each read
+				lastOffset = readPos + int64(totalRead)
+
+				// Break if we've read all available content
+				if n < len(buffer) {
+					break
+				}
+			}
+		}
+
+		return nil
+	}
+
+	// Initial read to get current position
+	getReadPosition()
 
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			file, err := os.Open(logFile)
-			if err != nil {
-				continue
+			if err := readNewContent(); err != nil {
+				// Log the error but continue trying with backoff
+				outputChan <- prefix + " ERROR: " + err.Error()
+				// Brief pause on error to avoid spamming
+				time.Sleep(500 * time.Millisecond)
 			}
-
-			stat, err := file.Stat()
-			if err != nil {
-				file.Close()
-				continue
-			}
-
-			// Handle file rotation - if file got smaller, reset offset
-			if stat.Size() < lastOffset {
-				lastOffset = 0
-			}
-
-			if stat.Size() > lastOffset {
-				file.Seek(lastOffset, 0)
-				buffer := make([]byte, stat.Size()-lastOffset)
-				_, err := file.Read(buffer)
-				if err == nil {
-					lines := strings.Split(string(buffer), "\n")
-					for _, line := range lines {
-						if line != "" {
-							outputChan <- prefix + " " + line
-						}
-					}
-				}
-				lastOffset = stat.Size()
-			}
-			file.Close()
 		}
 	}
 }
 
-// streamDockerLogs streams logs from a docker container
-func (api *ServerAPI) streamDockerLogs(containerName, prefix string, ctx context.Context, outputChan chan<- string) {
-	// Implementation for docker log streaming would go here
-	// This would use the docker client to stream logs directly
-	ticker := time.NewTicker(2 * time.Second)
-	defer ticker.Stop()
+// getFileInode extracts a unique file identifier (cross-platform)
+// Uses a combination of modification time, size, and system-specific inode if available
+func getFileInode(stat os.FileInfo) uint64 {
+	// Try to get the actual inode number if supported by the platform
+	// Fall back to modification time + size for cross-platform compatibility
 
+	// On Unix systems, we can try to get the actual inode
+	if sysStat, ok := stat.Sys().(*syscall.Stat_t); ok {
+		return uint64(sysStat.Ino)
+	}
+
+	// Fallback: use modification time and size as composite identifier
+	// This helps detect file rotation by comparing with previous file identity
+	return uint64(stat.ModTime().UnixNano()) + uint64(stat.Size())
+}
+
+// streamDockerLogs streams logs from a docker container using Docker API
+func (api *ServerAPI) streamDockerLogs(containerName, prefix string, ctx context.Context, outputChan chan<- string) {
+	// Check if container exists and is running first
+	if exists, _ := docker.ContainerExists(containerName); !exists {
+		outputChan <- prefix + " Container " + containerName + " does not exist"
+		return
+	}
+
+	if !docker.DockerInstanceRunning(containerName) {
+		outputChan <- prefix + " Container " + containerName + " is not running"
+		return
+	}
+
+	// Use the real Docker log streaming
+	logChan := make(chan string, 100)
+	errChan := make(chan error, 1)
+
+	// Start docker log streaming in a goroutine
+	go func() {
+		defer close(logChan)
+		defer close(errChan)
+
+		// Use the actual Docker log streaming implementation
+		if err := docker.StreamContainerLogs(containerName, ctx, logChan); err != nil {
+			errChan <- err
+		}
+	}()
+
+	// Forward logs to output channel
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case <-ticker.C:
-			if docker.DockerInstanceRunning(containerName) {
-				// Simulate docker logs output
-				outputChan <- prefix + " Container " + containerName + " is running"
-			} else {
-				outputChan <- prefix + " Container " + containerName + " is not running"
-			}
+		case err := <-errChan:
+			outputChan <- prefix + " ERROR: " + err.Error()
+			return
+		case logLine := <-logChan:
+			outputChan <- prefix + " " + logLine
 		}
 	}
 }

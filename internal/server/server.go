@@ -406,18 +406,172 @@ func (s *Server) handleLogs(w http.ResponseWriter, r *http.Request) {
 
 	service := r.URL.Path[len("/api/logs/"):]
 
-	// For now, return sample log data since actual logs may not exist
-	// In a real implementation, this would read from actual log files
-	logContent := ""
+	config.LoadProperties()
+	cfg := config.GetConfig()
+
+	var logContent string
+	var err error
+
 	switch service {
 	case "karaf":
-		logContent = "[INFO] Karaf starting up...\n[INFO] Loading bundles...\n[INFO] JUDO platform initializing"
+		if cfg.Runtime == "karaf" {
+			karafLogFile := filepath.Join(cfg.KarafDir, "console.out")
+			if _, statErr := os.Stat(karafLogFile); statErr == nil {
+				content, readErr := os.ReadFile(karafLogFile)
+				if readErr == nil {
+					logContent = string(content)
+				} else {
+					logContent = fmt.Sprintf("Error reading Karaf logs: %v", readErr)
+				}
+			} else {
+				logContent = "Karaf log file not found"
+			}
+		} else {
+			logContent = "Karaf runtime not configured"
+		}
 	case "postgresql":
-		logContent = "[INFO] PostgreSQL starting...\n[INFO] Database initialized\n[INFO] Listening on port 5432"
+		if cfg.DBType == "postgresql" {
+			pgName := "postgres-" + cfg.SchemaName
+			if exists, _ := docker.ContainerExists(pgName); exists {
+				// Get recent logs from Docker container
+				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				defer cancel()
+
+				logChan := make(chan string, 100)
+				go s.api.streamDockerLogs(pgName, "", ctx, logChan)
+
+				// Collect logs for a brief period
+				var logs []string
+				timer := time.NewTimer(2 * time.Second)
+				defer timer.Stop()
+
+				for {
+					select {
+					case logLine := <-logChan:
+						logs = append(logs, logLine)
+					case <-timer.C:
+						logContent = strings.Join(logs, "\n")
+						if logContent == "" {
+							logContent = "No recent PostgreSQL logs available"
+						}
+						goto donePostgres
+					}
+				}
+			donePostgres:
+			} else {
+				logContent = "PostgreSQL container does not exist"
+			}
+		} else {
+			logContent = "PostgreSQL not configured"
+		}
 	case "keycloak":
-		logContent = "[INFO] Keycloak server starting...\n[INFO] Admin console listening\n[INFO] Realm configured"
+		kcName := "keycloak-" + cfg.KeycloakName
+		if exists, _ := docker.ContainerExists(kcName); exists {
+			// Get recent logs from Docker container
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+
+			logChan := make(chan string, 100)
+			go s.api.streamDockerLogs(kcName, "", ctx, logChan)
+
+			// Collect logs for a brief period
+			var logs []string
+			timer := time.NewTimer(2 * time.Second)
+			defer timer.Stop()
+
+			for {
+				select {
+				case logLine := <-logChan:
+					logs = append(logs, logLine)
+				case <-timer.C:
+					logContent = strings.Join(logs, "\n")
+					if logContent == "" {
+						logContent = "No recent Keycloak logs available"
+					}
+					goto doneKeycloak
+				}
+			}
+		doneKeycloak:
+		} else {
+			logContent = "Keycloak container does not exist"
+		}
 	default:
-		logContent = "[INFO] Combined logs from all services\n[INFO] Karaf: Starting...\n[INFO] PostgreSQL: Ready\n[INFO] Keycloak: Initialized"
+		// Combined logs - show recent logs from all available services
+		var allLogs []string
+
+		// Karaf logs
+		if cfg.Runtime == "karaf" {
+			karafLogFile := filepath.Join(cfg.KarafDir, "console.out")
+			if _, statErr := os.Stat(karafLogFile); statErr == nil {
+				content, readErr := os.ReadFile(karafLogFile)
+				if readErr == nil {
+					karafLines := strings.Split(string(content), "\n")
+					// Get last 20 lines
+					start := len(karafLines) - 20
+					if start < 0 {
+						start = 0
+					}
+					for i := start; i < len(karafLines); i++ {
+						if karafLines[i] != "" {
+							allLogs = append(allLogs, "[KARAF] "+karafLines[i])
+						}
+					}
+				}
+			}
+		}
+
+		// PostgreSQL logs
+		if cfg.DBType == "postgresql" {
+			pgName := "postgres-" + cfg.SchemaName
+			if exists, _ := docker.ContainerExists(pgName); exists {
+				ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+				defer cancel()
+
+				logChan := make(chan string, 100)
+				go s.api.streamDockerLogs(pgName, "[POSTGRESQL]", ctx, logChan)
+
+				timer := time.NewTimer(1 * time.Second)
+				defer timer.Stop()
+
+				for {
+					select {
+					case logLine := <-logChan:
+						allLogs = append(allLogs, logLine)
+					case <-timer.C:
+						goto doneCombinedPostgres
+					}
+				}
+			doneCombinedPostgres:
+			}
+		}
+
+		// Keycloak logs
+		kcName := "keycloak-" + cfg.KeycloakName
+		if exists, _ := docker.ContainerExists(kcName); exists {
+			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+			defer cancel()
+
+			logChan := make(chan string, 100)
+			go s.api.streamDockerLogs(kcName, "[KEYCLOAK]", ctx, logChan)
+
+			timer := time.NewTimer(1 * time.Second)
+			defer timer.Stop()
+
+			for {
+				select {
+				case logLine := <-logChan:
+					allLogs = append(allLogs, logLine)
+				case <-timer.C:
+					goto doneCombinedKeycloak
+				}
+			}
+		doneCombinedKeycloak:
+		}
+
+		logContent = strings.Join(allLogs, "\n")
+		if logContent == "" {
+			logContent = "No recent logs available from any service"
+		}
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -456,63 +610,47 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) streamRealLogs(conn *websocket.Conn) {
-	// Get service status and send initial log content
+	// Use API to stream real logs instead of simulated ones
 	config.LoadProperties()
 	cfg := config.GetConfig()
 
-	// Send Karaf logs if available
+	// Create a channel for log output
+	logChan := make(chan string, 100)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Stream logs from various services based on configuration
 	if cfg.Runtime == "karaf" {
 		karafLogFile := filepath.Join(cfg.KarafDir, "console.out")
 		if _, err := os.Stat(karafLogFile); err == nil {
-			content, err := os.ReadFile(karafLogFile)
-			if err == nil {
-				logs := strings.Split(string(content), "\n")
-				// Send last 20 lines
-				start := len(logs) - 20
-				if start < 0 {
-					start = 0
-				}
-				for i := start; i < len(logs); i++ {
-					if logs[i] != "" {
-						conn.WriteMessage(websocket.TextMessage, []byte("[KARAF] "+logs[i]))
-						time.Sleep(50 * time.Millisecond) // Prevent flooding
-					}
-				}
-			}
+			go s.api.streamLogFile(karafLogFile, "[KARAF]", ctx, logChan)
 		}
 	}
 
-	// Send periodic status updates instead of simulated logs
-	ticker := time.NewTicker(5 * time.Second)
-	defer ticker.Stop()
+	// Stream Docker container logs
+	if cfg.DBType == "postgresql" {
+		pgName := "postgres-" + cfg.SchemaName
+		go s.api.streamDockerLogs(pgName, "[POSTGRESQL]", ctx, logChan)
+	}
 
+	kcName := "keycloak-" + cfg.KeycloakName
+	go s.api.streamDockerLogs(kcName, "[KEYCLOAK]", ctx, logChan)
+
+	// Send connection established message
+	conn.WriteMessage(websocket.TextMessage, []byte("[SERVER] Real log streaming connected"))
+
+	// Stream logs to WebSocket
 	for {
 		select {
-		case <-ticker.C:
-			// Send service status updates
-			status := s.getServiceStatusSummary()
-			conn.WriteMessage(websocket.TextMessage, []byte("[STATUS] "+status))
-
-			// Check for new log entries (simplified - in production would tail files)
-			config.LoadProperties()
-			cfg := config.GetConfig()
-
-			if cfg.Runtime == "karaf" {
-				karafLogFile := filepath.Join(cfg.KarafDir, "console.out")
-				if _, err := os.Stat(karafLogFile); err == nil {
-					// Simple check for new content - in production would use proper file watching
-					content, err := os.ReadFile(karafLogFile)
-					if err == nil {
-						logs := strings.Split(string(content), "\n")
-						if len(logs) > 0 && logs[len(logs)-1] != "" {
-							conn.WriteMessage(websocket.TextMessage, []byte("[KARAF] "+logs[len(logs)-1]))
-						}
-					}
-				}
+		case <-ctx.Done():
+			return
+		case logLine := <-logChan:
+			if err := conn.WriteMessage(websocket.TextMessage, []byte(logLine)); err != nil {
+				return
 			}
-
-		default:
-			time.Sleep(100 * time.Millisecond)
+		case <-time.After(30 * time.Second):
+			// Send heartbeat to keep connection alive
+			conn.WriteMessage(websocket.TextMessage, []byte("[SERVER] Log stream active"))
 		}
 	}
 }
@@ -1402,6 +1540,15 @@ func (s *Server) streamCombinedLogs(conn *websocket.Conn) {
 		}
 	}
 
+	// Stream Docker container logs
+	if cfg.DBType == "postgresql" {
+		pgName := "postgres-" + cfg.SchemaName
+		go s.api.streamDockerLogs(pgName, "[POSTGRESQL]", ctx, logChan)
+	}
+
+	kcName := "keycloak-" + cfg.KeycloakName
+	go s.api.streamDockerLogs(kcName, "[KEYCLOAK]", ctx, logChan)
+
 	// Send connection established message as JSON
 	init := map[string]interface{}{
 		"ts":      time.Now().Format(time.RFC3339),
@@ -1459,25 +1606,19 @@ func (s *Server) streamServiceLogs(conn *websocket.Conn, service string) {
 			}
 		}
 	case "postgresql":
-		// PostgreSQL logs would be streamed from docker logs
-		// For now, simulate with status messages
-		go func() {
-			ticker := time.NewTicker(2 * time.Second)
-			defer ticker.Stop()
-			for range ticker.C {
-				logChan <- "PostgreSQL log streaming would be implemented here"
-			}
-		}()
+		// PostgreSQL logs streamed from docker logs
+		config.LoadProperties()
+		cfg := config.GetConfig()
+		if cfg.DBType == "postgresql" {
+			pgName := "postgres-" + cfg.SchemaName
+			go s.api.streamDockerLogs(pgName, "[POSTGRESQL]", ctx, logChan)
+		}
 	case "keycloak":
-		// Keycloak logs would be streamed from docker logs
-		// For now, simulate with status messages
-		go func() {
-			ticker := time.NewTicker(2 * time.Second)
-			defer ticker.Stop()
-			for range ticker.C {
-				logChan <- "Keycloak log streaming would be implemented here"
-			}
-		}()
+		// Keycloak logs streamed from docker logs
+		config.LoadProperties()
+		cfg := config.GetConfig()
+		kcName := "keycloak-" + cfg.KeycloakName
+		go s.api.streamDockerLogs(kcName, "[KEYCLOAK]", ctx, logChan)
 	}
 
 	// Send connection established message as JSON

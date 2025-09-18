@@ -1,6 +1,7 @@
 package docker
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -444,4 +445,85 @@ func IsPortUsedByPostgres(port int) bool {
 	}
 
 	return false
+}
+
+// StreamContainerLogs streams logs from a Docker container in real-time
+func StreamContainerLogs(containerName string, ctx context.Context, logChan chan<- string) error {
+	if cli == nil {
+		return errors.New("Docker client not initialized")
+	}
+
+	// Check if container exists
+	exists, err := ContainerExists(containerName)
+	if err != nil {
+		return fmt.Errorf("failed to check container existence: %v", err)
+	}
+	if !exists {
+		return fmt.Errorf("container %s does not exist", containerName)
+	}
+
+	// Stream logs with follow option
+	options := container.LogsOptions{
+		ShowStdout: true,
+		ShowStderr: true,
+		Follow:     true,
+		Tail:       "100",                                                 // Last 100 lines initially
+		Since:      time.Now().Add(-5 * time.Minute).Format(time.RFC3339), // Last 5 minutes
+	}
+
+	reader, err := cli.ContainerLogs(ctx, containerName, options)
+	if err != nil {
+		return fmt.Errorf("failed to get container logs: %v", err)
+	}
+	defer reader.Close()
+
+	// Stream logs line by line
+	buffer := make([]byte, 4096)
+	var partialLine []byte
+
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		default:
+			n, err := reader.Read(buffer)
+			if err != nil {
+				if err == io.EOF {
+					// Container might have stopped, wait a bit and try to reconnect
+					time.Sleep(1 * time.Second)
+					continue
+				}
+				return fmt.Errorf("error reading logs: %v", err)
+			}
+
+			if n > 0 {
+				data := buffer[:n]
+				lines := bytes.Split(data, []byte("\n"))
+
+				// Handle partial lines
+				if len(partialLine) > 0 {
+					lines[0] = append(partialLine, lines[0]...)
+					partialLine = nil
+				}
+
+				// If last line doesn't end with newline, it's partial
+				if len(lines) > 0 && !bytes.HasSuffix(data, []byte("\n")) {
+					partialLine = lines[len(lines)-1]
+					lines = lines[:len(lines)-1]
+				}
+
+				// Send complete lines to channel
+				for _, line := range lines {
+					if len(line) > 0 {
+						// Docker logs include 8-byte header, skip it for clean output
+						if len(line) > 8 {
+							logChan <- string(line[8:])
+						} else {
+							logChan <- string(line)
+						}
+					}
+				}
+			}
+		}
+	}
 }
