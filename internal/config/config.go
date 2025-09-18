@@ -42,6 +42,7 @@ func GetConfig() *Config {
 			KarafPort:    8181,
 			PostgresPort: 5432,
 			KeycloakPort: 8080,
+			Profile:      Profile,
 		}
 		instance.SchemaName = instance.AppName
 		instance.KeycloakName = instance.AppName
@@ -134,6 +135,23 @@ func (c *Config) loadProperties() {
 			c.ModelDir = v
 		} else {
 			c.ModelDir = filepath.Clean(filepath.Join(c.ModelDir, v))
+		}
+	}
+	if v := props["app_dir"]; v != "" {
+		if filepath.IsAbs(v) {
+			c.AppDir = v
+		} else {
+			// Use the original model directory as base, not the potentially modified one
+			originalModelDir := c.ModelDir
+			if v := props["model_dir"]; v != "" {
+				// If model_dir was set, we need to calculate the original base directory
+				if filepath.IsAbs(v) {
+					originalModelDir = filepath.Dir(c.ModelDir)
+				} else {
+					originalModelDir = filepath.Clean(filepath.Join(c.ModelDir, ".."))
+				}
+			}
+			c.AppDir = filepath.Clean(filepath.Join(originalModelDir, v))
 		}
 	}
 	if v := props["app_name"]; v != "" {

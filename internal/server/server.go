@@ -410,7 +410,6 @@ func (s *Server) handleLogs(w http.ResponseWriter, r *http.Request) {
 	cfg := config.GetConfig()
 
 	var logContent string
-	var err error
 
 	switch service {
 	case "karaf":
