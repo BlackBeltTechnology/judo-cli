@@ -14,10 +14,11 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"log"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -448,7 +449,8 @@ func CreateStopCommand() *cobra.Command {
 func runBuild(cmd *cobra.Command, args []string) {
 	// Check if JUDO project is initialized
 	if err := requireJudoProject(); err != nil {
-		log.Fatal(err)
+		fmt.Printf("\x1b[31m%s\x1b[0m\n", err)
+		return
 	}
 
 	// reflect skip-* flags into options
@@ -588,13 +590,15 @@ func CreateStartCommand() *cobra.Command {
 func runStart(cmd *cobra.Command, _ []string) {
 	// Check if JUDO project is initialized
 	if err := requireJudoProject(); err != nil {
-		log.Fatal(err)
+		fmt.Printf("\x1b[31m%s\x1b[0m\n", err)
+		return
 	}
 
 	cfg := config.GetConfig()
 	// Pre-flight checks
 	if !docker.IsDockerRunning() {
-		log.Fatal("Docker daemon is not running. Please start Docker and try again.")
+		fmt.Printf("\x1b[31mDocker daemon is not running. Please start Docker and try again.\x1b[0m\n")
+		return
 	}
 
 	// Set default values
@@ -623,7 +627,8 @@ func runStart(cmd *cobra.Command, _ []string) {
 				fmt.Printf("\x1b[33m⚠️  Keycloak port %d is already in use by your running JUDO Keycloak instance. Skipping Keycloak start.\x1b[0m\n", cfg.KeycloakPort)
 				config.Options.StartKeycloak = false // Skip Keycloak start
 			} else {
-				log.Fatalf("Keycloak port %d is already in use by another process.", cfg.KeycloakPort)
+				fmt.Printf("\x1b[31mKeycloak port %d is already in use by another process.\x1b[0m\n", cfg.KeycloakPort)
+				return
 			}
 		}
 	}
@@ -634,7 +639,8 @@ func runStart(cmd *cobra.Command, _ []string) {
 				fmt.Printf("\x1b[33m⚠️  PostgreSQL port %d is already in use by your running JUDO PostgreSQL instance. Skipping PostgreSQL start.\x1b[0m\n", cfg.PostgresPort)
 				// We'll skip PostgreSQL start by not calling docker.StartPostgres() later
 			} else {
-				log.Fatalf("PostgreSQL port %d is already in use by another process.", cfg.PostgresPort)
+				fmt.Printf("\x1b[31mPostgreSQL port %d is already in use by another process.\x1b[0m\n", cfg.PostgresPort)
+				return
 			}
 		}
 	}
@@ -656,7 +662,8 @@ func runStart(cmd *cobra.Command, _ []string) {
 				config.Options.StartKaraf = false
 				config.Options.WatchBundles = false // Also disable bundle watching
 			} else {
-				log.Fatalf("Karaf port %d is already in use by another process.", cfg.KarafPort)
+				fmt.Printf("\x1b[31mKaraf port %d is already in use by another process.\x1b[0m\n", cfg.KarafPort)
+				return
 			}
 		}
 		ver := utils.GetProjectVersion()
@@ -664,7 +671,8 @@ func runStart(cmd *cobra.Command, _ []string) {
 			fmt.Sprintf("%s-application-karaf-offline-%s.tar.gz", cfg.AppName, ver),
 		)
 		if _, err := os.Stat(tarPath); os.IsNotExist(err) {
-			log.Fatalf("Karaf archive not found at %s. Please run a build first.", tarPath)
+			fmt.Printf("\x1b[31mKaraf archive not found at %s. Please run a build first.\x1b[0m\n", tarPath)
+			return
 		}
 	}
 
@@ -707,7 +715,7 @@ func pruneApplication(cfg *config.Config, st *config.State) {
 	}
 	if strings.ToUpper(canContinue) != "Y" {
 		println("Aborting prune.")
-		os.Exit(13)
+		return
 	}
 
 	if st.PruneFrontend {
@@ -1285,30 +1293,56 @@ func tailLogFile(logFile string, lines int, follow bool) error {
 	offset := stat.Size()
 	reader := bufio.NewReader(file)
 
-	for {
-		// Check for new content
-		newStat, err := file.Stat()
-		if err != nil {
-			return fmt.Errorf("failed to get updated file stats: %w", err)
-		}
+	// Set up signal handling for graceful exit
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
-		if newStat.Size() > offset {
-			// Read new content
-			file.Seek(offset, 0)
-			newContent, err := reader.ReadBytes('\n')
-			if err != nil && err != io.EOF {
-				return fmt.Errorf("failed to read new log content: %w", err)
+	// Create a done channel to control the loop
+	done := make(chan bool, 1)
+
+	// Goroutine to handle file watching
+	go func() {
+		for {
+			select {
+			case <-done:
+				return
+			default:
+				// Check for new content
+				newStat, err := file.Stat()
+				if err != nil {
+					fmt.Printf("\x1b[31mFailed to get file stats: %v\x1b[0m\n", err)
+					return
+				}
+
+				if newStat.Size() > offset {
+					// Read new content
+					file.Seek(offset, 0)
+					newContent, err := reader.ReadBytes('\n')
+					if err != nil && err != io.EOF {
+						fmt.Printf("\x1b[31mFailed to read new log content: %v\x1b[0m\n", err)
+						return
+					}
+
+					if len(newContent) > 0 {
+						fmt.Print(string(newContent))
+					}
+
+					offset = newStat.Size()
+				}
+
+				time.Sleep(1 * time.Second)
 			}
-
-			if len(newContent) > 0 {
-				fmt.Print(string(newContent))
-			}
-
-			offset = newStat.Size()
 		}
+	}()
 
-		time.Sleep(1 * time.Second)
-	}
+	// Wait for interrupt signal
+	<-sigChan
+	fmt.Printf("\n\x1b[33mStopping log follow...\x1b[0m\n")
+
+	// Signal the goroutine to exit
+	done <- true
+
+	return nil
 }
 
 // CreateSelfUpdateCommand creates the self-update command
