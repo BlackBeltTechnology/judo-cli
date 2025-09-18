@@ -17,60 +17,82 @@
 ## User Scenarios & Testing *(mandatory)*
 
 ### Primary User Story
-As a JUDO CLI user, I want to run the CLI as a server and interact with it through a web browser. This provides a user-friendly interface for viewing real-time service logs and using an interactive "judo session" terminal to run commands, while managing the status of embedded Karaf, PostgreSQL, and Keycloak services.
+As a JUDO CLI user, I want to run the CLI as a server and interact with it through a web browser. This provides a terminal-based interface focused on real-time service logs with a floating Services panel for managing embedded Karaf, PostgreSQL, and Keycloak services.
 
 ### Acceptance Scenarios
 1. **Given** the JUDO CLI is not running, **When** I run `judo server`, **Then** the CLI should start a web server on port 6969 and open a new browser tab to the web UI.
 1.1 **Given** I want to use a specific port, **When** I run `judo server -p 8080`, **Then** the CLI should start the web server on port 8080.
-2. **Given** the web UI is open, **When** I look at the interface, **Then** I should see two Xterm terminals with an A/B toggle and a left-side Service panel toggle.
-3. **Given** the Service panel is collapsed by default, **When** I click the left-edge button, **Then** the panel slides in and the active terminal resizes; collapsing the panel returns the terminal to full-screen.
-4. **Given** I switch between Terminal A and Terminal B, **Then** each terminal preserves its scrollback and scroll position across switches.
-5. **Given** Terminal A is active, **When** I choose a source (Combined, Karaf, PostgreSQL, Keycloak), **Then** the terminal displays only that selection; Combined shows labeled, color-distinguished live logs for all three.
-6. **Given** Terminal B is active, **When** I type a command at the prompt (e.g., `help`, `status`, `build`), **Then** the command executes using direct function calls (not by executing judo commands) and the output appears in the terminal in real time.
-7. **Given** I start or stop services using the Service panel, **Then** the corresponding startup/shutdown logs stream in real-time in Terminal A when its source includes that service.
-8. **Given** a temporary network interruption occurs, **Then** the UI indicates reconnecting and resumes streaming without requiring a page refresh; Terminal B reattaches to the running session if available, otherwise starts a new session.
-9. **Given** the compiled frontend is ready, **When** a new release of the CLI is built, **Then** the frontend assets MUST be embedded into the final binary.
+2. **Given** the web UI is open, **When** I look at the interface, **Then** I should see a full-screen Xterm terminal for real-time logs and a floating right-side Service panel that can be opened/collapsed.
+3. **Given** the Service panel is collapsed by default, **When** I click the right-edge button, **Then** the panel slides in from the right and the terminal resizes; collapsing the panel returns the terminal to full-screen.
+4. **Given** the log terminal is active, **When** I choose a source (Combined, Karaf, PostgreSQL, Keycloak), **Then** the terminal displays only that selection; Combined shows labeled, color-distinguished live logs for all three.
+5. **Given** the log terminal is in tail mode, **When** new log entries are written to the log files, **Then** the terminal automatically displays the new entries as they arrive, similar to the `tail -f` command.
+6. **Given** I start or stop services using the Service panel, **Then** the corresponding startup/shutdown logs stream in real-time in the log terminal when its source includes that service.
+7. **Given** a temporary network interruption occurs, **Then** the UI indicates reconnecting and resumes streaming without requiring a page refresh; the log terminal reconnects and continues from the last received position.
+8. **Given** the compiled frontend is ready, **When** a new release of the CLI is built, **Then** the frontend assets MUST be embedded into the final binary.
 
 ### Edge Cases
 - What happens if the default server port is already in use? The server should attempt to use the next available port.
 - How does the UI handle high-volume log streaming? The UI should remain responsive, and rendering should be batched/throttled as needed.
-- What happens if the Terminal B session process exits (e.g., user types `exit`)? The UI should show that the session ended and offer a button to start a new session.
-- What happens if the browser tab is closed? The underlying CLI server should continue to run until explicitly stopped; Terminal B session is terminated when its WS disconnects unless configured to persist.
+- What happens if the browser tab is closed? The underlying CLI server should continue to run until explicitly stopped; log streaming is terminated when the WebSocket disconnects.
 
 ### Assumptions & Defaults
-- Default terminal on load: Terminal A (Combined source).
-- Terminal A sources: Combined, Karaf, PostgreSQL, Keycloak; Combined is default.
-- Terminal B: Interactive `judo session` terminal; starts on first activation and stops when the session ends or the browser disconnects.
-- Service panel state on load: collapsed by default; toggled via a left-edge button.
+- Default log source: Combined (showing all services).
+- Log sources: Combined, Karaf, PostgreSQL, Keycloak; Combined is default.
+- Log streaming mode: Tail mode by default (similar to `tail -f`), waiting for new log entries.
+- Service panel state on load: collapsed by default; toggled via a right-edge button.
 - Log line format: one timestamp (UTC) + service label + message; avoid duplicate timestamps if present in source logs.
 - Visual distinction: accessible color assignments per service (Karaf, PostgreSQL, Keycloak).
-- State persistence: active terminal, Terminal A source, and Service panel state persist across page reloads. Terminal B session is not persisted across reloads.
+- State persistence: log source selection and Service panel state persist across page reloads.
 - Karaf log source: Karaf’s standard log output is available for real-time streaming.
 - Container services: PostgreSQL and Keycloak log outputs are available for real-time streaming from their runtime environment.
-- Security: Terminal B limits execution to `judo session` commands; no arbitrary OS shell is exposed.
+- Reconnection: WebSocket connections automatically reconnect with exponential backoff on network failures.
+- Log position tracking: The system tracks the last received log position to resume streaming from the correct point after reconnection.
+
+## Reconnection Architecture
+
+### WebSocket Reconnection Strategy
+- **Exponential Backoff**: Reconnection attempts use exponential backoff (1s, 2s, 4s, 8s, ... up to 30s max)
+- **Connection State**: UI displays clear connection status (connected, disconnected, reconnecting)
+- **Automatic Recovery**: Connections automatically resume without user intervention
+- **State Preservation**: Log position and scroll state preserved across reconnections
+
+### Log Position Tracking
+- **Karaf Logs**: Track file position/offset to resume from last read position
+- **Docker Logs**: Use Docker log API timestamps or follow functionality
+- **Client-Side**: Client maintains last received timestamp/position for each log source
+- **Server-Side**: Server maintains connection state and can resume streaming from correct position
+
+### Error Handling
+- **Network Errors**: Graceful handling of timeouts, connection refused, and other network issues
+- **Service Errors**: Proper error messages when log sources become unavailable
+- **Recovery**: Automatic reinitialization of log streaming after service restarts
 
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
 - **FR-001**: The CLI MUST include a new `server` command that starts a local web server.
 - **FR-002**: The `server` command MUST serve a single-page web application to the browser.
-- **FR-003**: The web UI MUST provide two `react-xtermjs` terminals with an A/B switch.
-- **FR-004**: Terminal A MUST support a source selector with options: Combined, Karaf, PostgreSQL, Keycloak; Combined MUST display clearly labeled, color-distinguished live logs from all three.
-- **FR-005**: Terminal B MUST provide an interactive session terminal with prompt, command history, copy/paste, Ctrl+C (interrupt), and auto-resize, using direct function calls rather than executing judo commands.
-- **FR-006**: The web UI MUST include a left-side collapsible Service panel with controls to `start`, `stop`, and view `status` for each embedded service.
+- **FR-003**: The web UI MUST provide a full-screen `react-xtermjs` terminal for real-time log viewing.
+- **FR-004**: The log terminal MUST support a source selector with options: Combined, Karaf, PostgreSQL, Keycloak; Combined MUST display clearly labeled, color-distinguished live logs from all three.
+- **FR-005**: The log terminal MUST operate in tail mode by default, continuously waiting for and displaying new log entries as they are written to log files.
+- **FR-006**: The web UI MUST include a right-side floating Service panel that can be opened/collapsed, with controls to `start`, `stop`, and view `status` for each embedded service.
 - **FR-007**: The UI MUST preserve each terminal’s scrollback and scroll position across switches, and fit the active terminal to the available space.
 - **FR-008**: The compiled frontend assets MUST be embedded into the Go binary for distribution.
 - **FR-009**: The server MUST provide individual service control (start/stop/status) and display per-service status/health indicators.
 - **FR-010**: Log streaming MUST be real-time, resilient to temporary disconnects, and support Combined and per-service views with clear visual indicators, using direct log access rather than executing judo commands.
-- **FR-011**: Terminal B MUST reconnect gracefully after transient network failures, reattaching to the existing session when possible or starting a new session if the previous one has ended, using direct session management rather than command execution.
+- **FR-011**: Log streaming MUST operate in tail mode by default, continuously monitoring log files for new entries and transmitting them to the client as they are written.
+- **FR-012**: The system MUST implement robust reconnection logic with exponential backoff for WebSocket connections, automatically resuming log streaming from the last received position after network interruptions.
+- **FR-013**: Karaf log streaming MUST use tail-like functionality to monitor the Karaf log file and stream new entries as they are appended.
+- **FR-014**: PostgreSQL and Keycloak log streaming MUST use Docker log tail functionality to monitor container logs and stream new entries as they are generated.
+- **FR-015**: The server command MUST support a `-p` or `--port` flag to specify the server port, with a default of 6969.
 - **FR-012**: The server command MUST support a `-p` or `--port` flag to specify the server port, with a default of 6969.
-- **FR-013**: All frontend functionality, including log viewing, terminal switching, interactive session behavior, and status updates, MUST be covered by UI tests.
-- **FR-025**: UI tests MUST verify terminal switching behavior preserves scrollback and state across switches.
+- **FR-016**: All frontend functionality, including log viewing, Service panel interactions, and status updates, MUST be covered by UI tests.
+- **FR-017**: UI tests MUST verify log terminal behavior preserves scrollback and maintains proper display during Service panel toggling.
 - **FR-026**: UI tests MUST validate log streaming functionality with different sources (Combined, Karaf, PostgreSQL, Keycloak).
 - **FR-027**: UI tests MUST cover service panel interactions including start/stop operations and status updates.
-- **FR-028**: UI tests MUST verify WebSocket connection and reconnection behavior for both log and session streams.
-- **FR-029**: UI tests MUST validate project initialization flow including modal handling and terminal enablement.
-- **FR-030**: UI tests MUST ensure JUDO Terminal provides parity with native 'judo session' behavior.
+- **FR-018**: UI tests MUST verify WebSocket connection and reconnection behavior for log streams.
+- **FR-019**: UI tests MUST validate project initialization flow including modal handling and log terminal enablement.
+- **FR-020**: UI tests MUST validate tail mode functionality and real-time log streaming behavior.
 - **FR-031**: UI tests MUST cover error handling and user feedback for service operations and connection issues.
 - **FR-032**: UI tests MUST validate visual indicators and color coding for different log sources.
 - **FR-033**: UI tests MUST verify service status indicators update correctly based on actual service state.
@@ -122,19 +144,18 @@ As a JUDO CLI user, I want to run the CLI as a server and interact with it throu
 ## Spec Extension (2025-09-15)
 
 Summary
-- Services toggle: move to left edge; header button removed
-- Terminal names: Terminal A → Logs; Terminal B → JUDO Terminal
+- Services toggle: move to right edge; header button removed
+- Terminal focus: Single full-screen log terminal for real-time log viewing
 - Project initialization: gate UI until initialized; modal prompt; 'No' shows clear notice that initialization is required to connect
-- JUDO Terminal behavior: identical to OS 'judo session'; browser provides TTY only
+- Log streaming: Tail mode functionality for real-time log monitoring
 
 Additional Acceptance Scenarios
-- On first load when the project is not initialized, the UI prompts: 'Initialize project now?'. Choosing 'Yes' starts initialization and, after success, enables Logs and JUDO Terminal. Choosing 'No' shows a non-blocking notice that initialization is required to connect, and both terminals remain disabled.
-- The Services toggle appears as a left-edge anchor that opens/closes the Services panel; the header contains no duplicate Services button.
-- The tabs read 'Logs' and 'JUDO Terminal', and switching preserves scrollback and state as before.
-- Commands typed in the JUDO Terminal behave exactly as in a native OS terminal running 'judo session', including control keys, history, prompts, and output formatting.
+- On first load when the project is not initialized, the UI prompts: 'Initialize project now?'. Choosing 'Yes' starts initialization and, after success, enables the log terminal. Choosing 'No' shows a non-blocking notice that initialization is required to connect, and the log terminal remains disabled.
+- The Services toggle appears as a right-edge anchor that opens/closes the Services panel; the header contains no duplicate Services button.
+- The log terminal operates in tail mode by default, continuously displaying new log entries as they are written to log files.
 
 Additional Requirements
-- FR-014: The Services toggle MUST be a left-edge control; the header MUST NOT include a redundant Services button.
+- FR-021: The Services toggle MUST be a right-edge control; the header MUST NOT include a redundant Services button.
 - FR-015: The terminal labels MUST be 'Logs' and 'JUDO Terminal'.
 - FR-016: If the project is not initialized, the application MUST prompt to initialize; selecting 'No' MUST present a clear notification that initialization is required to connect; until initialization completes, Logs and JUDO Terminal MUST be inactive.
 - FR-017: The JUDO Terminal MUST provide parity with a native 'judo session', acting as a pure TTY bridge in the browser using direct function calls rather than command execution.

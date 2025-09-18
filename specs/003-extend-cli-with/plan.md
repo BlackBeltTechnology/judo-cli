@@ -4,7 +4,7 @@
 **Input**: Feature specification from user description
 
 ## Summary
-This plan outlines the implementation of a `server` command for the JUDO CLI that provides a browser-based UI focused on real-time service logs and an interactive session. The UI presents two terminals (A: logs with source selector; B: interactive `judo session`) with an A/B switch and a collapsible left-side Service panel. The frontend will be built with React, communicating with the Go backend via REST (status/actions) and WebSockets (logs and session). The compiled frontend will be embedded in the final Go binary.
+This plan outlines the implementation of a `server` command for the JUDO CLI that provides a terminal-based UI focused on real-time service logs. The UI presents a full-screen terminal for log viewing with a floating right-side Service panel. The frontend will be built with React, communicating with the Go backend via REST (status/actions) and WebSockets (logs). The compiled frontend will be embedded in the final Go binary.
 
 ## Technical Context
 **Language/Version**: Go 1.25+, Node.js 18+ (for frontend)
@@ -105,11 +105,11 @@ frontend/
     - `GET /api/status`: Get application status.
     - `POST /api/actions/start`: Start the application.
     - `POST /api/actions/stop`: Stop the application.
- 3. **WebSocket Contracts**: Define endpoints and message structure for log streaming and interactive session.
+ 3. **WebSocket Contracts**: Define endpoints and message structure for log streaming with tail mode functionality.
     - Log endpoints: `/ws/logs/combined`, `/ws/logs/service/{name}` where `{name} ∈ {karaf, postgresql, keycloak}`.
-    - Log message: `{ "ts": "ISO-8601", "service": "karaf|postgresql|keycloak", "line": "..." }`
-    - Session endpoint: `/ws/session` (one session per connection).
-    - Session messages: client→server `{type: input|resize|control, ...}`, server→client `{type: output|status, ...}`
+    - Log message: `{ "ts": "ISO-8601", "service": "karaf|postgresql|keycloak", "line": "...", "position": "offset/timestamp" }`
+    - Reconnection support: Client includes last received position in connection handshake
+    - Tail mode: Server continuously monitors log files and streams new entries as they are written
 4. **Quickstart Guide**: Write a `quickstart.md` with setup, build, and run instructions.
 5. **Update agent file incrementally** (O(1) operation):
    - Run `.specify/scripts/bash/update-agent-context.sh opencode` for your AI assistant
@@ -146,15 +146,15 @@ frontend/
 - **Backend**:
   - Setup server framework and routing.
   - Implement REST endpoints for status and actions.
-  - Implement WebSocket for log streaming and interactive session.
-  - Implement combined and per-service log streams.
-  - Implement interactive session PTY bridge (`/ws/session`) with input/output, resize, and interrupt handling.
+  - Implement WebSocket for log streaming with tail mode functionality.
+  - Implement combined and per-service log streams with position tracking.
+  - Implement reconnection logic with exponential backoff.
   - Add file embedding for the frontend.
 - **Frontend**:
   - Set up React project with Create React App.
-  - Create components for dual terminals (A: logs with source selector; B: interactive session), A/B switch, and Service panel with status buttons.
+  - Create components for full-screen log terminal with source selector and right-side Service panel.
   - Implement API calls to the backend.
-  - Implement WebSocket clients for logs and session; use react-xtermjs with fit addon and message batching.
+  - Implement WebSocket client for logs with reconnection logic; use react-xtermjs with fit addon and message batching.
   - Set up build process for production assets.
 
 **Ordering Strategy**:
@@ -195,7 +195,7 @@ Frontend UX Flow
 - On load, fetch init status. If not initialized: show modal 'Initialize project now?'.
   - Yes: call init endpoint; show progress (logs/status); enable terminals when complete.
   - No: show non-blocking banner/toast explaining initialization is required to connect; keep terminals disabled until initialized.
-- Replace A/B labels with 'Logs' and 'JUDO Terminal'.
+- Update UI labels to focus on log terminal functionality.
 - Replace header Services button with left-edge toggle.
 
 Testing
