@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Terminal Rendering Test</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #0f1117;
+            color: #fff;
+            font-family: sans-serif;
+        }
+        .terminal-container {
+            flex: 1;
+            position: relative;
+            background: #0f1117;
+            width: 100%;
+            height: 100vh;
+            min-width: 1080px;
+            display: flex;
+        }
+        .terminal {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            padding: 1rem;
+        }
+        .xterm {
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 14px;
+            color: #ffffff;
+            background: #0f1117;
+        }
+        .xterm-viewport {
+            background: #0f1117 !important;
+        }
+        .xterm-screen {
+            background: #0f1117 !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="terminal-container">
+        <div class="terminal">
+            <div class="xterm">
+                <div class="xterm-screen" style="width: 120ch; height: 24lh;">
+                    <div class="xterm-rows">
+                        <div>🚀 Testing terminal rendering...</div>
+                        <div>✅ WebSocket connection established</div>
+                        <div>📨 Received: Log stream connected</div>
+                        <div>📨 Received: [KEYCLOAK] Container keycloak-judo-cli does not exist</div>
+                        <div>📏 Terminal dimensions: 120 cols × 24 rows</div>
+                        <div>judo> echo "Testing terminal display"</div>
+                        <div>Testing terminal display</div>
+                        <div>judo> </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        console.log('✅ Terminal rendering test loaded');
+        console.log('📏 Container dimensions:', {
+            width: document.querySelector('.terminal-container').offsetWidth,
+            height: document.querySelector('.terminal-container').offsetHeight
+        });
+        console.log('📏 Terminal dimensions:', {
+            width: document.querySelector('.terminal').offsetWidth,
+            height: document.querySelector('.terminal').offsetHeight
+        });
+    </script>
+</body>
+</html>

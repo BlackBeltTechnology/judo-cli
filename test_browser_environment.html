@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Browser Environment Test</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #0f1117;
+            color: #fff;
+            font-family: sans-serif;
+        }
+        .test-container {
+            padding: 20px;
+        }
+        .test-item {
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #2a2d3a;
+            border-radius: 5px;
+            background: #1a1d25;
+        }
+        .success {
+            color: #4ade80;
+        }
+        .warning {
+            color: #fbbf24;
+        }
+        .error {
+            color: #f87171;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>Browser Environment Test</h1>
+        
+        <div class="test-item">
+            <h2>JavaScript Libraries</h2>
+            <div id="lib-react">React: <span class="warning">Testing...</span></div>
+            <div id="lib-xterm">xterm.js: <span class="warning">Testing...</span></div>
+            <div id="lib-websocket">WebSocket: <span class="warning">Testing...</span></div>
+        </div>
+
+        <div class="test-item">
+            <h2>Terminal Container Simulation</h2>
+            <div id="terminal-container" style="width: 100%; height: 300px; background: #0f1117; border: 2px solid #4ade80;">
+                <div style="padding: 10px; color: #fff;">
+                    <div>🚀 Terminal container simulation</div>
+                    <div>✅ WebSocket connection established</div>
+                    <div>📨 Received: Log stream connected</div>
+                    <div>📨 Received: [KEYCLOAK] Container keycloak-judo-cli does not exist</div>
+                    <div>📏 Dimensions: 120 cols × 24 rows</div>
+                    <div>judo> echo "Testing terminal display"</div>
+                    <div>Testing terminal display</div>
+                    <div>judo> </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="test-item">
+            <h2>CSS Validation</h2>
+            <div id="css-background">Background color: <span class="warning">Testing...</span></div>
+            <div id="css-fonts">Font family: <span class="warning">Testing...</span></div>
+            <div id="css-dimensions">Container dimensions: <span class="warning">Testing...</span></div>
+        </div>
+    </div>
+
+    <script>
+        // Test JavaScript libraries
+        function testLibraries() {
+            // Test React
+            if (typeof React !== 'undefined') {
+                document.getElementById('lib-react').innerHTML = 'React: <span class="success">✅ Available</span>';
+            } else {
+                document.getElementById('lib-react').innerHTML = 'React: <span class="error">❌ Not available</span>';
+            }
+
+            // Test xterm.js
+            if (typeof Terminal !== 'undefined') {
+                document.getElementById('lib-xterm').innerHTML = 'xterm.js: <span class="success">✅ Available</span>';
+            } else {
+                document.getElementById('lib-xterm').innerHTML = 'xterm.js: <span class="error">❌ Not available</span>';
+            }
+
+            // Test WebSocket
+            if (typeof WebSocket !== 'undefined') {
+                document.getElementById('lib-websocket').innerHTML = 'WebSocket: <span class="success">✅ Available</span>';
+            } else {
+                document.getElementById('lib-websocket').innerHTML = 'WebSocket: <span class="error">❌ Not available</span>';
+            }
+        }
+
+        // Test CSS
+        function testCSS() {
+            const container = document.getElementById('terminal-container');
+            const computedStyle = window.getComputedStyle(container);
+            
+            // Test background color
+            const bgColor = computedStyle.backgroundColor;
+            document.getElementById('css-background').innerHTML = 
+                `Background color: <span class="${bgColor.includes('17') ? 'success' : 'warning'}">${bgColor}</span>`;
+            
+            // Test font family
+            const fontFamily = computedStyle.fontFamily;
+            document.getElementById('css-fonts').innerHTML = 
+                `Font family: <span class="${fontFamily.includes('mono') ? 'success' : 'warning'}">${fontFamily}</span>`;
+            
+            // Test dimensions
+            const width = container.offsetWidth;
+            const height = container.offsetHeight;
+            document.getElementById('css-dimensions').innerHTML = 
+                `Container dimensions: <span class="${width > 0 && height > 0 ? 'success' : 'error'}">${width}px × ${height}px</span>`;
+        }
+
+        // Run tests
+        setTimeout(() => {
+            testLibraries();
+            testCSS();
+        }, 100);
+
+        console.log('✅ Browser environment test loaded');
+    </script>
+</body>
+</html>

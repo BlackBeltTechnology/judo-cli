@@ -10,14 +10,24 @@
       "command": ["npx", "-y", "@modelcontextprotocol/server-github@latest"],
       "enabled": true,
     },
-    "sequential-thinking-server": {
-      "type": "local",
-      "command": ["npx", "-y", "@modelcontextprotocol/server-sequential-thinking"],
-      "enabled": true,
-    },
+    // "sequential-thinking-server": {
+    //   "type": "local",
+    //   "command": ["npx", "-y", "@modelcontextprotocol/server-sequential-thinking"],
+    //   "enabled": true,
+    // },
     "context7-server": {
       "type": "local",
       "command": ["npx", "@upstash/context7-mcp@latest"],
+      "enabled": true,
+    },
+    "playwright": {
+      "type": "local",
+      "command": ["npx", "@playwright/mcp@latest"],
+      "enabled": true,
+    },
+    "code-index": {
+      "type": "local",
+      "command": ["uvx", "code-index-mcp"],
       "enabled": true,
     },
   },

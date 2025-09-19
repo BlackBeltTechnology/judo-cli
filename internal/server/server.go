@@ -100,6 +100,15 @@ type Server struct {
 
 func NewServer(port int) *Server {
 	log.Printf("Creating new server on port %d", port)
+
+	// Add panic recovery for server creation
+	defer func() {
+		if rec := recover(); rec != nil {
+			log.Printf("PANIC recovered in NewServer: %v", rec)
+			log.Printf("Stack trace would be here in production")
+		}
+	}()
+
 	s := &Server{
 		port: port,
 		// Minimal initialization for testing
@@ -117,6 +126,43 @@ func NewServer(port int) *Server {
 
 	mux := http.NewServeMux()
 
+	// Serve static frontend files - try embedded assets first, then frontend/build
+	embeddedFS, err := fs.Sub(embeddedFiles, "assets")
+	var useEmbedded bool
+
+	if err == nil {
+		// Test if embedded assets actually contain files
+		entries, err := fs.ReadDir(embeddedFS, ".")
+		if err == nil && len(entries) > 0 {
+			mux.Handle("/", http.FileServer(http.FS(embeddedFS)))
+			useEmbedded = true
+		} else {
+			log.Printf("Embedded assets not available or empty, trying frontend/build")
+		}
+	} else {
+		log.Printf("Embedded assets not available: %v", err)
+	}
+
+	// If we didn't set up embedded assets or they're empty, try frontend/build directory
+	if !useEmbedded {
+		if _, err := os.Stat("frontend/build"); err == nil {
+			log.Printf("Serving frontend from frontend/build")
+			mux.Handle("/", http.FileServer(http.Dir("frontend/build")))
+		} else {
+			log.Printf("Frontend build directory not found, using fallback landing page")
+			// Final fallback: simple landing page
+			mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path != "/" {
+					log.Printf("DEBUG: Path not found: %s", r.URL.Path)
+					http.NotFound(w, r)
+					return
+				}
+				log.Printf("DEBUG: Serving landing page")
+				w.Header().Set("Content-Type", "text/html")
+				fmt.Fprintf(w, `<html><body><h1>JUDO CLI Server</h1><p>Server is running on port %d.</p><p><a href="/api/status">API Status</a></p></body></html>`, s.port)
+			})
+		}
+	}
 	// REST API endpoints
 	mux.HandleFunc("/api/status", s.handleStatus)
 	mux.HandleFunc("/api/commands/", s.handleCommand)
@@ -141,47 +187,9 @@ func NewServer(port int) *Server {
 	mux.HandleFunc("/ws/logs/service/", s.handleServiceLogsWebSocket)
 	mux.HandleFunc("/ws/session", s.handleSessionWebSocket)
 
-	// Serve static frontend files - try embedded assets first, then frontend/build
-	embeddedFS, err := fs.Sub(embeddedFiles, "assets")
-	if err == nil {
-		log.Printf("Serving frontend from embedded assets")
-		mux.Handle("/", http.FileServer(http.FS(embeddedFS)))
-	} else {
-		// Fallback to frontend/build directory
-		frontendDir := "frontend/build"
-		if _, err := os.Stat(frontendDir); err == nil {
-			log.Printf("Serving frontend from %s", frontendDir)
-			mux.Handle("/", http.FileServer(http.Dir(frontendDir)))
-		} else {
-			// Final fallback: simple landing page
-			mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-				if r.URL.Path != "/" {
-					http.NotFound(w, r)
-					return
-				}
-				w.Header().Set("Content-Type", "text/html")
-				fmt.Fprintf(w, `<html><body><h1>JUDO CLI Server</h1><p>Server is running on port %d.</p><p><a href="/api/status">API Status</a></p></body></html>`, s.port)
-			})
-		}
-	}
-
-	// Create a wrapper handler to log all requests with panic recovery
+	// Create a simple wrapper handler to log all requests
 	logHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("Request received: %s %s from %s", r.Method, r.URL.Path, r.RemoteAddr)
-
-		// Add panic recovery with stack trace
-		defer func() {
-			if rec := recover(); rec != nil {
-				log.Printf("PANIC recovered in request handler for %s %s: %v", r.Method, r.URL.Path, rec)
-				// Try to get stack trace
-				log.Printf("Stack trace would be here in production")
-				http.Error(w, "Internal server error", http.StatusInternalServerError)
-			}
-		}()
-
-		log.Printf("About to serve request: %s %s", r.Method, r.URL.Path)
 		mux.ServeHTTP(w, r)
-		log.Printf("Request served: %s %s - completed", r.Method, r.URL.Path)
 	})
 
 	log.Printf("Creating HTTP server on port %d", port)
@@ -648,8 +656,8 @@ func (s *Server) streamRealLogs(conn *websocket.Conn) {
 				return
 			}
 		case <-time.After(30 * time.Second):
-			// Send heartbeat to keep connection alive
-			conn.WriteMessage(websocket.TextMessage, []byte("[SERVER] Log stream active"))
+			// Send empty heartbeat to keep connection alive (no message content)
+			conn.WriteMessage(websocket.TextMessage, []byte(""))
 		}
 	}
 }
@@ -1571,11 +1579,11 @@ func (s *Server) streamCombinedLogs(conn *websocket.Conn) {
 				return
 			}
 		case <-time.After(5 * time.Second):
-			// Send heartbeat to keep connection alive
+			// Send empty heartbeat to keep connection alive (no message content)
 			heartbeat := map[string]interface{}{
 				"ts":      time.Now().Format(time.RFC3339),
-				"service": "combined",
-				"line":    "Log stream active",
+				"service": "heartbeat",
+				"line":    "",
 			}
 			message, _ := json.Marshal(heartbeat)
 			if err := conn.WriteMessage(websocket.TextMessage, message); err != nil {

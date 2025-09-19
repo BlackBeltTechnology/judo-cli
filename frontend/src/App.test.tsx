@@ -9,6 +9,18 @@ import axios from 'axios';
 // Mock react-xtermjs
 vi.mock('react-xtermjs', () => ({
   XTerm: vi.fn(() => <div data-testid="mock-xterm" />),
+  useXTerm: vi.fn(() => ({
+    ref: { current: null },
+    instance: {
+      write: vi.fn(),
+      writeln: vi.fn(),
+      loadAddon: vi.fn(),
+      onData: vi.fn(),
+    },
+    fitAddon: {
+      fit: vi.fn(),
+    },
+  })),
 }));
 
 // Mock axios
@@ -41,33 +53,26 @@ describe('App Component', () => {
     });
   });
 
-  it('renders main application with correct terminal labels', async () => {
+  it('renders main application with correct elements', async () => {
     render(<App />);
     expect(screen.getByText(/JUDO CLI Server/i)).toBeInTheDocument();
-    expect(screen.getByText('Logs')).toBeInTheDocument();
-    expect(screen.getByText('JUDO Terminal')).toBeInTheDocument();
     expect(screen.getByText('Services')).toBeInTheDocument();
+    expect(screen.getByText('Source:')).toBeInTheDocument();
 
     // Wait for initial data fetches to complete
     await waitFor(() => expect(mockedAxios.get).toHaveBeenCalledWith(expect.stringContaining('/api/project/init/status')));
     await waitFor(() => expect(mockedAxios.get).toHaveBeenCalledWith(expect.stringContaining('/api/services/status')));
   });
 
-  it('switches between terminal tabs', async () => {
+  it('handles log source selection', async () => {
     render(<App />);
     await waitFor(() => expect(mockedAxios.get).toHaveBeenCalled());
 
-    const judoTerminalTab = screen.getByText('JUDO Terminal');
-    fireEvent.click(judoTerminalTab);
+    const sourceSelector = screen.getByRole('combobox');
+    fireEvent.change(sourceSelector, { target: { value: 'karaf' } });
 
-    // Expect session WebSocket to be connected
-    await waitFor(() => expect(mockWebSocket).toHaveBeenCalledWith(expect.stringContaining('/ws/session')));
-
-    const logsTab = screen.getByText('Logs');
-    fireEvent.click(logsTab);
-
-    // Expect log WebSocket to be connected
-    await waitFor(() => expect(mockWebSocket).toHaveBeenCalledWith(expect.stringContaining('/ws/logs/combined')));
+    // Expect log WebSocket to be connected to karaf source
+    await waitFor(() => expect(mockWebSocket).toHaveBeenCalledWith(expect.stringContaining('/ws/logs/service/karaf')));
   });
 
   it('handles service panel toggle', async () => {
@@ -107,17 +112,5 @@ describe('App Component', () => {
     expect(keycloakStatus).toHaveTextContent('running');
   });
 
-  it('handles log source selection', async () => {
-    render(<App />);
-    await waitFor(() => expect(mockedAxios.get).toHaveBeenCalled());
 
-    const logsTab = screen.getByText('Logs');
-    fireEvent.click(logsTab);
-
-    const sourceSelector = screen.getByRole('combobox');
-    fireEvent.change(sourceSelector, { target: { value: 'karaf' } });
-
-    // Expect log WebSocket to be connected to karaf source
-    await waitFor(() => expect(mockWebSocket).toHaveBeenCalledWith(expect.stringContaining('/ws/logs/service/karaf')));
-  });
 });

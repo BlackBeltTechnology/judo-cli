@@ -7,6 +7,18 @@ vi.mock('xterm/css/xterm.css', () => ({}));
 // Mock react-xtermjs globally
 vi.mock('react-xtermjs', () => ({
   XTerm: vi.fn(() => <div data-testid="mock-xterm" />),
+  useXTerm: vi.fn(() => ({
+    ref: { current: null },
+    instance: {
+      write: vi.fn(),
+      writeln: vi.fn(),
+      loadAddon: vi.fn(),
+      onData: vi.fn(),
+    },
+    fitAddon: {
+      fit: vi.fn(),
+    },
+  })),
 }));
 
 vi.mock('@xterm/addon-fit', () => ({

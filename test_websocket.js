@@ -1,26 +1,48 @@
 const WebSocket = require('ws');
 
-const ws = new WebSocket('ws://localhost:6970/ws/session');
+// Test WebSocket connections
+const testEndpoints = [
+    'ws://localhost:6974/ws/logs/combined',
+    'ws://localhost:6974/ws/logs/service/karaf'
+];
 
-ws.on('open', function open() {
-  console.log('Connected to WebSocket');
-  
-  // Send a test message after connection
-  setTimeout(() => {
-    const message = JSON.stringify({ type: 'input', data: 'help\n' });
-    ws.send(message);
-    console.log('Sent help command');
-  }, 1000);
-});
+function testWebSocket(url) {
+    console.log(`Testing WebSocket: ${url}`);
+    
+    const ws = new WebSocket(url);
+    
+    ws.on('open', () => {
+        console.log(`✅ Connected to ${url}`);
+        // Send a ping to keep connection alive
+        ws.ping();
+    });
+    
+    ws.on('message', (data) => {
+        console.log(`📨 Received message from ${url}: ${data.toString()}`);
+    });
+    
+    ws.on('error', (error) => {
+        console.log(`❌ Error with ${url}:`, error.message);
+    });
+    
+    ws.on('close', (code, reason) => {
+        console.log(`🔌 Connection closed to ${url}: code=${code}, reason=${reason}`);
+    });
+    
+    // Set timeout to close connection after 5 seconds
+    setTimeout(() => {
+        if (ws.readyState === WebSocket.OPEN) {
+            ws.close();
+        }
+    }, 5000);
+}
 
-ws.on('message', function message(data) {
-  console.log('Received:', data.toString());
-});
+// Test all endpoints
+console.log('Starting WebSocket tests...');
+testEndpoints.forEach(testWebSocket);
 
-ws.on('error', function error(err) {
-  console.error('WebSocket error:', err);
-});
-
-ws.on('close', function close() {
-  console.log('WebSocket connection closed');
-});
+// Keep process alive for 10 seconds
+setTimeout(() => {
+    console.log('Tests completed');
+    process.exit(0);
+}, 10000);
