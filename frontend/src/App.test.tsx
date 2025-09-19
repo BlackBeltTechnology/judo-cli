@@ -5,7 +5,6 @@ import App from './App';
 import { mockWebSocket } from './setupTests';
 import axios from 'axios';
 
-
 // Mock react-xtermjs
 vi.mock('react-xtermjs', () => ({
   XTerm: vi.fn(() => <div data-testid="mock-xterm" />),
@@ -16,6 +15,10 @@ vi.mock('react-xtermjs', () => ({
       writeln: vi.fn(),
       loadAddon: vi.fn(),
       onData: vi.fn(),
+      resize: vi.fn(),
+      refresh: vi.fn(),
+      cols: 120,
+      rows: 40,
     },
     fitAddon: {
       fit: vi.fn(),
@@ -42,15 +45,18 @@ describe('App Component', () => {
       if (url.includes('/api/services/status')) {
         return Promise.resolve({ 
           data: [
-            { service: 'karaf', status: 'running', timestamp: '' },
-            { service: 'postgresql', status: 'stopped', timestamp: '' },
-            { service: 'keycloak', status: 'running', timestamp: '' },
+            { service: 'karaf', status: 'running', timestamp: '2024-01-01T00:00:00Z' },
+            { service: 'postgresql', status: 'stopped', timestamp: '2024-01-01T00:00:00Z' },
+            { service: 'keycloak', status: 'running', timestamp: '2024-01-01T00:00:00Z' },
           ]
         });
       }
       // Default mock for any other GET requests
       return Promise.resolve({ data: {} });
     });
+
+    // Mock successful POST requests
+    mockedAxios.post.mockResolvedValue({ data: {} });
   });
 
   it('renders main application with correct elements', async () => {
@@ -89,7 +95,7 @@ describe('App Component', () => {
     expect(servicePanel).not.toHaveClass('open');
   });
 
-  it('displays connection status', async () => {
+  it('displays service statuses correctly', async () => {
     render(<App />);
     await waitFor(() => expect(mockedAxios.get).toHaveBeenCalled());
 
@@ -112,5 +118,126 @@ describe('App Component', () => {
     expect(keycloakStatus).toHaveTextContent('running');
   });
 
+  it('handles service start/stop actions', async () => {
+    render(<App />);
+    await waitFor(() => expect(mockedAxios.get).toHaveBeenCalled());
 
+    // Open service panel
+    const servicePanelButton = screen.getByText('▶ Services');
+    fireEvent.click(servicePanelButton);
+
+    // Click start button for postgresql (which is stopped)
+    const postgresqlStartButton = screen.getByText('postgresql').closest('.service-control')?.querySelector('.btn-service-start');
+    fireEvent.click(postgresqlStartButton!);
+
+    await waitFor(() => expect(mockedAxios.post).toHaveBeenCalledWith(expect.stringContaining('/api/services/postgresql/start')));
+  });
+
+  it('handles all services start/stop actions', async () => {
+    render(<App />);
+    await waitFor(() => expect(mockedAxios.get).toHaveBeenCalled());
+
+    // Open service panel
+    const servicePanelButton = screen.getByText('▶ Services');
+    fireEvent.click(servicePanelButton);
+
+    // Click start all button
+    const startAllButton = screen.getByText('Start All');
+    fireEvent.click(startAllButton);
+
+    await waitFor(() => expect(mockedAxios.post).toHaveBeenCalledWith(expect.stringContaining('/api/services/start')));
+  });
+
+  it('shows project initialization modal when project not initialized', async () => {
+    // Mock project not initialized
+    mockedAxios.get.mockImplementation((url: string) => {
+      if (url.includes('/api/project/init/status')) {
+        return Promise.resolve({ data: { initialized: false } });
+      }
+      if (url.includes('/api/services/status')) {
+        return Promise.resolve({ 
+          data: [
+            { service: 'karaf', status: 'stopped', timestamp: '2024-01-01T00:00:00Z' },
+            { service: 'postgresql', status: 'stopped', timestamp: '2024-01-01T00:00:00Z' },
+            { service: 'keycloak', status: 'stopped', timestamp: '2024-01-01T00:00:00Z' },
+          ]
+        });
+      }
+      return Promise.resolve({ data: {} });
+    });
+
+    render(<App />);
+    
+    await waitFor(() => expect(screen.getByText('Project Not Initialized')).toBeInTheDocument());
+    expect(screen.getByText('Yes, Initialize')).toBeInTheDocument();
+    expect(screen.getByText('No, Continue Anyway')).toBeInTheDocument();
+  });
+
+  it('handles WebSocket connection for combined logs', async () => {
+    render(<App />);
+    await waitFor(() => expect(mockedAxios.get).toHaveBeenCalled());
+
+    // Default should be combined logs
+    await waitFor(() => expect(mockWebSocket).toHaveBeenCalledWith(expect.stringContaining('/ws/logs/combined')));
+  });
+
+  it('handles service status polling after service actions', async () => {
+    render(<App />);
+    await waitFor(() => expect(mockedAxios.get).toHaveBeenCalled());
+
+    // Open service panel
+    const servicePanelButton = screen.getByText('▶ Services');
+    fireEvent.click(servicePanelButton);
+
+    // Click start button for postgresql
+    const postgresqlStartButton = screen.getByText('postgresql').closest('.service-control')?.querySelector('.btn-service-start');
+    fireEvent.click(postgresqlStartButton!);
+
+    // Should trigger status polling (multiple calls to fetchServiceStatuses)
+    await waitFor(() => expect(mockedAxios.get).toHaveBeenCalledTimes(3)); // initial + 2 polling calls
+  });
+
+  it('handles WebSocket reconnection on source change', async () => {
+    render(<App />);
+    await waitFor(() => expect(mockedAxios.get).toHaveBeenCalled());
+
+    // Change source multiple times
+    const sourceSelector = screen.getByRole('combobox');
+    fireEvent.change(sourceSelector, { target: { value: 'karaf' } });
+    fireEvent.change(sourceSelector, { target: { value: 'postgresql' } });
+    fireEvent.change(sourceSelector, { target: { value: 'combined' } });
+
+    // Should have multiple WebSocket connections
+    await waitFor(() => expect(mockWebSocket).toHaveBeenCalledTimes(4)); // initial + 3 changes
+  });
+
+  it('handles API errors gracefully', async () => {
+    // Mock API failure
+    mockedAxios.get.mockRejectedValue(new Error('API Error'));
+    
+    render(<App />);
+    
+    // Application should still render despite API errors
+    expect(screen.getByText(/JUDO CLI Server/i)).toBeInTheDocument();
+    
+    // Service panel should be available
+    const servicePanelButton = screen.getByText('▶ Services');
+    expect(servicePanelButton).toBeInTheDocument();
+  });
+
+  it('disables service buttons during loading states', async () => {
+    render(<App />);
+    await waitFor(() => expect(mockedAxios.get).toHaveBeenCalled());
+
+    // Open service panel
+    const servicePanelButton = screen.getByText('▶ Services');
+    fireEvent.click(servicePanelButton);
+
+    // Click start button for postgresql
+    const postgresqlStartButton = screen.getByText('postgresql').closest('.service-control')?.querySelector('.btn-service-start');
+    fireEvent.click(postgresqlStartButton!);
+
+    // Button should be disabled during loading
+    await waitFor(() => expect(postgresqlStartButton).toBeDisabled());
+  });
 });
