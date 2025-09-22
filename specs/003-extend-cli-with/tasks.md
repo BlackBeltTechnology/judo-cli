@@ -54,6 +54,7 @@
 - Core implementation (T007-T023) before integration (T024-T026).
 - Integration (T024-T026) before polish (T027-T030).
 - Frontend implementation (T018-T023) before frontend testing (T058-T074).
+- JUDO Terminal implementation (T101-T114) before E2E testing (T115-T144).
 - Integration testing (T075-T100) should run after all implementation is complete.
 
 ## Phase 3.7: Amendments (UI/Init/TTY)
@@ -131,34 +132,120 @@
 - ✅ Cross-browser compatibility and accessibility compliance
 - ✅ Visual regression detection and performance monitoring
 
-## Phase 3.11: Comprehensive E2E Testing Implementation
-- [ ] T075 [P] Set up E2E testing framework with Playwright or similar tool for browser automation
-- [ ] T076 [P] Create test environment setup and teardown utilities for `test-model/`
-- [ ] T077 [P] Implement CLI server startup and browser launch sequence tests
-- [ ] T078 [P] Create tests for embedded frontend asset serving and proper rendering
-- [ ] T079 [P] Implement WebSocket connection establishment and validation tests
-- [ ] T080 [P] Create comprehensive service lifecycle management tests (start, stop, status)
-- [ ] T081 [P] Implement real log streaming validation tests for all services
-- [ ] T082 [P] Create JUDO Terminal command execution parity tests vs native CLI
-- [ ] T083 [P] Implement project initialization flow tests from uninitialized to operational
-- [ ] T084 [P] Create database operation tests (dump, import, export) through JUDO Terminal
-- [ ] T085 [P] Implement service status indicator synchronization tests with actual service state
-- [ ] T086 [P] Create error scenario tests including service failures and network issues
-- [ ] T087 [P] Implement system recovery and consistency maintenance tests
-- [ ] T088 [P] Create port configuration and conflict handling tests
-- [ ] T089 [P] Implement authentication and security validation tests if applicable
-- [ ] T090 [P] Create comprehensive user interaction to system outcome validation tests
-- [ ] T091 [P] Implement performance benchmarking tests for critical user journeys
-- [ ] T092 [P] Create resource cleanup and proper shutdown procedure tests
-- [ ] T093 [P] Implement cross-platform compatibility tests on supported OS
-- [ ] T094 [P] Configure CI/CD pipeline integration for E2E test execution
-- [ ] T095 [P] Create detailed logging and debugging infrastructure for E2E test failures
-- [ ] T096 [P] Implement stability measures and waiting strategies to prevent test flakiness
-- [ ] T097 [P] Ensure E2E tests cover all acceptance scenarios from the specification
-- [ ] T098 [P] Create test data management and cleanup procedures for reproducible results
-- [ ] T099 [P] Implement test parallelization and optimization for faster execution
-- [ ] T100 [P] Create test reporting and visualization for easy results interpretation
+## Phase 3.11: JUDO Terminal Interactive Session Implementation
+
+### Phase 3.11.1: Frontend Mode Switching
+- [ ] T075 [P] Implement JUDO Terminal button component in frontend/src/components/TerminalSwitch.tsx
+- [ ] T076 [P] Add terminal mode state management using React context in frontend/src/contexts/TerminalModeContext.tsx
+- [ ] T077 [P] Implement mode switching logic with terminal clearing in frontend/src/hooks/useTerminalMode.ts
+- [ ] T078 [P] Add visual indicators for current mode (Logs vs JUDO Terminal) in frontend/src/components/TerminalHeader.tsx
+
+### Phase 3.11.2: Session State Preservation
+- [ ] T079 [P] Implement session state storage during mode switches in frontend/src/services/sessionState.ts
+- [ ] T080 [P] Add command history preservation using localStorage in frontend/src/hooks/useCommandHistory.ts
+- [ ] T081 [P] Create buffer preservation for partial commands in frontend/src/utils/terminalState.ts
+- [ ] T082 [P] Implement scroll position preservation across mode switches
+
+### Phase 3.11.3: Terminal Control Features
+- [ ] T083 [P] Add resize event handling for interactive sessions in frontend/src/hooks/useTerminalResize.ts
+- [ ] T084 [P] Implement control character handling (Ctrl+C, Ctrl+D) in frontend/src/services/terminalInput.ts
+- [ ] T085 [P] Add real-time command output streaming through WebSocket in frontend/src/services/websocketSession.ts
+- [ ] T086 [P] Implement session interruption and restart functionality in frontend/src/components/JUDOTerminal.tsx
+
+### Phase 3.11.4: Backend Session Management
+- [ ] T087 [P] Enhance WebSocket session handler for state preservation in internal/server/websocket_session.go
+- [ ] T088 [P] Add session state storage across connections in internal/server/session_manager.go
+- [ ] T089 [P] Implement command execution with proper PTY handling in internal/server/command_executor.go
+- [ ] T090 [P] Add control character translation to signals in internal/server/signal_handler.go
+
+### Phase 3.11.5: Integration Testing
+- [ ] T091 [P] Create integration tests for mode switching in frontend/src/__tests__/terminalMode.test.tsx
+- [ ] T092 [P] Implement tests for session state preservation in frontend/src/__tests__/sessionState.test.tsx
+- [ ] T093 [P] Add tests for command history functionality in frontend/src/__tests__/commandHistory.test.tsx
+- [ ] T094 [P] Create tests for control character handling in frontend/src/__tests__/terminalInput.test.tsx
+- [ ] T095 [P] Implement performance tests for real-time command execution in tests/performance/terminal_perf_test.go
+- [ ] T096 [P] Add E2E tests for JUDO Terminal functionality in tests/e2e/judo_terminal.test.js
+
+### Phase 3.11.6: Parity Validation
+- [ ] T097 [P] Create validation tests ensuring JUDO Terminal matches native session behavior in tests/integration/terminal_parity_test.go
+- [ ] T098 [P] Implement command output comparison tests in tests/validation/command_output_test.go
+- [ ] T099 [P] Add control character behavior validation tests in tests/validation/control_chars_test.go
+- [ ] T100 [P] Create session state consistency tests across mode switches in tests/integration/session_state_test.go
+
+## Phase 3.12: JUDO Terminal Interactive Session Implementation (Continued)
+- [ ] T101 [P] Implement JUDO Terminal button in frontend UI for mode switching
+- [ ] T102 [P] Add terminal mode state management (logs vs interactive session)
+- [ ] T103 [P] Implement terminal clearing when switching modes
+- [ ] T104 [P] Add session state preservation during mode switches
+- [ ] T105 [P] Implement command history preservation in JUDO Terminal
+- [ ] T106 [P] Add terminal resize event handling for interactive sessions
+- [ ] T107 [P] Implement control character handling (Ctrl+C, Ctrl+D) in JUDO Terminal
+- [ ] T108 [P] Add real-time command output streaming through WebSocket
+- [ ] T109 [P] Implement session interruption and restart functionality
+- [ ] T110 [P] Create integration tests for JUDO Terminal mode switching
+- [ ] T111 [P] Implement tests for session state preservation
+- [ ] T112 [P] Add tests for command history functionality
+- [ ] T113 [P] Create tests for control character handling
+- [ ] T114 [P] Implement performance tests for real-time command execution
+
+## Phase 3.12: Comprehensive E2E Testing Implementation
+- [ ] T115 [P] Set up E2E testing framework with Playwright or similar tool for browser automation
+- [ ] T116 [P] Create test environment setup and teardown utilities for `test-model/`
+- [ ] T117 [P] Implement CLI server startup and browser launch sequence tests
+- [ ] T118 [P] Create tests for embedded frontend asset serving and proper rendering
+- [ ] T119 [P] Implement WebSocket connection establishment and validation tests
+- [ ] T120 [P] Create comprehensive service lifecycle management tests (start, stop, status)
+- [ ] T121 [P] Implement real log streaming validation tests for all services
+- [ ] T122 [P] Create JUDO Terminal command execution parity tests vs native CLI
+- [ ] T123 [P] Implement project initialization flow tests from uninitialized to operational
+- [ ] T124 [P] Create database operation tests (dump, import, export) through JUDO Terminal
+- [ ] T125 [P] Implement service status indicator synchronization tests with actual service state
+- [ ] T126 [P] Create error scenario tests including service failures and network issues
+- [ ] T127 [P] Implement system recovery and consistency maintenance tests
+- [ ] T128 [P] Create port configuration and conflict handling tests
+- [ ] T129 [P] Implement authentication and security validation tests if applicable
+- [ ] T130 [P] Create comprehensive user interaction to system outcome validation tests
+- [ ] T131 [P] Implement performance benchmarking tests for critical user journeys
+- [ ] T132 [P] Create resource cleanup and proper shutdown procedure tests
+- [ ] T133 [P] Implement cross-platform compatibility tests on supported OS
+- [ ] T134 [P] Configure CI/CD pipeline integration for E2E test execution
+- [ ] T135 [P] Create detailed logging and debugging infrastructure for E2E test failures
+- [ ] T136 [P] Implement stability measures and waiting strategies to prevent test flakiness
+- [ ] T137 [P] Ensure E2E tests cover all acceptance scenarios from the specification
+- [ ] T138 [P] Create test data management and cleanup procedures for reproducible results
+- [ ] T139 [P] Implement test parallelization and optimization for faster execution
+- [ ] T140 [P] Create test reporting and visualization for easy results interpretation
+- [ ] T141 [P] Implement JUDO Terminal specific E2E tests for mode switching and session preservation
+- [ ] T142 [P] Create tests for interactive terminal functionality identical to native session
+- [ ] T143 [P] Implement tests for real-time command execution through WebSocket
+- [ ] T144 [P] Add tests for terminal resize events and control character handling
+
+## Phase 3.13: Browser-Based Interactive CLI Server (Updated)
+- [x] T145 Implement the `judo server` command and basic HTTP server.
+- [x] T136 Set up the initial React frontend with a dual-terminal UI.
+- [x] T137 Implement WebSocket endpoints for log and session streaming.
+- [x] T138 Implement API endpoints for service status and control.
+- [x] T139 **Fix:** Resolve WebSocket race conditions for log and session terminals on initial load.
+- [x] T140 **Fix:** Implement a handshake protocol for log history requests.
+- [x] T141 **Fix:** Correct backend to send `\r\n` for all terminal output.
+- [x] T142 **Fix:** Update all command outputs in `api.go` to use `\r\n`.
+
+## Phase 3.14: Refactoring & UX Improvements (Completed)
+- [x] T143 Refactor `App.tsx` into smaller components (`AppHeader`, `ServicePanel`, `TerminalContainer`, `ProjectInitModal`).
+- [x] T144 Extract repetitive terminal resizing logic into a reusable `fitTerminal` function.
+- [x] T145 Implement robust, imperative input handling for the JUDO Terminal.
+- [x] T146 Remove CSS that incorrectly disabled the terminal.
+- [x] T147 Align the web session's look and feel with the native `judo session` (banner, help, status).
+
+## Phase 3.15: Comprehensive Testing & Documentation (Next Steps)
+- [ ] T148 Write comprehensive unit and integration tests for the backend server, including WebSocket handlers and API endpoints.
+- [ ] T149 Write comprehensive unit and integration tests for the frontend, including component behavior, state management, and WebSocket interactions.
+- [ ] T150 Write end-to-end tests using Playwright to cover the full user flow, including service management, log streaming, and interactive command execution.
+- [ ] T151 Update the project's `README.md` and `TESTING.md` to document the new server functionality and testing strategy.
+- [ ] T152 Create user-facing documentation for the `judo server` command and its features.
+
+
 
 ---
 
-*Constitution v2.4.1 Compliance: Frontend testing tasks (T058-T074) fully implement Articles VIII-IX requirements for behavior-driven testing, realistic mocking, comprehensive coverage, accessibility, and performance testing.*
+*Constitution v2.4.1 Compliance: Frontend testing tasks (T058-T074) fully implement Articles VIII-IX requirements for behavior-driven testing, realistic mocking, comprehensive coverage, accessibility, and performance testing. JUDO Terminal tasks (T101-T114) implement the interactive session functionality specified in the spec extension.*

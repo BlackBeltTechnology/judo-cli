@@ -1,223 +1,246 @@
+
 # Implementation Plan: Browser-Based Interactive CLI Server
 
-**Branch**: `003-extend-cli-with-a-server-function` | **Date**: 2025-09-15 | **Spec**: `/specs/003-extend-cli-with/spec.md`
-**Input**: Feature specification from user description
+**Branch**: `003-extend-cli-with` | **Date**: 2025-09-20 | **Spec**: `/specs/003-extend-cli-with/spec.md`
+**Input**: Feature specification from `/specs/003-extend-cli-with/spec.md`
+
+## Execution Flow (/plan command scope)
+```
+1. Load feature spec from Input path
+   → If not found: ERROR "No feature spec at {path}"
+2. Fill Technical Context (scan for NEEDS CLARIFICATION)
+   → Detect Project Type from context (web=frontend+backend, mobile=app+api)
+   → Set Structure Decision based on project type
+3. Fill the Constitution Check section based on the content of the constitution document.
+4. Evaluate Constitution Check section below
+   → If violations exist: Document in Complexity Tracking
+   → If no justification possible: ERROR "Simplify approach first"
+   → Update Progress Tracking: Initial Constitution Check
+5. Execute Phase 0 → research.md
+   → If NEEDS CLARIFICATION remain: ERROR "Resolve unknowns"
+6. Execute Phase 1 → contracts, data-model.md, quickstart.md, agent-specific template file (e.g., `CLAUDE.md` for Claude Code, `.github/copilot-instructions.md` for GitHub Copilot, `GEMINI.md` for Gemini CLI, `QWEN.md` for Qwen Code or `AGENTS.md` for opencode).
+7. Re-evaluate Constitution Check section
+   → If new violations: Refactor design, return to Phase 1
+   → Update Progress Tracking: Post-Design Constitution Check
+8. Plan Phase 2 → Describe task generation approach (DO NOT create tasks.md)
+9. STOP - Ready for /tasks command
+```
+
+**IMPORTANT**: The /plan command STOPS at step 7. Phases 2-4 are executed by other commands:
+- Phase 2: /tasks command creates tasks.md
+- Phase 3-4: Implementation execution (manual or via tools)
 
 ## Summary
-This plan outlines the implementation of a `server` command for the JUDO CLI that provides a terminal-based UI focused on real-time service logs. The UI presents a full-screen terminal for log viewing with a floating right-side Service panel. The frontend will be built with React, communicating with the Go backend via REST (status/actions) and WebSockets (logs). The compiled frontend will be embedded in the final Go binary.
+Extend JUDO CLI with browser-based server functionality providing real-time service management, log streaming, and interactive terminal sessions. The feature adds a `judo server` command that starts a web server serving a React frontend with Xterm.js terminal for logs and JUDO Terminal for interactive sessions. Frontend assets are embedded in the Go binary, and the system provides comprehensive service control for Karaf, PostgreSQL, and Keycloak with real-time WebSocket connections for log streaming and interactive sessions.
 
 ## Technical Context
-**Language/Version**: Go 1.25+, Node.js 18+ (for frontend)
-**Primary Dependencies**: Go (Cobra, Gorilla WebSocket), React (Create React App, react-xtermjs)
-**Storage**: N/A (state is managed in memory by the CLI server)
-**Testing**: Go testing, Jest/React Testing Library, comprehensive UI test suite covering all user interactions and visual feedback
-**Target Platform**: Local machine (browser-based UI)
-**Project Type**: Web (frontend + backend)
-**Performance Goals**: Real-time log streaming for multiple services, responsive UI for command execution and service management
-**Constraints**: Frontend assets must be embeddable in the Go binary.
+**Language/Version**: Go 1.25+, React/TypeScript, Node.js 18+  
+**Primary Dependencies**: Cobra CLI framework, React/Xterm.js, WebSocket, Docker API  
+**Storage**: File-based logs, Docker container state, in-memory session state  
+**Testing**: Go testing framework, Vitest/React Testing Library, Playwright for E2E  
+**Target Platform**: Cross-platform CLI (darwin, linux, windows) with web browser UI
+**Project Type**: Web application (Go backend + React frontend)  
+**Performance Goals**: Real-time log streaming with <100ms latency, WebSocket reconnection <5s, responsive UI with 60fps  
+**Constraints**: Embedded frontend assets in Go binary, cross-platform compatibility, offline-capable service management  
+**Scale/Scope**: Single user per instance, 50+ CLI commands, 4 concurrent service management, real-time log streaming for 3 services
 
 ## Constitution Check
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-**Simplicity**:
-- Projects: 2 (Go CLI backend, React frontend)
-- Using framework directly: Yes (Cobra, React)
-- Single data model: Yes (for commands and logs)
-- Avoiding patterns: Yes, keeping the interaction model simple.
-
-**Architecture**:
-- EVERY feature as library: The server functionality will be a new package within the CLI.
-- Libraries listed: `server` (Go package), `frontend` (React app)
-- CLI per library: The `server` command will be the entry point.
-- Library docs: N/A
-
-**Testing (NON-NEGOTIABLE)**:
-- RED-GREEN-Refactor cycle enforced: Yes
-- Git commits show tests before implementation: Yes
-- Order: Contract→Integration→E2E→Unit strictly followed: Yes
-- Real dependencies used: Yes
-- Integration tests for: API endpoints, WebSocket communication, service management functionality.
-- Comprehensive UI tests for: terminal behavior, service panel interactions, log streaming, JUDO Terminal functionality, visual feedback, accessibility, and responsive design.
-- Comprehensive E2E tests for: complete system integration, real service lifecycle management, end-to-end log streaming, JUDO Terminal parity, database operations, and cross-platform compatibility.
-
-**Observability**:
-- Structured logging included: Yes, for the server component.
-- Frontend logs → backend: Yes, for critical errors.
-- Error context sufficient: Yes.
-
-**Versioning**:
-- Version number assigned: N/A for this feature, follows main CLI version.
-- BUILD increments on every change: N/A
-- Breaking changes handled: N/A
-
-## Docs & CI Integrity
-- Documentation updates planned? (README, internal/help, docs/*)
-- CI workflows impacted? (build.yml, hugo.yml) — updates planned
-- Frontend embedding documented in release process
+- [x] **Simplicity & Single Responsibility**: Feature extends existing CLI with cohesive server functionality
+- [x] **Consistent CLI UX**: New `server` command follows Cobra patterns with proper flags and documentation
+- [x] **Test-First Discipline**: Comprehensive UI and E2E testing requirements specified
+- [x] **Version Compliance**: Uses existing versioning system and build processes
+- [x] **Observability & Error Handling**: Real-time logging with proper error handling and reconnection
+- [x] **Documentation Integrity**: Documentation updates required for new server functionality
+- [x] **Security & Secrets**: No secret handling required for this feature
+- [x] **Frontend Testing**: Comprehensive Vitest and React Testing Library coverage specified
+- [x] **CI/CD Integrity**: Build process includes frontend asset embedding, CI workflows maintained
 
 ## Project Structure
 
 ### Documentation (this feature)
 ```
-specs/003-extend-cli-with/
-├── plan.md              # This file
-├── research.md          # Phase 0 output
-├── data-model.md        # Phase 1 output
-├── quickstart.md        # Phase 1 output
-├── contracts/           # Phase 1 output (OpenAPI spec)
-└── tasks.md             # Phase 2 output
+specs/[###-feature]/
+├── plan.md              # This file (/plan command output)
+├── research.md          # Phase 0 output (/plan command)
+├── data-model.md        # Phase 1 output (/plan command)
+├── quickstart.md        # Phase 1 output (/plan command)
+├── contracts/           # Phase 1 output (/plan command)
+└── tasks.md             # Phase 2 output (/tasks command - NOT created by /plan)
 ```
 
 ### Source Code (repository root)
 ```
-# Backend (Go)
-internal/server/
-├── server.go
-├── handlers.go
-├── websocket.go
-└── embed.go
+# Option 1: Single project (DEFAULT)
+src/
+├── models/
+├── services/
+├── cli/
+└── lib/
 
-# Frontend (React)
+tests/
+├── contract/
+├── integration/
+└── unit/
+
+# Option 2: Web application (when "frontend" + "backend" detected)
+backend/
+├── src/
+│   ├── models/
+│   ├── services/
+│   └── api/
+└── tests/
+
 frontend/
-├── public/
 ├── src/
 │   ├── components/
-│   ├── App.js
-│   └── index.js
-├── package.json
-└── build/ (gitignored)
+│   ├── pages/
+│   └── services/
+└── tests/
+
+# Option 3: Mobile + API (when "iOS/Android" detected)
+api/
+└── [same as backend above]
+
+ios/ or android/
+└── [platform-specific structure]
 ```
 
-**Structure Decision**: Web application (Option 2)
+**Structure Decision**: Option 2 (Web application) - Go backend with React frontend, embedded assets
 
 ## Phase 0: Outline & Research
-1. **Go & React Integration**: Research best practices for embedding a React frontend into a Go binary.
-2. **WebSocket Libraries**: Evaluate Gorilla WebSocket vs. other Go WebSocket libraries.
-3. **Command Execution**: Determine the best way to execute and stream output from Cobra commands.
-4. **Service Management**: Research how to control and monitor embedded Karaf, PostgreSQL, and Keycloak services individually.
-5. **Frontend State Management**: Decide on a state management library for React (e.g., Redux, Zustand).
+1. **Extract unknowns from Technical Context** above:
+   - For each NEEDS CLARIFICATION → research task
+   - For each dependency → best practices task
+   - For each integration → patterns task
 
-**Output**: `research.md` with decisions and best practices.
+2. **Generate and dispatch research agents**:
+   ```
+   For each unknown in Technical Context:
+     Task: "Research {unknown} for {feature context}"
+   For each technology choice:
+     Task: "Find best practices for {tech} in {domain}"
+   ```
+
+3. **Consolidate findings** in `research.md` using format:
+   - Decision: [what was chosen]
+   - Rationale: [why chosen]
+   - Alternatives considered: [what else evaluated]
+
+**Output**: research.md with all NEEDS CLARIFICATION resolved
 
 ## Phase 1: Design & Contracts
-1. **Data Model**: Define the JSON structures for commands, responses, and log messages in `data-model.md`.
-2. **API Contracts**: Create an OpenAPI 3.0 specification for REST endpoints in `/contracts/openapi.yml`.
-    - `GET /api/status`: Get application status.
-    - `POST /api/actions/start`: Start the application.
-    - `POST /api/actions/stop`: Stop the application.
- 3. **WebSocket Contracts**: Define endpoints and message structure for log streaming with tail mode functionality.
-    - Log endpoints: `/ws/logs/combined`, `/ws/logs/service/{name}` where `{name} ∈ {karaf, postgresql, keycloak}`.
-    - Log message: `{ "ts": "ISO-8601", "service": "karaf|postgresql|keycloak", "line": "...", "position": "offset/timestamp" }`
-    - Reconnection support: Client includes last received position in connection handshake
-    - Tail mode: Server continuously monitors log files and streams new entries as they are written
-4. **Quickstart Guide**: Write a `quickstart.md` with setup, build, and run instructions.
+*Prerequisites: research.md complete*
+
+1. **Extract entities from feature spec** → `data-model.md`:
+   - Entity name, fields, relationships
+   - Validation rules from requirements
+   - State transitions if applicable
+
+2. **Generate API contracts** from functional requirements:
+   - For each user action → endpoint
+   - Use standard REST/GraphQL patterns
+   - Output OpenAPI/GraphQL schema to `/contracts/`
+
+3. **Generate contract tests** from contracts:
+   - One test file per endpoint
+   - Assert request/response schemas
+   - Tests must fail (no implementation yet)
+
+4. **Extract test scenarios** from user stories:
+   - Each story → integration test scenario
+   - Quickstart test = story validation steps
+
 5. **Update agent file incrementally** (O(1) operation):
    - Run `.specify/scripts/bash/update-agent-context.sh opencode` for your AI assistant
    - If exists: Add only NEW tech from current plan
    - Preserve manual additions between markers
-6. **Testing Methodology**: Document WebSocket testing approach using Node.js `ws` library instead of curl (which doesn't support WebSocket protocol). Implement comprehensive UI and E2E testing strategy covering:
-   - **UI Testing**: Component behavior, user interactions, visual feedback
-   - Terminal behavior and state transitions
-   - Service panel interactions and status updates
-   - Log streaming and source filtering
-   - JUDO Terminal command execution and history
-   - WebSocket connection and reconnection behavior
-   - Project initialization flow and modal handling
-   - Visual indicators and user feedback
-   - Accessibility and responsive design
-   - Cross-browser compatibility
-   - Performance under load
-   - Visual regression detection
-   - **E2E Testing**: Complete system integration and real-world scenarios
-   - CLI server startup and browser integration
-   - Embedded asset serving and rendering
-   - Real service lifecycle management
-   - End-to-end log streaming validation
-   - JUDO Terminal parity with native CLI
-   - Database operations through web interface
-   - Error recovery and system consistency
-   - Cross-platform compatibility
-   - Performance benchmarking
+   - Update recent changes (keep last 3)
+   - Keep under 150 lines for token efficiency
+   - Output to repository root
 
-**Output**: `data-model.md`, `/contracts/openapi.yml`, `quickstart.md`.
+**Output**: data-model.md, /contracts/*, failing tests, quickstart.md, agent-specific file
 
 ## Phase 2: Task Planning Approach
+*This section describes what the /tasks command will do - DO NOT execute during /plan*
+
 **Task Generation Strategy**:
-- **Backend**:
-  - Setup server framework and routing.
-  - Implement REST endpoints for status and actions.
-  - Implement WebSocket for log streaming with tail mode functionality.
-  - Implement combined and per-service log streams with position tracking.
-  - Implement reconnection logic with exponential backoff.
-  - Add file embedding for the frontend.
-- **Frontend**:
-  - Set up React project with Create React App.
-  - Create components for full-screen log terminal with source selector and right-side Service panel.
-  - Implement API calls to the backend.
-  - Implement WebSocket client for logs with reconnection logic; use react-xtermjs with fit addon and message batching.
-  - Set up build process for production assets.
+- Load `.specify/templates/tasks-template.md` as base
+- Generate tasks from Phase 1 design docs (contracts, data model, quickstart)
+- Each WebSocket endpoint → contract test task [P]
+- Each API endpoint → contract test task [P]
+- Each data model entity → model creation task [P]
+- Each user story → integration test task
+- Implementation tasks for server command, WebSocket handlers, and React components
+- JUDO Terminal specific tasks for interactive session functionality
 
 **Ordering Strategy**:
-1. Backend server setup.
-2. Frontend project setup.
-3. Implement one feature end-to-end (e.g., status button).
-4. Implement remaining features.
-5. Implement frontend embedding.
+- TDD order: Tests before implementation 
+- Dependency order: Backend models → WebSocket handlers → API endpoints → Frontend components
+- Infrastructure first: Server setup → Log streaming → Service management → JUDO Terminal
+- Mark [P] for parallel execution (independent files)
 
-**Estimated Output**: 20-25 tasks in `tasks.md`.
+**Estimated Output**: 30-35 numbered, ordered tasks in tasks.md covering:
+- Backend server implementation with WebSocket support
+- Frontend React components with Xterm.js integration
+- JUDO Terminal interactive session functionality
+- Real-time log streaming for all services
+- Service management controls
+- Comprehensive testing suite
+
+**IMPORTANT**: This phase is executed by the /tasks command, NOT by /plan
+
+
+## Phase 3: Bug Fixes and Refactoring
+
+The initial implementation was followed by a critical phase of bug fixing and refactoring to address issues discovered during testing. The following work has been completed:
+
+1.  **Frontend Bug Fixes:**
+    -   **WebSocket Race Conditions:** Resolved race conditions that caused unreliable connections for both the log and session terminals on initial page load. The connection logic is now synchronized with the terminal component's lifecycle.
+    -   **Terminal Interactivity:** Fixed issues that prevented user input, including a CSS bug that disabled the terminal and a focus management problem that prevented keystroke capture.
+
+2.  **Code Refactoring:**
+    -   **Component Extraction:** The main `App.tsx` file was broken down into smaller, single-responsibility components (`AppHeader`, `ServicePanel`, `TerminalContainer`, `ProjectInitModal`) to improve maintainability.
+    -   **Code Consolidation:** Repetitive code, such as the terminal resizing logic, was extracted into a reusable `fitTerminal` function.
+
+3.  **UX and Session Consistency:**
+    -   **Interactive Terminal:** The JUDO Terminal was enhanced to provide a true `telnet`-like experience with real-time character echoing, local input buffering, and proper handling of the Enter and Backspace keys.
+    -   **Output Formatting:** The backend was updated to send `\r\n` for all newlines, ensuring correct cursor behavior in the terminal.
+    -   **Session Consistency:** The web terminal's appearance and behavior now align with the native `judo session`, including the display of the JUDO banner, a detailed status message on connection, and consistent `help` text.
+
+## Phase 4+: Future Implementation
+*These phases are beyond the scope of the /plan command*
+
+**Phase 3**: Task execution (/tasks command creates tasks.md)  
+**Phase 4**: Implementation (execute tasks.md following constitutional principles)  
+**Phase 5**: Validation (run tests, execute quickstart.md, performance validation)
 
 ## Complexity Tracking
-N/A
+*Fill ONLY if Constitution Check has violations that must be justified*
+
+| Violation | Why Needed | Simpler Alternative Rejected Because |
+|-----------|------------|-------------------------------------|
+| [e.g., 4th project] | [current need] | [why 3 projects insufficient] |
+| [e.g., Repository pattern] | [specific problem] | [why direct DB access insufficient] |
+
 
 ## Progress Tracking
-- [ ] Phase 0: Research complete
-- [ ] Phase 1: Design complete
-- [ ] Phase 2: Task planning complete
-- [ ] Phase 3: Tasks generated
+*This checklist is updated during execution flow*
+
+**Phase Status**:
+- [x] Phase 0: Research complete (/plan command) - research.md exists
+- [x] Phase 1: Design complete (/plan command) - data-model.md, contracts/, quickstart.md exist
+- [ ] Phase 2: Task planning complete (/plan command - describe approach only)
+- [ ] Phase 3: Tasks generated (/tasks command)
 - [ ] Phase 4: Implementation complete
 - [ ] Phase 5: Validation passed
 
+**Gate Status**:
+- [x] Initial Constitution Check: PASS
+- [x] Post-Design Constitution Check: PASS
+- [x] All NEEDS CLARIFICATION resolved
+- [ ] Complexity deviations documented
+
 ---
-## Amendment (2025-09-15): UI Relabeling, Services Toggle, Init Gate, TTY Parity
-
-Scope
-- Relabel terminals to 'Logs' and 'JUDO Terminal'.
-- Move Services toggle to a left-edge control (remove header button).
-- Gate Logs/JUDO Terminal behind project initialization with a modal prompt and clear notice on decline.
-- Ensure JUDO Terminal parity with native 'judo session' (pure TTY bridge).
-
-Design & Contracts
-- REST: GET `/api/project/init/status` → `{ initialized: boolean, message?: string }`.
-- REST: POST `/api/project/init` → starts initialization and returns `{ state: 'started' }`; progress surfaced via existing logs and status polling.
-- WS Session handshake: client sends `init` with `{ term: 'xterm-256color', cols, rows }` immediately after connect; server configures PTY accordingly; subsequent `resize` updates dimensions. No client-side prompt injection.
-
-Frontend UX Flow
-- On load, fetch init status. If not initialized: show modal 'Initialize project now?'.
-  - Yes: call init endpoint; show progress (logs/status); enable terminals when complete.
-  - No: show non-blocking banner/toast explaining initialization is required to connect; keep terminals disabled until initialized.
-- Update UI labels to focus on log terminal functionality.
-- Replace header Services button with left-edge toggle.
-
-Testing
-- E2E: init gate prompt, decline notice, terminals disabled/enabled, labels, Services toggle placement.
-- Parity: compare `judo session` outputs and control behavior (Ctrl+C, history, prompt) between browser terminal and OS terminal.
-
-Tasks Reference
-- See tasks T033–T044.
-
-## Amendment (2025-09-15): Test Model Integration
-
-Test Environment
-- Use `test-model/` as the canonical environment for development, demos, and automated tests.
-- Run all end-to-end flows (generate, build, start, stop, dump, import, export) inside `test-model/`.
-
-Developer Flow
-- cd into `test-model/` and execute CLI commands; server UI features (logs, services, session) must reflect this project’s runtime state.
-
-Testing
-- Prefer `test-model/` for integration and E2E tests to avoid external project drift. Seed/cleanup via existing CLI commands (dump/import, stop/clean).
-
-Tasks Reference
-- See tasks T043–T050.
-
-*Based on Constitution v2.3.0 - See `/memory/constitution.md`*
+*Based on Constitution v2.1.1 - See `/memory/constitution.md`*

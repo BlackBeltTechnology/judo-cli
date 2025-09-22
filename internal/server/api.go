@@ -183,49 +183,49 @@ func (api *ServerAPI) executeStatus() string {
 	cfg := config.GetConfig()
 
 	var result strings.Builder
-	result.WriteString(fmt.Sprintf("Runtime: %s DB: %s\n", cfg.Runtime, cfg.DBType))
+	result.WriteString(fmt.Sprintf("Runtime: %s DB: %s\r\n", cfg.Runtime, cfg.DBType))
 
 	if cfg.Runtime == "karaf" {
 		karafDir := filepath.Join(cfg.ModelDir, "application", ".karaf")
 		if karaf.KarafRunning(karafDir) {
-			result.WriteString("Karaf is running\n")
+			result.WriteString("Karaf is running\r\n")
 		} else {
-			result.WriteString("Karaf is not running\n")
+			result.WriteString("Karaf is not running\r\n")
 		}
 
 		if cfg.DBType == "postgresql" {
 			pgName := "postgres-" + cfg.SchemaName
 			if docker.DockerInstanceRunning(pgName) {
-				result.WriteString("PostgreSQL is running\n")
+				result.WriteString("PostgreSQL is running\r\n")
 			} else {
-				result.WriteString("PostgreSQL is not running\n")
+				result.WriteString("PostgreSQL is not running\r\n")
 				if exists, _ := docker.ContainerExists(pgName); exists {
-					result.WriteString("PostgreSQL container exists\n")
+					result.WriteString("PostgreSQL container exists\r\n")
 				} else {
-					result.WriteString("PostgreSQL container does not exist\n")
+					result.WriteString("PostgreSQL container does not exist\r\n")
 				}
 				if docker.DockerVolumeExists(cfg.AppName + "_postgresql_db") {
-					result.WriteString("PostgreSQL db volume exists\n")
+					result.WriteString("PostgreSQL db volume exists\r\n")
 				} else {
-					result.WriteString("PostgreSQL db volume does not exist\n")
+					result.WriteString("PostgreSQL db volume does not exist\r\n")
 				}
 				if docker.DockerVolumeExists(cfg.AppName + "_postgresql_data") {
-					result.WriteString("PostgreSQL data volume exists\n")
+					result.WriteString("PostgreSQL data volume exists\r\n")
 				} else {
-					result.WriteString("PostgreSQL data volume does not exist\n")
+					result.WriteString("PostgreSQL data volume does not exist\r\n")
 				}
 			}
 		}
 
 		kcName := "keycloak-" + cfg.KeycloakName
 		if docker.DockerInstanceRunning(kcName) {
-			result.WriteString("Keycloak is running\n")
+			result.WriteString("Keycloak is running\r\n")
 		} else {
-			result.WriteString("Keycloak is not running\n")
+			result.WriteString("Keycloak is not running\r\n")
 			if exists, _ := docker.ContainerExists(kcName); exists {
-				result.WriteString("Keycloak container exists\n")
+				result.WriteString("Keycloak container exists\r\n")
 			} else {
-				result.WriteString("Keycloak container does not exist\n")
+				result.WriteString("Keycloak container does not exist\r\n")
 			}
 		}
 	}
@@ -265,7 +265,7 @@ func (api *ServerAPI) executeDoctor() (string, error) {
 func (api *ServerAPI) executeBuild(args []string) string {
 	// Check if JUDO project is initialized
 	if !config.IsProjectInitialized() {
-		return "Error: no JUDO project initialized in this directory\nRun 'judo init' to initialize a new JUDO project"
+		return "Error: no JUDO project initialized in this directory\r\nRun 'judo init' to initialize a new JUDO project"
 	}
 
 	// Load config and set default build options
@@ -315,7 +315,7 @@ func (api *ServerAPI) executeBuild(args []string) string {
 func (api *ServerAPI) executeStart(args []string) string {
 	// Check if JUDO project is initialized
 	if !config.IsProjectInitialized() {
-		return "Error: no JUDO project initialized in this directory\nRun 'judo init' to initialize a new JUDO project"
+		return "Error: no JUDO project initialized in this directory\r\nRun 'judo init' to initialize a new JUDO project"
 	}
 
 	// Load config
@@ -350,56 +350,56 @@ func (api *ServerAPI) executeStart(args []string) string {
 	case "compose":
 		// StartCompose doesn't return error, it runs in foreground
 		go docker.StartCompose()
-		result.WriteString("Docker compose starting in background\n")
+		result.WriteString("Docker compose starting in background\r\n")
 	case "karaf":
 		// Start local environment
 		if cfg.DBType == "postgresql" {
 			if err := docker.StartPostgres(); err != nil {
-				result.WriteString(fmt.Sprintf("Error starting PostgreSQL: %v\n", err))
+				result.WriteString(fmt.Sprintf("Error starting PostgreSQL: %v\r\n", err))
 			} else {
-				result.WriteString("PostgreSQL started successfully\n")
+				result.WriteString("PostgreSQL started successfully\r\n")
 			}
 		}
 
 		if config.Options.StartKeycloak {
 			if err := docker.StartKeycloak(); err != nil {
-				result.WriteString(fmt.Sprintf("Error starting Keycloak: %v\n", err))
+				result.WriteString(fmt.Sprintf("Error starting Keycloak: %v\r\n", err))
 			} else {
-				result.WriteString("Keycloak started successfully\n")
+				result.WriteString("Keycloak started successfully\r\n")
 			}
 		}
 
 		if config.Options.StartKaraf {
 			if err := karaf.StartKaraf(); err != nil {
-				result.WriteString(fmt.Sprintf("Error starting Karaf: %v\n", err))
+				result.WriteString(fmt.Sprintf("Error starting Karaf: %v\r\n", err))
 			} else {
-				result.WriteString("Karaf started successfully\n")
+				result.WriteString("Karaf started successfully\r\n")
 			}
 		}
 	default:
-		result.WriteString(fmt.Sprintf("Unknown runtime: %s — defaulting to karaf\n", cfg.Runtime))
+		result.WriteString(fmt.Sprintf("Unknown runtime: %s — defaulting to karaf\r\n", cfg.Runtime))
 		// Fallback to karaf runtime
 		if cfg.DBType == "postgresql" {
 			if err := docker.StartPostgres(); err != nil {
-				result.WriteString(fmt.Sprintf("Error starting PostgreSQL: %v\n", err))
+				result.WriteString(fmt.Sprintf("Error starting PostgreSQL: %v\r\n", err))
 			} else {
-				result.WriteString("PostgreSQL started successfully\n")
+				result.WriteString("PostgreSQL started successfully\r\n")
 			}
 		}
 
 		if config.Options.StartKeycloak {
 			if err := docker.StartKeycloak(); err != nil {
-				result.WriteString(fmt.Sprintf("Error starting Keycloak: %v\n", err))
+				result.WriteString(fmt.Sprintf("Error starting Keycloak: %v\r\n", err))
 			} else {
-				result.WriteString("Keycloak started successfully\n")
+				result.WriteString("Keycloak started successfully\r\n")
 			}
 		}
 
 		if config.Options.StartKaraf {
 			if err := karaf.StartKaraf(); err != nil {
-				result.WriteString(fmt.Sprintf("Error starting Karaf: %v\n", err))
+				result.WriteString(fmt.Sprintf("Error starting Karaf: %v\r\n", err))
 			} else {
-				result.WriteString("Karaf started successfully\n")
+				result.WriteString("Karaf started successfully\r\n")
 			}
 		}
 	}
@@ -424,25 +424,25 @@ func (api *ServerAPI) executeStop(args []string) string {
 	if cfg.Runtime == "karaf" {
 		// Stop Karaf
 		karaf.StopKaraf(cfg.KarafDir)
-		result.WriteString("Karaf stopped\n")
+		result.WriteString("Karaf stopped\r\n")
 
 		// Stop PostgreSQL if applicable
 		if cfg.DBType == "postgresql" {
 			if err := docker.StopDockerInstance("postgres-" + cfg.SchemaName); err != nil {
-				result.WriteString(fmt.Sprintf("Error stopping PostgreSQL: %v\n", err))
+				result.WriteString(fmt.Sprintf("Error stopping PostgreSQL: %v\r\n", err))
 			} else {
-				result.WriteString("PostgreSQL stopped\n")
+				result.WriteString("PostgreSQL stopped\r\n")
 			}
 		}
 
 		// Stop Keycloak
 		if err := docker.StopDockerInstance("keycloak-" + cfg.KeycloakName); err != nil {
-			result.WriteString(fmt.Sprintf("Error stopping Keycloak: %v\n", err))
+			result.WriteString(fmt.Sprintf("Error stopping Keycloak: %v\r\n", err))
 		} else {
-			result.WriteString("Keycloak stopped\n")
+			result.WriteString("Keycloak stopped\r\n")
 		}
 	} else {
-		result.WriteString(fmt.Sprintf("Stop command not fully implemented for runtime: %s\n", cfg.Runtime))
+		result.WriteString(fmt.Sprintf("Stop command not fully implemented for runtime: %s\r\n", cfg.Runtime))
 	}
 
 	return result.String()
@@ -464,42 +464,42 @@ func (api *ServerAPI) executeClean(args []string) string {
 	// Stop compose environments
 	for _, env := range docker.GetComposeEnvs(cfg) {
 		_ = docker.StopCompose(cfg, env)
-		result.WriteString(fmt.Sprintf("Stopped compose environment: %s\n", env))
+		result.WriteString(fmt.Sprintf("Stopped compose environment: %s\r\n", env))
 	}
 
 	// Remove Docker instances
 	_ = docker.RemoveDockerInstance("postgres-" + cfg.SchemaName)
-	result.WriteString("Removed PostgreSQL instance\n")
+	result.WriteString("Removed PostgreSQL instance\r\n")
 
 	_ = docker.RemoveDockerInstance("keycloak-" + cfg.KeycloakName)
-	result.WriteString("Removed Keycloak instance\n")
+	result.WriteString("Removed Keycloak instance\r\n")
 
 	// Remove Docker network
 	_ = docker.RemoveDockerNetwork(cfg.AppName)
-	result.WriteString("Removed Docker network\n")
+	result.WriteString("Removed Docker network\r\n")
 
 	// Remove Docker volumes
 	_ = docker.RemoveDockerVolume(cfg.AppName + "_certs")
-	result.WriteString("Removed certs volume\n")
+	result.WriteString("Removed certs volume\r\n")
 
 	_ = docker.RemoveDockerVolume(cfg.SchemaName + "_postgresql_db")
-	result.WriteString("Removed PostgreSQL db volume\n")
+	result.WriteString("Removed PostgreSQL db volume\r\n")
 
 	_ = docker.RemoveDockerVolume(cfg.SchemaName + "_postgresql_data")
-	result.WriteString("Removed PostgreSQL data volume\n")
+	result.WriteString("Removed PostgreSQL data volume\r\n")
 
 	_ = docker.RemoveDockerVolume(cfg.AppName + "_filestore")
-	result.WriteString("Removed filestore volume\n")
+	result.WriteString("Removed filestore volume\r\n")
 
 	// Stop and remove Karaf directory if applicable
 	if cfg.Runtime == "karaf" {
 		karaf.StopKaraf(cfg.KarafDir)
-		result.WriteString("Stopped Karaf\n")
+		result.WriteString("Stopped Karaf\r\n")
 
 		if err := os.RemoveAll(cfg.KarafDir); err != nil {
-			result.WriteString(fmt.Sprintf("Error removing Karaf directory: %v\n", err))
+			result.WriteString(fmt.Sprintf("Error removing Karaf directory: %v\r\n", err))
 		} else {
-			result.WriteString("Removed Karaf directory\n")
+			result.WriteString("Removed Karaf directory\r\n")
 		}
 	}
 
@@ -565,12 +565,12 @@ func (api *ServerAPI) executeLog(args []string) string {
 
 		for i := start; i < len(logLines); i++ {
 			if logLines[i] != "" {
-				result.WriteString(logLines[i] + "\n")
+				result.WriteString(logLines[i] + "\r\n")
 			}
 		}
 
 		if follow {
-			result.WriteString("\n⚠️  Follow mode not supported in API mode\n")
+			result.WriteString("\r\n⚠️  Follow mode not supported in API mode\r\n")
 		}
 	} else {
 		// Show all lines or limited lines
@@ -583,7 +583,7 @@ func (api *ServerAPI) executeLog(args []string) string {
 			}
 			for i := start; i < len(logLines); i++ {
 				if logLines[i] != "" {
-					result.WriteString(logLines[i] + "\n")
+					result.WriteString(logLines[i] + "\r\n")
 				}
 			}
 		}

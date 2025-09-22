@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebSocket Browser Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .log { border: 1px solid #ccc; padding: 10px; height: 300px; overflow-y: scroll; margin: 10px 0; }
+        button { margin: 5px; padding: 10px; }
+        .status { color: green; font-weight: bold; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+    <h1>WebSocket Browser Test</h1>
+    
+    <div>
+        <button onclick="testWebSocket('ws://localhost:6969/ws/logs/combined', 'Logs Combined')">Test Logs Combined</button>
+        <button onclick="testWebSocket('ws://localhost:6969/ws/session', 'Session')">Test Session</button>
+    </div>
+    
+    <h3>Connection Log:</h3>
+    <div id="log" class="log"></div>
+    
+    <script>
+        function log(message, className = '') {
+            const logDiv = document.getElementById('log');
+            const entry = document.createElement('div');
+            entry.textContent = new Date().toISOString() + ' - ' + message;
+            if (className) entry.className = className;
+            logDiv.appendChild(entry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+        
+        function testWebSocket(url, name) {
+            log(`Testing ${name} WebSocket: ${url}`);
+            
+            try {
+                const ws = new WebSocket(url);
+                
+                ws.onopen = () => {
+                    log(`✓ ${name} WebSocket connected successfully`, 'status');
+                };
+                
+                ws.onmessage = (event) => {
+                    log(`📨 ${name} received: ${event.data}`);
+                };
+                
+                ws.onerror = (error) => {
+                    log(`✗ ${name} WebSocket error: ${error}`, 'error');
+                    console.error('WebSocket error details:', error);
+                };
+                
+                ws.onclose = (event) => {
+                    log(`🔌 ${name} WebSocket closed: code=${event.code}, reason=${event.reason}`);
+                };
+                
+                // Close after 5 seconds
+                setTimeout(() => {
+                    if (ws.readyState === WebSocket.OPEN) {
+                        ws.close();
+                        log(`⏰ ${name} WebSocket closed after timeout`);
+                    }
+                }, 5000);
+                
+            } catch (error) {
+                log(`❌ ${name} WebSocket creation failed: ${error.message}`, 'error');
+                console.error('WebSocket creation error:', error);
+            }
+        }
+    </script>
+</body>
+</html>

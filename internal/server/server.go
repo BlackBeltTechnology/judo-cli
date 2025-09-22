@@ -1666,12 +1666,37 @@ func (s *Server) streamServiceLogs(conn *websocket.Conn, service string) {
 }
 
 func (s *Server) handleInteractiveSession(conn *websocket.Conn) {
-	// Send welcome message for interactive session
+	// Display JUDO banner
+	judobanner := "\u001B[0m\u001B[38;5;16m        \u001B[38;5;167m█\u001B[38;5;209m███\u001B[38;5;232m█\u001B[38;5;16m                                               \n\r\u001B[38;5;16m       \u001B[38;5;209m██████\u001B[38;5;16m                                               \n\r\u001B[38;5;16m       \u001B[38;5;238m█\u001B[38;5;209m████\u001B[38;5;131m█\u001B[38;5;16m                                               \n\r\u001B[38;5;16m       \u001B[38;5;232m█\u001B[38;5;242m█\u001B[38;5;239m█\u001B[38;5;238m█\u001B[38;5;241m█\u001B[38;5;238m█\u001B[38;5;240m█\u001B[38;5;242m████\u001B[38;5;16m     \u001B[38;5;238m█\u001B[38;5;242m████\u001B[38;5;233m█\u001B[38;5;242m███████\u001B[38;5;241m█\u001B[38;5;238m█\u001B[38;5;234m█\u001B[38;5;16m         \u001B[38;5;234m█\u001B[38;5;244m█\u001B[38;5;253m█\u001B[38;5;231m█\u001B[38;5;255m█\u001B[38;5;251m█\u001B[38;5;59m█\u001B[38;5;233m█\u001B[38;5;16m    \n\r\u001B[38;5;16m       \u001B[38;5;233m█\u001B[38;5;231m████\u001B[38;5;248m█\u001B[38;5;252m█\u001B[38;5;231m████\u001B[38;5;232m█\u001B[38;5;16m    \u001B[38;5;247m█\u001B[38;5;231m████\u001B[38;5;235m█\u001B[38;5;231m████████████\u001B[38;5;239m█\u001B[38;5;16m   \u001B[38;5;234m█\u001B[38;5;231m███████████\u001B[38;5;254m█\u001B[38;5;16m  \n\r\u001B[38;5;16m       \u001B[38;5;233m█\u001B[38;5;231m████\u001B[38;5;248m█\u001B[38;5;252m█\u001B[38;5;231m████\u001B[38;5;232m█\u001B[38;5;16m    \u001B[38;5;247m█\u001B[38;5;231m████\u001B[38;5;235m█\u001B[38;5;231m████\u001B[38;5;255m█\u001B[38;5;234m█\u001B[38;5;235m█\u001B[38;5;244m█\u001B[38;5;231m█████\u001B[38;5;250m█\u001B[38;5;16m \u001B[38;5;242m█\u001B[38;5;231m█████\u001B[38;5;239m█\u001B[38;5;233m██\u001B[38;5;246m█\u001B[38;5;231m█████\u001B[38;5;16m \n\r\u001B[38;5;16m       \u001B[38;5;233m█\u001B[38;5;231m████\u001B[38;5;248m█\u001B[38;5;252m█\u001B[38;5;231m████\u001B[38;5;232m█\u001B[38;5;16m    \u001B[38;5;247m█\u001B[38;5;231m████\u001B[38;5;235m█\u001B[38;5;231m████\u001B[38;5;255m█\u001B[38;5;16m    \u001B[38;5;255m█\u001B[38;5;231m████\u001B[38;5;16m \u001B[38;5;231m████\u001B[38;5;255m█\u001B[38;5;16m      \u001B[38;5;231m████\u001B[38;5;255m█\n\r\u001B[38;5;16m       \u001B[38;5;233m█\u001B[38;5;231m████\u001B[38;5;248m█\u001B[38;5;252m█\u001B[38;5;231m████\u001B[38;5;232m█\u001B[38;5;16m    \u001B[38;5;247m█\u001B[38;5;231m████\u001B[38;5;235m█\u001B[38;5;231m████\u001B[38;5;255m█\u001B[38;5;16m    \u001B[38;5;249m█\u001B[38;5;231m████\u001B[38;5;16m \u001B[38;5;231m████\u001B[38;5;251m█\u001B[38;5;16m      \u001B[38;5;255m█\u001B[38;5;231m████\n\r\u001B[38;5;16m       \u001B[38;5;233m█\u001B[38;5;231m████\u001B[38;5;248m█\u001B[38;5;252m█\u001B[38;5;231m████\u001B[38;5;232m█\u001B[38;5;16m    \u001B[38;5;247m█\u001B[38;5;231m████\u001B[38;5;235m█\u001B[38;5;231m████\u001B[38;5;255m█\u001B[38;5;16m    \u001B[38;5;254m█\u001B[38;5;231m████\u001B[38;5;16m \u001B[38;5;231m████\u001B[38;5;255m█\u001B[38;5;16m      \u001B[38;5;231m█████\n\r\u001B[38;5;255m█\u001B[38;5;231m███\u001B[38;5;255m█\u001B[38;5;16m  \u001B[38;5;243m█\u001B[38;5;231m████\u001B[38;5;241m█\u001B[38;5;243m█\u001B[38;5;231m████\u001B[38;5;248m█\u001B[38;5;16m   \u001B[38;5;232m█\u001B[38;5;231m█████\u001B[38;5;16m \u001B[38;5;231m████\u001B[38;5;255m█\u001B[38;5;16m   \u001B[38;5;237m█\u001B[38;5;231m████\u001B[38;5;255m█\u001B[38;5;16m \u001B[38;5;253m█\u001B[38;5;231m████\u001B[38;5;244m█\u001B[38;5;16m    \u001B[38;5;255m█\u001B[38;5;231m████\u001B[38;5;242m█\n\r\u001B[38;5;234m█\u001B[38;5;231m███████████\u001B[38;5;16m  \u001B[38;5;252m█\u001B[38;5;231m████████████\u001B[38;5;233m█\u001B[38;5;16m \u001B[38;5;231m████████████\u001B[38;5;255m█\u001B[38;5;16m   \u001B[38;5;250m█\u001B[38;5;231m████████████\u001B[38;5;242m█\u001B[38;5;16m \n\r\u001B[38;5;16m  \u001B[38;5;244m█\u001B[38;5;231m██████\u001B[38;5;255m█\u001B[38;5;233m█\u001B[38;5;16m     \u001B[38;5;249m█\u001B[38;5;231m████████\u001B[38;5;237m█\u001B[38;5;16m   \u001B[38;5;231m██████████\u001B[38;5;242m█\u001B[38;5;16m       \u001B[38;5;239m█\u001B[38;5;231m████████\u001B[38;5;236m█\u001B[38;5;16m   \n\r\u001B[0m"
+
 	welcomeMsg := map[string]interface{}{
 		"type": "output",
-		"data": "🚀 JUDO CLI Interactive Session\nType 'help' for available commands, 'exit' to quit\n\n",
+		"data": judobanner,
 	}
 	msg, _ := json.Marshal(welcomeMsg)
+	conn.WriteMessage(websocket.TextMessage, msg)
+
+	// Send welcome message for interactive session
+	welcomeMsg = map[string]interface{}{
+		"type": "output",
+		"data": "\r\n\x1b[1;36m🚀 JUDO CLI Interactive Session\x1b[0m\r\n\x1b[33mType 'help' for available commands, 'exit' to quit\x1b[0m\r\n\r\n",
+	}
+	msg, _ = json.Marshal(welcomeMsg)
+	conn.WriteMessage(websocket.TextMessage, msg)
+
+	// Send project status
+	var statusMsgText string
+	if s.checkProjectInitialized() {
+		wd, _ := os.Getwd()
+		statusMsgText = fmt.Sprintf("\x1b[32m✅ Project initialized in: %s\x1b[0m\r\n", wd)
+	} else {
+		statusMsgText = "\x1b[33m⚠️  No JUDO project found. Run 'init' to create one.\x1b[0m\r\n"
+	}
+	statusMsg := map[string]interface{}{
+		"type": "output",
+		"data": statusMsgText,
+	}
+	msg, _ = json.Marshal(statusMsg)
 	conn.WriteMessage(websocket.TextMessage, msg)
 
 	// Send initial prompt
@@ -1749,7 +1774,7 @@ func (s *Server) handleWebSocketSessionCommand(conn *websocket.Conn, command str
 		// Send exit message
 		exitMsg := map[string]interface{}{
 			"type": "output",
-			"data": "👋 Session ended\n",
+			"data": "👋 Session ended\r\n",
 		}
 		msg, _ := json.Marshal(exitMsg)
 		conn.WriteMessage(websocket.TextMessage, msg)
@@ -1762,7 +1787,7 @@ func (s *Server) handleWebSocketSessionCommand(conn *websocket.Conn, command str
 	case "help":
 		helpMsg := map[string]interface{}{
 			"type": "output",
-			"data": "📋 Available commands:\n  help     - Show this help\n  exit     - Exit session\n  status   - Show status\n  doctor   - Run system check\n  clear    - Clear screen\n\nType any JUDO command to execute it directly\n",
+			"data": "📋 JUDO CLI Session Commands:\r\n  help      - Show this help message\r\n  exit      - Exit the interactive session\r\n  quit      - Exit the interactive session\r\n  clear     - Clear the terminal screen\r\n  history   - Show command history\r\n  status    - Show current session status\r\n  doctor    - Run system health check\r\n\r\n🔧 Project Commands:\r\n  init      - Initialize a new JUDO project\r\n  build     - Build project\r\n  start     - Start application\r\n  stop      - Stop application\r\n  status    - Show application status\r\n  clean     - Clean project data\r\n  generate  - Generate application from model\r\n  dump      - Dump PostgreSQL database\r\n  import    - Import PostgreSQL database dump\r\n  update    - Update dependency versions\r\n  prune     - Clean untracked files\r\n  reckless  - Fast build & run mode\r\n  self-update - Update CLI to latest version\r\n\r\n💡 Type any JUDO command directly to execute it\r\n",
 		}
 		msg, _ := json.Marshal(helpMsg)
 		conn.WriteMessage(websocket.TextMessage, msg)
@@ -1776,12 +1801,36 @@ func (s *Server) handleWebSocketSessionCommand(conn *websocket.Conn, command str
 		msg, _ := json.Marshal(clearMsg)
 		conn.WriteMessage(websocket.TextMessage, msg)
 
+	case "history":
+		historyMsg := map[string]interface{}{
+			"type": "output",
+			"data": "Command history is not available in the web session.\r\n",
+		}
+		msg, _ := json.Marshal(historyMsg)
+		conn.WriteMessage(websocket.TextMessage, msg)
+
 	case "status":
-		// Execute status command via API
-		result := s.api.executeStatus()
+		// Get project and service status
+		var statusBuilder strings.Builder
+		statusBuilder.WriteString("\x1b[1;36m📊 Session Status:\x1b[0m\r\n")
+		wd, _ := os.Getwd()
+		statusBuilder.WriteString(fmt.Sprintf("\x1b[32m  Current Directory:\x1b[0m %s\r\n", wd))
+
+		if s.checkProjectInitialized() {
+			statusBuilder.WriteString("\x1b[32m  JUDO Project:\x1b[0m ✅ Initialized\r\n")
+			if cfg := config.GetConfig(); cfg != nil {
+				statusBuilder.WriteString(fmt.Sprintf("\x1b[32m  App Name:\x1b[0m %s\r\n", cfg.AppName))
+				statusBuilder.WriteString(fmt.Sprintf("\x1b[32m  Runtime:\x1b[0m %s\r\n", cfg.Runtime))
+				statusBuilder.WriteString(fmt.Sprintf("\x1b[32m  Database:\x1b[0m %s\r\n", cfg.DBType))
+			}
+		} else {
+			statusBuilder.WriteString("\x1b[33m  JUDO Project:\x1b[0m ⚠️  Not initialized (run 'init' to create)\r\n")
+		}
+		statusBuilder.WriteString(fmt.Sprintf("\r\n\x1b[1;36m🔧 Service Status:\x1b[0m\r\n%s\r\n", s.api.executeStatus()))
+
 		statusMsg := map[string]interface{}{
 			"type": "output",
-			"data": result + "\n",
+			"data": statusBuilder.String(),
 		}
 		msg, _ := json.Marshal(statusMsg)
 		conn.WriteMessage(websocket.TextMessage, msg)
@@ -1791,7 +1840,7 @@ func (s *Server) handleWebSocketSessionCommand(conn *websocket.Conn, command str
 		result, _ := s.api.executeDoctor()
 		doctorMsg := map[string]interface{}{
 			"type": "output",
-			"data": result + "\n",
+			"data": result + "\r\n",
 		}
 		msg, _ := json.Marshal(doctorMsg)
 		conn.WriteMessage(websocket.TextMessage, msg)
@@ -1806,7 +1855,7 @@ func (s *Server) handleWebSocketSessionCommand(conn *websocket.Conn, command str
 			}
 			outputMsg := map[string]interface{}{
 				"type": "output",
-				"data": result + "\n",
+				"data": result + "\r\n",
 			}
 			msg, _ := json.Marshal(outputMsg)
 			conn.WriteMessage(websocket.TextMessage, msg)

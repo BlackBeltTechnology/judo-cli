@@ -1,48 +1,58 @@
 const WebSocket = require('ws');
 
 // Test WebSocket connections
-const testEndpoints = [
-    'ws://localhost:6974/ws/logs/combined',
-    'ws://localhost:6974/ws/logs/service/karaf'
-];
-
-function testWebSocket(url) {
-    console.log(`Testing WebSocket: ${url}`);
-    
+async function testWebSocket(url, name) {
+  console.log(`Testing ${name} WebSocket: ${url}`);
+  
+  return new Promise((resolve, reject) => {
     const ws = new WebSocket(url);
     
     ws.on('open', () => {
-        console.log(`✅ Connected to ${url}`);
-        // Send a ping to keep connection alive
-        ws.ping();
+      console.log(`✓ ${name} WebSocket connected successfully`);
+      ws.close();
+      resolve(true);
     });
     
     ws.on('message', (data) => {
-        console.log(`📨 Received message from ${url}: ${data.toString()}`);
+      console.log(`📨 ${name} received:`, data.toString());
     });
     
     ws.on('error', (error) => {
-        console.log(`❌ Error with ${url}:`, error.message);
+      console.log(`✗ ${name} WebSocket error:`, error.message);
+      reject(error);
     });
     
     ws.on('close', (code, reason) => {
-        console.log(`🔌 Connection closed to ${url}: code=${code}, reason=${reason}`);
+      console.log(`🔌 ${name} WebSocket closed:`, code, reason.toString());
     });
     
-    // Set timeout to close connection after 5 seconds
+    // Timeout after 5 seconds
     setTimeout(() => {
-        if (ws.readyState === WebSocket.OPEN) {
-            ws.close();
-        }
+      if (ws.readyState !== WebSocket.OPEN) {
+        console.log(`⏰ ${name} WebSocket connection timeout`);
+        ws.close();
+        reject(new Error('Connection timeout'));
+      }
     }, 5000);
+  });
 }
 
-// Test all endpoints
-console.log('Starting WebSocket tests...');
-testEndpoints.forEach(testWebSocket);
-
-// Keep process alive for 10 seconds
-setTimeout(() => {
-    console.log('Tests completed');
+async function testAll() {
+  try {
+    console.log('Testing WebSocket connections to localhost:6969...\n');
+    
+    await testWebSocket('ws://localhost:6969/ws/logs/combined', 'Logs Combined');
+    console.log('');
+    
+    await testWebSocket('ws://localhost:6969/ws/session', 'Session');
+    console.log('');
+    
+    console.log('✅ All WebSocket tests passed!');
     process.exit(0);
-}, 10000);
+  } catch (error) {
+    console.log('❌ WebSocket test failed:', error.message);
+    process.exit(1);
+  }
+}
+
+testAll();

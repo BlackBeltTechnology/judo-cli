@@ -3,7 +3,18 @@ import axios from "axios";
 import { XTerm, useXTerm } from "react-xtermjs";
 import { FitAddon } from "@xterm/addon-fit";
 
+import { useTerminalMode } from "./contexts/TerminalModeContext";
+import TerminalSwitch from "./components/TerminalSwitch";
+import TerminalHeader from "./components/TerminalHeader";
+import { useTerminalMode as useTerminalModeHook } from "./hooks/useTerminalMode";
+import { useCommandHistory } from "./hooks/useCommandHistory";
+import { preserveTerminalState } from "./services/sessionState";
+
 import "./App.css";
+import ServicePanel from "./components/ServicePanel";
+import ProjectInitModal from "./components/ProjectInitModal";
+import TerminalContainer from "./components/TerminalContainer";
+import AppHeader from "./components/AppHeader";
 
 interface ServiceStatus {
   service: string;
@@ -18,6 +29,7 @@ interface LogMessage {
 }
 
 function App() {
+  const { mode, setMode } = useTerminalMode();
   const [terminalSource, setTerminalSource] = useState<string>("combined");
   const [serviceStatus, setServiceStatus] = useState<{
     [key: string]: ServiceStatus;
@@ -26,14 +38,97 @@ function App() {
   const [loadingServices, setLoadingServices] = useState<{
     [key: string]: boolean;
   }>({});
-  const [isProjectInitialized, setIsProjectInitialized] = useState<
-    boolean | null
-  >(null);
+  const [isProjectInitialized, setIsProjectInitialized] = useState<boolean | null>(null);
   const [showInitModal, setShowInitModal] = useState(false);
 
-  const { ref: terminalRef, instance: terminalInstance } = useXTerm();
-  const fitAddon = useRef(new FitAddon());
-  const terminalInstanceRef = useRef(terminalInstance);
+  const { ref: terminalARef, instance: terminalAInstance } = useXTerm();
+  const { ref: terminalBRef, instance: terminalBInstance } = useXTerm();
+  const fitAddonA = useRef(new FitAddon());
+  const fitAddonB = useRef(new FitAddon());
+  const terminalAInstanceRef = useRef(terminalAInstance);
+  const terminalBInstanceRef = useRef(terminalBInstance);
+  const [isTerminalAReady, setIsTerminalAReady] = useState(false);
+  const [isTerminalBReady, setIsTerminalBReady] = useState(false);
+
+  const fitTerminal = (terminal: any, fitAddon: FitAddon) => {
+    try {
+      fitAddon.fit();
+      if (terminal.cols < 120) {
+        terminal.resize(120, terminal.rows);
+      }
+      if (terminal.rows < 40) {
+        terminal.resize(terminal.cols, 40);
+      }
+      terminal.refresh(0, terminal.rows - 1);
+    } catch (error) {
+      console.error("Error fitting terminal:", error);
+    }
+  };
+
+  useEffect(() => {
+    terminalAInstanceRef.current = terminalAInstance;
+    const wasReady = isTerminalAReady;
+    const isReady = !!terminalAInstance;
+    setIsTerminalAReady(isReady);
+
+    if (terminalAInstance) {
+      terminalAInstance.loadAddon(fitAddonA.current);
+      setTimeout(() => fitTerminal(terminalAInstance, fitAddonA.current), 100);
+    }
+  }, [terminalAInstance, isTerminalAReady]);
+
+  useEffect(() => {
+    terminalBInstanceRef.current = terminalBInstance;
+    const wasReady = isTerminalBReady;
+    const isReady = !!terminalBInstance;
+    setIsTerminalBReady(isReady);
+
+    if (terminalBInstance) {
+      terminalBInstance.loadAddon(fitAddonB.current);
+      setTimeout(() => {
+        fitTerminal(terminalBInstance, fitAddonB.current);
+        if (!wasReady && isReady && mode === "judo-terminal") {
+          console.log("Terminal B fully ready, connecting session WebSocket");
+          connectSessionWebSocket();
+        }
+      }, 100);
+    }
+  }, [terminalBInstance, isTerminalBReady, mode]);
+
+  const sessionWs = useRef<WebSocket | null>(null);
+
+  const { handleModeChange } = useTerminalModeHook({
+    onModeChange: (newMode, oldMode) => {
+      if (oldMode === "judo-terminal" && terminalBInstanceRef.current) {
+        preserveTerminalState(terminalBInstanceRef.current, oldMode);
+      } else if (oldMode === "logs" && terminalAInstanceRef.current) {
+        preserveTerminalState(terminalAInstanceRef.current, oldMode);
+      }
+
+      if (oldMode === "logs" && logWs.current) {
+        logWs.current.onclose = null;
+        logWs.current.close();
+        logWs.current = null;
+      } else if (oldMode === "judo-terminal" && sessionWs.current) {
+        sessionWs.current.onclose = null;
+        sessionWs.current.close();
+        sessionWs.current = null;
+      }
+
+      if (newMode === "logs") {
+        connectLogWebSocket(terminalSource);
+      } else if (newMode === "judo-terminal") {
+        connectSessionWebSocket();
+      }
+    },
+    onTerminalClear: (mode) => {
+      if (mode === "logs" && terminalAInstanceRef.current) {
+        terminalAInstanceRef.current.clear();
+      } else if (mode === "judo-terminal" && terminalBInstanceRef.current) {
+        terminalBInstanceRef.current.clear();
+      }
+    },
+  });
 
   const terminalOptions = {
     cursorBlink: true,
@@ -53,6 +148,9 @@ function App() {
   };
 
   const logWs = useRef<WebSocket | null>(null);
+  const [connectionState, setConnectionState] = useState<{ logs: string; session: string }>({ logs: "disconnected", session: "disconnected" });
+  const isConnectingRef = useRef<{ logs: boolean; session: boolean }>({ logs: false, session: false });
+  const connectionAttemptRef = useRef<{ logs: number; session: number }>({ logs: 0, session: 0 });
 
   const getApiBaseUrl = useCallback(() => {
     const { protocol, hostname, port } = window.location;
@@ -70,79 +168,329 @@ function App() {
       if (logWs.current) {
         logWs.current.onclose = null;
         logWs.current.close();
+        logWs.current = null;
       }
 
-      const wsUrl =
-        source === "combined"
-          ? `${getWsBaseUrl()}/ws/logs/combined`
-          : `${getWsBaseUrl()}/ws/logs/service/${source}`;
+      if (!isTerminalAReady || mode !== "logs") {
+        return;
+      }
 
-      const ws = new WebSocket(wsUrl);
-      logWs.current = ws;
+      if (logWs.current && (logWs.current.readyState === WebSocket.CONNECTING || logWs.current.readyState === WebSocket.OPEN)) {
+        return;
+      }
+
+      if (isConnectingRef.current.logs) {
+        return;
+      }
+
+      connectionAttemptRef.current.logs++;
+      if (connectionAttemptRef.current.logs > 1) {
+        return;
+      }
+
+      isConnectingRef.current.logs = true;
+
+      const wsUrl = source === "combined" ? `${getWsBaseUrl()}/ws/logs/combined` : `${getWsBaseUrl()}/ws/logs/service/${source}`;
+
+      try {
+        const ws = new WebSocket(wsUrl);
+        logWs.current = ws;
+
+        ws.onopen = () => {
+          setConnectionState((prev) => ({ ...prev, logs: "connected" }));
+          isConnectingRef.current.logs = false;
+          connectionAttemptRef.current.logs = 0;
+        };
+
+        ws.onmessage = (event) => {
+          try {
+            let data: string;
+            if (typeof event.data === "string") {
+              data = event.data;
+            } else if (event.data instanceof ArrayBuffer) {
+              const decoder = new TextDecoder();
+              data = decoder.decode(event.data);
+            } else if (event.data instanceof Blob) {
+              const reader = new FileReader();
+              reader.onload = () => {
+                if (typeof reader.result === "string") {
+                  handleWebSocketMessage(reader.result);
+                }
+              };
+              reader.readAsText(event.data);
+              return;
+            } else {
+              return;
+            }
+
+            const logMessage: LogMessage = JSON.parse(data);
+
+            if (logMessage.line === "Log stream connected") {
+              logWs.current?.send(JSON.stringify({ type: "request_history", source: terminalSource }));
+              return;
+            }
+
+            if (!logMessage.line || logMessage.line.trim() === "") {
+              return;
+            }
+
+            if (terminalAInstanceRef.current && mode === "logs") {
+              const processedLine = logMessage.line;
+              const formattedMessage = logMessage.service === "combined" ? `${processedLine}\r\n` : `[${new Date(logMessage.ts).toLocaleTimeString()}] [${logMessage.service.toUpperCase()}] ${processedLine}\r\n`;
+
+              terminalAInstanceRef.current.write(formattedMessage);
+            }
+          } catch (error) {}
+        };
+
+        const handleWebSocketMessage = (data: string) => {
+          try {
+            const logMessage: LogMessage = JSON.parse(data);
+
+            if (logMessage.line === "Log stream connected") {
+              logWs.current?.send(JSON.stringify({ type: "request_history", source: terminalSource }));
+              return;
+            }
+
+            if (!logMessage.line || logMessage.line.trim() === "") {
+              return;
+            }
+
+            if (terminalAInstanceRef.current && mode === "logs") {
+              const processedLine = logMessage.line;
+              const formattedMessage = logMessage.service === "combined" ? `${processedLine}\r\n` : `[${new Date(logMessage.ts).toLocaleTimeString()}] [${logMessage.service.toUpperCase()}] ${processedLine}\r\n`;
+
+              terminalAInstanceRef.current.write(formattedMessage);
+            }
+          } catch (error) {}
+        };
+
+        ws.onclose = (event) => {
+          setConnectionState((prev) => ({ ...prev, logs: "disconnected" }));
+          isConnectingRef.current.logs = false;
+          connectionAttemptRef.current.logs = 0;
+          if (event.code !== 1000 && mode === "logs") {
+            setTimeout(() => {
+              if (mode === "logs") {
+                connectLogWebSocket(terminalSource);
+              }
+            }, 3000);
+          }
+        };
+
+        ws.onerror = () => {
+          setConnectionState((prev) => ({ ...prev, logs: "error" }));
+          isConnectingRef.current.logs = false;
+          connectionAttemptRef.current.logs = 0;
+        };
+      } catch (error) {
+        setConnectionState((prev) => ({ ...prev, logs: "failed" }));
+        isConnectingRef.current.logs = false;
+        connectionAttemptRef.current.logs = 0;
+
+        setTimeout(() => {
+          if (mode === "logs") {
+            connectLogWebSocket(terminalSource);
+          }
+        }, 3000);
+      }
+    },
+    [getWsBaseUrl, mode, isTerminalAReady, terminalSource],
+  );
+
+  const connectSessionWebSocket = useCallback(() => {
+    if (sessionWs.current) {
+      sessionWs.current.onclose = null;
+      sessionWs.current.close();
+      sessionWs.current = null;
+    }
+
+    if (!isTerminalBReady || mode !== "judo-terminal") {
+      return;
+    }
+
+    if (sessionWs.current && (sessionWs.current.readyState === WebSocket.CONNECTING || sessionWs.current.readyState === WebSocket.OPEN)) {
+      return;
+    }
+
+    if (isConnectingRef.current.session) {
+      return;
+    }
+
+    connectionAttemptRef.current.session++;
+    if (connectionAttemptRef.current.session > 1) {
+      return;
+    }
+
+    isConnectingRef.current.session = true;
+
+    try {
+      const ws = new WebSocket(`${getWsBaseUrl()}/ws/session`);
+      sessionWs.current = ws;
 
       ws.onopen = () => {
-        // Connection established silently - no status message needed
-        // Terminal instance check is handled by the initialization process
+        setConnectionState((prev) => ({ ...prev, session: "connected" }));
+        isConnectingRef.current.session = false;
+        connectionAttemptRef.current.session = 0;
+        if (terminalBInstanceRef.current) {
+          ws.send(JSON.stringify({ type: "resize", cols: terminalBInstanceRef.current.cols, rows: terminalBInstanceRef.current.rows }));
+        }
       };
 
       ws.onmessage = (event) => {
         try {
-          const logMessage: LogMessage = JSON.parse(event.data);
-
-          // Skip empty messages (heartbeats)
-          if (!logMessage.line || logMessage.line.trim() === "") {
+          let data: string;
+          if (typeof event.data === "string") {
+            data = event.data;
+          } else if (event.data instanceof ArrayBuffer) {
+            const decoder = new TextDecoder();
+            data = decoder.decode(event.data);
+          } else if (event.data instanceof Blob) {
+            const reader = new FileReader();
+            reader.onload = () => {
+              if (typeof reader.result === "string") {
+                handleSessionWebSocketMessage(reader.result);
+              }
+            };
+            reader.readAsText(event.data);
+            return;
+          } else {
             return;
           }
 
-          if (terminalInstanceRef.current) {
-            // Preserve ANSI color codes but remove problematic control sequences
-            const processedLine = logMessage.line;
-            // .replace(/\x1b\[K/g, '') // Remove clear line codes (can cause display issues)
-            // .replace(/\x1b\[2K/g, '') // Remove clear line codes
-            // .replace(/\x1b\[0G/g, '') // Remove cursor position codes (can cause wrapping issues)
-            // .replace(/\x1b\[\?.*[hl]/g, '') // Remove terminal mode codes
-            // .replace(/\x1b\=.*[hl]/g, ''); // Remove additional terminal codes
-
-            // For combined logs, don't add timestamp or service prefix since individual lines already have them
-            const formattedMessage =
-              logMessage.service === "combined"
-                ? `${processedLine}\r\n`
-                : `[${new Date(logMessage.ts).toLocaleTimeString()}] [${logMessage.service.toUpperCase()}] ${processedLine}\r\n`;
-            
-            console.log("Writing to terminal:", formattedMessage);
-            terminalInstanceRef.current.write(formattedMessage);
-          } else {
-            console.log("Terminal instance not available for writing");
+          const message = JSON.parse(data);
+          if (terminalBInstanceRef.current && mode === "judo-terminal") {
+            switch (message.type) {
+              case "handshake":
+                if (message.welcome) {
+                  terminalBInstanceRef.current.write(message.welcome);
+                }
+                break;
+              case "output":
+                terminalBInstanceRef.current.write(message.data || "");
+                break;
+              case "status":
+                if (message.state === "exited") {
+                  terminalBInstanceRef.current.write(`\r\n\x1b[31mSession exited with code ${message.exitCode}\x1b[0m\r\n`);
+                }
+                break;
+              case "prompt":
+                terminalBInstanceRef.current.write(message.data || "");
+                break;
+            }
           }
-          // Silently skip if terminal instance is not available - no warning needed
-        } catch (error) {
-          console.error("Error parsing log message:", error, event.data);
+        } catch (error) {}
+      };
+
+      const handleSessionWebSocketMessage = (data: string) => {
+        try {
+          const message = JSON.parse(data);
+          if (terminalBInstanceRef.current && mode === "judo-terminal") {
+            switch (message.type) {
+              case "handshake":
+                if (message.welcome) {
+                  terminalBInstanceRef.current.write(message.welcome);
+                }
+                break;
+              case "output":
+                terminalBInstanceRef.current.write(message.data || "");
+                break;
+              case "status":
+                if (message.state === "exited") {
+                  terminalBInstanceRef.current.write(`\r\n\x1b[31mSession exited with code ${message.exitCode}\x1b[0m\r\n`);
+                }
+                break;
+              case "prompt":
+                terminalBInstanceRef.current.write(message.data || "");
+                break;
+            }
+          }
+        } catch (error) {}
+      };
+
+      ws.onclose = (event) => {
+        setConnectionState((prev) => ({ ...prev, session: "disconnected" }));
+        isConnectingRef.current.session = false;
+        connectionAttemptRef.current.session = 0;
+        if (terminalBInstanceRef.current && mode === "judo-terminal") {
+          terminalBInstanceRef.current.write("\r\n\x1b[31m✗ Session disconnected\x1b[0m\r\n");
+        }
+
+        if (event.code !== 1000 && mode === "judo-terminal") {
+          setTimeout(() => {
+            if (mode === "judo-terminal") {
+              connectSessionWebSocket();
+            }
+          }, 3000);
         }
       };
 
-      ws.onclose = () => {
-        // Connection closed silently - no status message needed
+      ws.onerror = () => {
+        setConnectionState((prev) => ({ ...prev, session: "error" }));
+        isConnectingRef.current.session = false;
+        connectionAttemptRef.current.session = 0;
       };
+    } catch (error) {
+      setConnectionState((prev) => ({ ...prev, session: "failed" }));
+      isConnectingRef.current.session = false;
+      connectionAttemptRef.current.session = 0;
 
-      ws.onerror = (error) => {
-        console.error("Log WebSocket error:", error);
-      };
+      setTimeout(() => {
+        if (mode === "judo-terminal") {
+          connectSessionWebSocket();
+        }
+      }, 3000);
+    }
+  }, [getWsBaseUrl, mode, isTerminalBReady]);
+
+  const [command, setCommand] = useState("");
+
+  const handleTerminalBInput = useCallback(
+    (data: string) => {
+      const char = data;
+      if (char === "\r") {
+        // Enter key
+        if (sessionWs.current && sessionWs.current.readyState === WebSocket.OPEN) {
+          const message = {
+            type: "input",
+            data: command,
+          };
+          sessionWs.current.send(JSON.stringify(message));
+        }
+        setCommand("");
+        terminalBInstance?.writeln("");
+      } else if (char === "\u007f") {
+        // Backspace
+        if (command.length > 0) {
+          setCommand(command.slice(0, -1));
+          terminalBInstance?.write("\b \b");
+        }
+      } else {
+        setCommand(command + char);
+        terminalBInstance?.write(char);
+      }
     },
-    [getWsBaseUrl],
+    [command, terminalBInstance],
   );
+
+  useEffect(() => {
+    if (terminalBInstance) {
+      const onDataDisposable = terminalBInstance.onData(handleTerminalBInput);
+      return () => {
+        onDataDisposable.dispose();
+      };
+    }
+  }, [terminalBInstance, handleTerminalBInput]);
 
   const checkProjectInitialized = useCallback(async () => {
     try {
-      const response = await axios.get(
-        `${getApiBaseUrl()}/api/project/init/status`,
-      );
+      const response = await axios.get(`${getApiBaseUrl()}/api/project/init/status`);
       setIsProjectInitialized(response.data.initialized);
       if (!response.data.initialized) {
         setShowInitModal(true);
       }
     } catch (error) {
-      console.error("Failed to check project initialization status:", error);
-      setIsProjectInitialized(false); // Assume not initialized if check fails
+      setIsProjectInitialized(false);
       setShowInitModal(true);
     }
   }, [getApiBaseUrl]);
@@ -150,28 +498,20 @@ function App() {
   const handleProjectInit = async (initialize: boolean) => {
     setShowInitModal(false);
     if (initialize) {
-      // Initialize project
       try {
         await axios.post(`${getApiBaseUrl()}/api/commands/judo%20init`);
-        // Recheck initialization status
         await checkProjectInitialized();
       } catch (error) {
-        console.error("Failed to initialize project:", error);
-        // Still allow access but show warning
         setIsProjectInitialized(false);
       }
     } else {
-      // User declined initialization, allow access but disable certain features
       setIsProjectInitialized(false);
     }
   };
 
   const fetchServiceStatuses = useCallback(async () => {
     try {
-      // Use concurrent status endpoint for better performance
-      const response = await axios.get(
-        `${getApiBaseUrl()}/api/services/status`,
-      );
+      const response = await axios.get(`${getApiBaseUrl()}/api/services/status`);
       const statuses = response.data;
 
       const statusMap: { [key: string]: ServiceStatus } = {};
@@ -181,8 +521,6 @@ function App() {
 
       setServiceStatus(statusMap);
     } catch (error) {
-      console.error("Failed to fetch service statuses:", error);
-      // Fallback to individual endpoints
       try {
         const [karaf, postgres, keycloak] = await Promise.all([
           axios.get(`${getApiBaseUrl()}/api/services/karaf/status`),
@@ -195,9 +533,7 @@ function App() {
           postgresql: postgres.data,
           keycloak: keycloak.data,
         });
-      } catch (fallbackError) {
-        console.error("Fallback status fetch also failed:", fallbackError);
-      }
+      } catch (fallbackError) {}
     }
   }, [getApiBaseUrl]);
 
@@ -207,7 +543,6 @@ function App() {
       await axios.post(`${getApiBaseUrl()}/api/services/${service}/start`);
       startStatusPolling(service);
     } catch (error) {
-      console.error(`Failed to start ${service}:`, error);
       setLoadingServices((prev) => ({ ...prev, [service]: false }));
     }
   };
@@ -218,7 +553,6 @@ function App() {
       await axios.post(`${getApiBaseUrl()}/api/services/${service}/stop`);
       startStatusPolling(service);
     } catch (error) {
-      console.error(`Failed to stop ${service}:`, error);
       setLoadingServices((prev) => ({ ...prev, [service]: false }));
     }
   };
@@ -229,7 +563,6 @@ function App() {
       await axios.post(`${getApiBaseUrl()}/api/services/start`);
       startStatusPolling("all");
     } catch (error) {
-      console.error("Failed to start all services:", error);
       setLoadingServices((prev) => ({ ...prev, all: false }));
     }
   };
@@ -240,7 +573,6 @@ function App() {
       await axios.post(`${getApiBaseUrl()}/api/services/stop`);
       startStatusPolling("all");
     } catch (error) {
-      console.error("Failed to stop all services:", error);
       setLoadingServices((prev) => ({ ...prev, all: false }));
     }
   };
@@ -257,261 +589,113 @@ function App() {
   };
 
   useEffect(() => {
-    // Handle window resize with debouncing
-    let resizeTimeout: NodeJS.Timeout;
-    const handleResize = () => {
-      clearTimeout(resizeTimeout);
-      resizeTimeout = setTimeout(() => {
-        if (terminalInstance && fitAddon.current) {
-          try {
-            fitAddon.current.fit();
-            // Ensure minimum dimensions after fitting
-            if (terminalInstance.cols < 120) {
-              terminalInstance.resize(120, terminalInstance.rows);
-            }
-            if (terminalInstance.rows < 24) {
-              terminalInstance.resize(terminalInstance.cols, 24);
-            }
-            // Force a refresh to handle any rendering artifacts and wrapping issues
-            terminalInstance.refresh(0, terminalInstance.rows - 1);
-            
-            // Additional check: if we're still at 80 columns, force resize
-            if (terminalInstance.cols === 80) {
-              console.warn("Terminal stuck at 80 columns, forcing resize to 120");
-              terminalInstance.resize(120, terminalInstance.rows);
-              terminalInstance.refresh(0, terminalInstance.rows - 1);
-            }
-          } catch (error) {
-            console.warn("Could not fit terminal on resize:", error);
-          }
-        }
-      }, 100);
-    };
+    setTimeout(() => {
+      if (mode === "logs" && terminalAInstance) {
+        terminalAInstance.focus();
+      } else if (mode === "judo-terminal" && terminalBInstance) {
+        terminalBInstance.focus();
+      }
+    }, 100);
+  }, [mode, terminalAInstance, terminalBInstance]);
 
-    window.addEventListener("resize", handleResize);
+  useEffect(() => {
+    if (mode === "logs") {
+      if (sessionWs.current) {
+        sessionWs.current.close();
+      }
+    } else if (mode === "judo-terminal") {
+      if (logWs.current) {
+        logWs.current.close();
+      }
+    }
+  }, [mode, connectLogWebSocket, connectSessionWebSocket]);
 
-    // Fetch service statuses
+  useEffect(() => {
     fetchServiceStatuses();
-
-    // Check if project is initialized
     checkProjectInitialized();
 
     return () => {
-      clearTimeout(resizeTimeout);
-      window.removeEventListener("resize", handleResize);
+      if (logWs.current) {
+        logWs.current.onclose = null;
+        logWs.current.close();
+      }
+      if (sessionWs.current) {
+        sessionWs.current.onclose = null;
+        sessionWs.current.close();
+      }
     };
   }, []);
 
   useEffect(() => {
-    // Update terminal instance ref when it changes
-    terminalInstanceRef.current = terminalInstance;
-
-    // Initialize terminal when it becomes available
-    if (terminalInstance && terminalRef.current) {
-      console.log("Terminal instance available, initializing...");
-      // Load addons
-      terminalInstance.loadAddon(fitAddon.current);
-
-      // Set up resize observer
-      const resizeObserver = new ResizeObserver(() => {
-        if (terminalInstance && fitAddon.current) {
-          try {
-            fitAddon.current.fit();
-            // Ensure minimum dimensions after fitting
-            if (terminalInstance.cols < 120) {
-              terminalInstance.resize(120, terminalInstance.rows);
-            }
-            if (terminalInstance.rows < 24) {
-              terminalInstance.resize(terminalInstance.cols, 24);
-            }
-            
-            // Additional check: if we're still at 80 columns, force resize
-            if (terminalInstance.cols === 80) {
-              console.warn("Terminal stuck at 80 columns, forcing resize to 120");
-              terminalInstance.resize(120, terminalInstance.rows);
-              terminalInstance.refresh(0, terminalInstance.rows - 1);
-            }
-          } catch (error) {
-            console.warn("Could not fit terminal on container resize:", error);
-          }
-        }
-      });
-
-      resizeObserver.observe(terminalRef.current);
-
-      // Fit terminal to container with a small delay to ensure DOM is ready
-      setTimeout(() => {
-        try {
-          console.log("Fitting terminal to container...");
-          fitAddon.current.fit();
-          console.log("Terminal fitted, cols:", terminalInstance.cols, "rows:", terminalInstance.rows);
-          
-          // Ensure minimum dimensions after fitting
-          if (terminalInstance.cols < 120) {
-            terminalInstance.resize(120, terminalInstance.rows);
-            console.log("Resized terminal to 120 columns");
-          }
-          if (terminalInstance.rows < 24) {
-            terminalInstance.resize(terminalInstance.cols, 24);
-            console.log("Resized terminal to 24 rows");
-          }
-          
-          // Force immediate refresh to handle any initial rendering issues
-          terminalInstance.refresh(0, terminalInstance.rows - 1);
-          console.log("Terminal refreshed with", terminalInstance.rows, "rows");
-        } catch (error) {
-          console.warn("Could not fit terminal:", error);
-        }
-      }, 150);
-
-      // Connect to WebSocket after terminal is fully initialized with a small delay
-      const connectTimeout = setTimeout(() => {
-        console.log("Terminal initialized, connecting WebSocket...");
-        connectLogWebSocket(terminalSource);
-      }, 200);
-
-      // Store the resize observer for cleanup
-      return () => {
-        resizeObserver.disconnect();
-        clearTimeout(connectTimeout);
-        if (logWs.current) {
-          logWs.current.onclose = null;
-          logWs.current.close();
-          logWs.current = null;
-        }
-      };
+    if (mode === "logs" && isTerminalAReady) {
+      connectLogWebSocket(terminalSource);
     }
-  }, [terminalInstance, terminalSource, connectLogWebSocket]);
+  }, [terminalSource, mode, connectLogWebSocket, isTerminalAReady]);
 
-  // WebSocket connection is now handled in the terminal initialization useEffect
+  useEffect(() => {
+    if (mode === "judo-terminal" && isTerminalBReady) {
+      connectSessionWebSocket();
+    }
+  }, [mode, isTerminalBReady, connectSessionWebSocket]);
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (mode === "logs" && terminalAInstanceRef.current && fitAddonA.current) {
+        fitTerminal(terminalAInstanceRef.current, fitAddonA.current);
+      } else if (mode === "judo-terminal" && terminalBInstanceRef.current && fitAddonB.current) {
+        fitTerminal(terminalBInstanceRef.current, fitAddonB.current);
+        if (sessionWs.current && sessionWs.current.readyState === WebSocket.OPEN) {
+          sessionWs.current.send(
+            JSON.stringify({
+              type: "resize",
+              cols: terminalBInstanceRef.current.cols,
+              rows: terminalBInstanceRef.current.rows,
+            }),
+          );
+        }
+      }
+    };
+
+    window.addEventListener("resize", handleResize);
+    setTimeout(handleResize, 200);
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+    };
+  }, [mode]);
 
   return (
     <div className={`App ${isServicePanelOpen ? "service-panel-open" : ""}`}>
-      <header className="App-header">
-        <button
-          className="btn btn-service-panel"
-          onClick={() => setIsServicePanelOpen(!isServicePanelOpen)}
-        >
-          {isServicePanelOpen ? "◀" : "▶"} Services
-        </button>
-
-        <h1>JUDO CLI Server</h1>
-
-        <div className="terminal-controls">
-          <span>Source: </span>
-          <select
-            value={terminalSource}
-            onChange={(e) => setTerminalSource(e.target.value)}
-            className="source-selector"
-          >
-            <option value="combined">Combined</option>
-            <option value="karaf">Karaf</option>
-            <option value="postgresql">PostgreSQL</option>
-            <option value="keycloak">Keycloak</option>
-          </select>
-
-
-        </div>
-      </header>
+      <AppHeader
+        isServicePanelOpen={isServicePanelOpen}
+        onToggleServicePanel={() => setIsServicePanelOpen(!isServicePanelOpen)}
+        mode={mode}
+        onModeChange={(newMode) => {
+          const oldMode = mode;
+          setMode(newMode);
+          handleModeChange(newMode, oldMode);
+        }}
+        isProjectInitialized={isProjectInitialized}
+        terminalSource={terminalSource}
+        onSourceChange={setTerminalSource}
+        connectionState={connectionState}
+      />
 
       <div className="main-content">
-        <div className={`service-panel ${isServicePanelOpen ? "open" : ""}`}>
-          <h2>Services</h2>
-          <div className="service-controls">
-            {/* Parallel controls */}
-            <div className="service-control parallel-controls">
-              <span className="service-name">All Services</span>
-              <div className="service-buttons">
-                <button
-                  onClick={handleAllServicesStart}
-                  className="btn btn-service-start"
-                  disabled={loadingServices.all}
-                >
-                  {loadingServices.all ? "Starting All..." : "Start All"}
-                </button>
-                <button
-                  onClick={handleAllServicesStop}
-                  className="btn btn-service-stop"
-                  disabled={loadingServices.all}
-                >
-                  {loadingServices.all ? "Stopping All..." : "Stop All"}
-                </button>
-              </div>
-            </div>
+        <ServicePanel
+          isOpen={isServicePanelOpen}
+          serviceStatus={serviceStatus}
+          loadingServices={loadingServices}
+          onStartService={handleServiceStart}
+          onStopService={handleServiceStop}
+          onStartAllServices={handleAllServicesStart}
+          onStopAllServices={handleAllServicesStop}
+        />
 
-            {/* Individual service controls */}
-            {Object.entries(serviceStatus).map(([service, status]) => (
-              <div key={service} className="service-control">
-                <span className="service-name">{service}</span>
-                <span className={`service-status ${status.status}`}>
-                  {status.status}
-                </span>
-                <div className="service-buttons">
-                  <button
-                    onClick={() => handleServiceStart(service)}
-                    className="btn btn-service-start"
-                    disabled={
-                      status.status === "starting" ||
-                      status.status === "running" ||
-                      loadingServices[service] ||
-                      loadingServices.all
-                    }
-                  >
-                    {loadingServices[service] ? "Starting..." : "Start"}
-                  </button>
-                  <button
-                    onClick={() => handleServiceStop(service)}
-                    className="btn btn-service-stop"
-                    disabled={
-                      status.status === "stopping" ||
-                      status.status === "stopped" ||
-                      loadingServices[service] ||
-                      loadingServices.all
-                    }
-                  >
-                    {loadingServices[service] ? "Stopping..." : "Stop"}
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="terminal-container">
-          <XTerm
-            ref={terminalRef}
-            className={`terminal ${isProjectInitialized === false ? "disabled" : ""}`}
-            options={terminalOptions}
-          />
-        </div>
+        <TerminalContainer mode={mode} isProjectInitialized={isProjectInitialized} terminalARef={terminalARef} terminalBRef={terminalBRef} terminalOptions={terminalOptions} onTerminalBInput={handleTerminalBInput} />
       </div>
 
-      {/* Project Initialization Modal */}
-      {showInitModal && (
-        <div className="modal-overlay">
-          <div className="modal">
-            <h2>Project Not Initialized</h2>
-            <p>
-              This directory does not appear to be a JUDO project. Would you
-              like to initialize it?
-            </p>
-            <div className="modal-buttons">
-              <button
-                className="btn btn-service-start"
-                onClick={() => handleProjectInit(true)}
-              >
-                Yes, Initialize
-              </button>
-              <button
-                className="btn btn-service-stop"
-                onClick={() => handleProjectInit(false)}
-              >
-                No, Continue Anyway
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {showInitModal && <ProjectInitModal onInitialize={handleProjectInit} />}
     </div>
   );
 }

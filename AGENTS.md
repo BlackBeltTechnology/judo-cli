@@ -32,6 +32,20 @@
 - Build process: Frontend must be built before Go compilation for embedding
 - Server connectivity: Ensure port 6969 is available, check for empty response issues
 
+## WebSocket Implementation
+- **Backend**: Use `gorilla/websocket` library for WebSocket connections
+- **Frontend**: Native WebSocket API with reconnection logic
+- **Log Streaming**: WebSocket endpoints `/ws/logs/karaf`, `/ws/logs/postgresql`, `/ws/logs/keycloak`
+- **Interactive Sessions**: WebSocket endpoint `/ws/session` for JUDO Terminal functionality
+- **Message Format**: JSON messages with `type` and `data` fields for both directions
+
+## JUDO Terminal Features
+- **Mode Switching**: Toggle between log viewing and interactive terminal modes
+- **Session Preservation**: Maintain session state when switching modes
+- **Real-time I/O**: Two-way WebSocket communication for command execution
+- **Terminal Control**: Support for resize events, control characters (Ctrl+C, Ctrl+D)
+- **Command History**: Preserve command history and buffer during mode switches
+
 ## WebSocket Testing
 - Use Node.js with `ws` library for WebSocket testing (curl doesn't support WebSocket protocol)
 - Install: `npm install ws`

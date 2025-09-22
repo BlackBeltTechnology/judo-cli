@@ -229,6 +229,33 @@ Additional Requirements
 - FR-058: UI tests MUST include mobile browser testing for responsive design validation
 - FR-059: UI tests MUST be integrated with the main test suite and run as part of the standard test workflow
 
+## Spec Extension (JUDO Terminal Interactive Session)
+
+Summary
+- Add JUDO Terminal button that switches between log viewing and interactive terminal modes
+- Interactive terminal provides full two-way session functionality identical to `judo session` command
+- Terminal state is preserved when switching between log and session modes
+- Uses direct WebSocket connection for real-time command execution and output
+
+Additional Acceptance Scenarios
+- Given the web UI is displaying logs, when I click the 'JUDO Terminal' button, then the terminal clears and switches to interactive session mode
+- Given I'm in interactive session mode, when I execute commands, then they behave identically to the native `judo session` command with real-time output
+- Given I switch back to log mode, then the terminal clears and displays logs again, preserving the interactive session state
+- Given I switch back to session mode, then the interactive terminal resumes exactly where I left off
+- Given the session is active, when I provide input, then it is sent via WebSocket to the server and output is streamed back in real-time
+
+Additional Requirements
+- FR-081: The UI MUST include a 'JUDO Terminal' button that toggles between log viewing and interactive session modes
+- FR-082: Switching to JUDO Terminal mode MUST clear the terminal and establish a two-way interactive WebSocket session
+- FR-083: The interactive session MUST provide identical functionality to the native `judo session` command
+- FR-084: Session state MUST be preserved when switching between log and terminal modes
+- FR-085: The terminal MUST support all standard CLI commands and keyboard interactions (arrow keys, tab completion, etc.)
+- FR-086: Command output MUST be streamed in real-time through the WebSocket connection
+- FR-087: The session MUST handle control characters and special keys (Ctrl+C, Ctrl+D, etc.) appropriately
+- FR-088: Terminal resize events MUST be properly transmitted to maintain correct terminal dimensions
+- FR-089: Session history and command buffer MUST be preserved during mode switches
+- FR-090: The WebSocket connection for sessions MUST use the same reconnection strategy as log streaming
+
 ## Spec Extension (Comprehensive E2E Testing)
 
 Summary
@@ -242,26 +269,30 @@ Additional Acceptance Scenarios
 - Given the `test-model/` environment is properly set up, when E2E tests run, then they should validate real service lifecycle management and log streaming
 
 Additional Requirements
-- FR-060: E2E tests MUST cover complete CLI server startup and browser launch sequence
-- FR-061: E2E tests MUST validate that the embedded frontend assets are properly served by the Go backend
-- FR-062: E2E tests MUST verify WebSocket connections are established correctly for both log streaming and session management
-- FR-063: E2E tests MUST cover service lifecycle management including start, stop, and status monitoring operations
-- FR-064: E2E tests MUST validate real log streaming from all services (Karaf, PostgreSQL, Keycloak) through the complete pipeline
-- FR-065: E2E tests MUST verify JUDO Terminal command execution produces identical results to native CLI session
-- FR-066: E2E tests MUST cover project initialization flow from uninitialized state to fully operational
-- FR-067: E2E tests MUST validate database operations (dump, import, export) through the JUDO Terminal interface
-- FR-068: E2E tests MUST verify service status indicators reflect actual service state in real-time
-- FR-069: E2E tests MUST cover error scenarios including service startup failures and network interruptions
-- FR-070: E2E tests MUST validate that the system recovers gracefully from failures and maintains consistency
-- FR-071: E2E tests MUST verify port configuration and conflict handling behavior
-- FR-072: E2E tests MUST cover authentication and security aspects if implemented
-- FR-073: E2E tests MUST validate that all user interactions produce the expected system-level outcomes
-- FR-074: E2E tests MUST be executable against the `test-model/` environment for realistic validation
-- FR-075: E2E tests MUST include performance benchmarking for critical user journeys
-- FR-076: E2E tests MUST validate resource cleanup and proper shutdown procedures
-- FR-077: E2E tests MUST cover cross-platform compatibility on supported operating systems
-- FR-078: E2E tests MUST be integrated into CI/CD pipeline with appropriate environment setup
-- FR-079: E2E tests MUST provide detailed logging and debugging information for failure analysis
-- FR-080: E2E tests MUST be maintainable and resistant to flakiness through proper waiting strategies and stability measures
+- FR-091: E2E tests MUST cover complete CLI server startup and browser launch sequence
+- FR-092: E2E tests MUST validate that the embedded frontend assets are properly served by the Go backend
+- FR-093: E2E tests MUST verify WebSocket connections are established correctly for both log streaming and session management
+- FR-094: E2E tests MUST cover service lifecycle management including start, stop, and status monitoring operations
+- FR-095: E2E tests MUST validate real log streaming from all services (Karaf, PostgreSQL, Keycloak) through the complete pipeline
+- FR-096: E2E tests MUST verify JUDO Terminal command execution produces identical results to native CLI session
+- FR-097: E2E tests MUST cover project initialization flow from uninitialized state to fully operational
+- FR-098: E2E tests MUST validate database operations (dump, import, export) through the JUDO Terminal interface
+- FR-099: E2E tests MUST verify service status indicators reflect actual service state in real-time
+- FR-100: E2E tests MUST cover error scenarios including service startup failures and network interruptions
+- FR-101: E2E tests MUST validate that the system recovers gracefully from failures and maintains consistency
+- FR-102: E2E tests MUST verify port configuration and conflict handling behavior
+- FR-103: E2E tests MUST cover authentication and security aspects if implemented
+- FR-104: E2E tests MUST validate that all user interactions produce the expected system-level outcomes
+- FR-105: E2E tests MUST be executable against the `test-model/` environment for realistic validation
+- FR-106: E2E tests MUST include performance benchmarking for critical user journeys
+- FR-107: E2E tests MUST validate resource cleanup and proper shutdown procedures
+- FR-108: E2E tests MUST cover cross-platform compatibility on supported operating systems
+- FR-109: E2E tests MUST be integrated into CI/CD pipeline with appropriate environment setup
+- FR-110: E2E tests MUST provide detailed logging and debugging information for failure analysis
+- FR-111: E2E tests MUST be maintainable and resistant to flakiness through proper waiting strategies and stability measures
+- FR-112: E2E tests MUST cover JUDO Terminal mode switching and session state preservation
+- FR-113: E2E tests MUST validate interactive command execution through the WebSocket session interface
+- FR-114: E2E tests MUST verify terminal resize events are properly handled in both log and session modes
+- FR-115: E2E tests MUST cover control character handling and special key functionality in JUDO Terminal
 
 *Based on Constitution v2.3.0 - See `/memory/constitution.md`*
